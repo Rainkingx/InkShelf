@@ -39,6 +39,15 @@ jobs:
           mkdir -p ~/.gradle
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
+      - name: Restore InkShelf signing key
+        if: github.event_name != 'pull_request'
+        env:
+          INKSHELF_DEBUG_KEYSTORE: ${{ secrets.INKSHELF_DEBUG_KEYSTORE }}
+        run: |
+          mkdir -p ~/.android
+          echo "$INKSHELF_DEBUG_KEYSTORE" | base64 --decode > ~/.android/debug.keystore
+          chmod 600 ~/.android/debug.keystore
+
       - name: Build InkShelf
         run: ./gradlew :app:assembleDevDebug -x :app:formatKotlinMain
 
@@ -49,3 +58,4 @@ jobs:
           path: app/build/outputs/apk/dev/debug/*.apk
           if-no-files-found: error
           retention-days: 14
+

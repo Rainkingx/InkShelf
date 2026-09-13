@@ -14,3 +14,5 @@ mnt/
 
 # Upstream Firebase configuration is intentionally not distributed
 /app/src/standard/google-services.json
+
+*.keystore
