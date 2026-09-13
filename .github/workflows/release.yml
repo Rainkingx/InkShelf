@@ -1,4 +1,4 @@
-﻿name: Release InkShelf
+name: Release InkShelf
 
 on:
   push:
@@ -43,7 +43,7 @@ jobs:
         env:
           INKSHELF_RELEASE_STORE_FILE: ${{ runner.temp }}/inkshelf-signing/inkshelf-release.keystore
           INKSHELF_RELEASE_PASSWORD: ${{ secrets.INKSHELF_RELEASE_PASSWORD }}
-        run: ./gradlew :app:assembleStandardBeta -x :app:formatKotlinMain
+        run: ./gradlew :app:clean :app:assembleStandardBeta -x :app:formatKotlinMain
 
       - name: Prepare universal APK
         run: |
