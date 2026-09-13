@@ -74,11 +74,7 @@ android {
         }
         getByName("release") {
             applicationIdSuffix = ".j2k"
-
-            if (!inkShelfReleaseStoreFile.isNullOrBlank() &&
-                !inkShelfReleasePassword.isNullOrBlank()) {
-                signingConfig = signingConfigs.getByName("inkshelfRelease")
-            }
+            signingConfig = signingConfigs.getByName("inkshelfRelease")
             isShrinkResources = true
             isMinifyEnabled = true
             proguardFiles("proguard-android-optimize.txt", "proguard-rules.pro")
@@ -110,7 +106,7 @@ android {
         create("dev") {
             // androidResources.localeFilters is shared across all product flavors rather than
             // being scoped to this one, so only mutate it when a Dev-flavor task is actually
-            // being run Ã¢â‚¬â€ otherwise this strips every locale from Standard builds too.
+            // being run ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â otherwise this strips every locale from Standard builds too.
             if (gradle.startParameter.taskRequests.toString().contains("Dev")) {
                 androidResources.localeFilters.clear()
                 androidResources.localeFilters.add("en")
