@@ -1,4 +1,5 @@
 # InkShelf
+[![Download InkShelf](https://img.shields.io/badge/Download-InkShelf_APK-7C4DFF?style=for-the-badge&logo=android)](https://github.com/Rainkingx/InkShelf/releases)
 
 **InkShelf** is an Android comic and manga reader built as a custom fork of [TachiyomiJ2K](https://github.com/Jays2Kings/tachiyomiJ2K).
 
