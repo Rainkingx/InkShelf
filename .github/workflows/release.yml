@@ -39,11 +39,14 @@ jobs:
           echo "$INKSHELF_RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/inkshelf-signing/inkshelf-release.keystore"
           chmod 600 "$RUNNER_TEMP/inkshelf-signing/inkshelf-release.keystore"
 
+      - name: Remove previous build output
+        run: rm -rf app/build
+
       - name: Build signed InkShelf beta
         env:
           INKSHELF_RELEASE_STORE_FILE: ${{ runner.temp }}/inkshelf-signing/inkshelf-release.keystore
           INKSHELF_RELEASE_PASSWORD: ${{ secrets.INKSHELF_RELEASE_PASSWORD }}
-        run: ./gradlew :app:clean :app:assembleStandardBeta -x :app:formatKotlinMain
+        run: ./gradlew :app:assembleStandardBeta -x :app:formatKotlinMain
 
       - name: Prepare universal APK
         run: |
