@@ -1,4 +1,4 @@
-# InkShelf
+﻿# InkShelf
 
 **InkShelf** is an Android comic and manga reader built as a custom fork of [TachiyomiJ2K](https://github.com/Jays2Kings/tachiyomiJ2K).
 
@@ -11,7 +11,7 @@ The project keeps the proven J2K reader, library, source/extension, download, ba
 - **Comic-focused Library** with reading-status tabs, pinned search and Continue Reading.
 - **Discover** with recommendations, trending titles, new releases and background caching.
 - **Your Reading Universe** with real reading-history and library statistics.
-- **Panel Flow — BETA**: optional guided reading for Western/LTR comics.
+- **Panel Flow â€” BETA**: optional guided reading for Western/LTR comics.
   - Uses on-device OCR.
   - Moves through recognised dialogue while keeping artwork context visible.
   - Groups busy dialogue areas into readable stops.
@@ -22,7 +22,7 @@ The project keeps the proven J2K reader, library, source/extension, download, ba
 - Source/extension support inherited from the Tachiyomi/Mihon ecosystem.
 - Tablet, foldable and landscape support.
 
-## Panel Flow — BETA
+## Panel Flow â€” BETA
 
 Panel Flow is an optional guided-reading mode designed primarily for Western left-to-right comics.
 
@@ -89,7 +89,7 @@ For InkShelf-specific bugs, include:
 
 ## Upstream and attribution
 
-InkShelf is a derivative work based on **TachiyomiJ2K** by Jays2Kings, which itself descends from the original **Tachiyomi** project by Javier Tomás and contributors.
+InkShelf is a derivative work based on **TachiyomiJ2K** by Jays2Kings, which itself descends from the original **Tachiyomi** project by Javier TomÃ¡s and contributors.
 
 The wider Tachiyomi ecosystem is now continued by projects including [Mihon](https://github.com/mihonapp/mihon).
 
@@ -104,3 +104,31 @@ Licensed under the **Apache License 2.0**. See [LICENSE](LICENSE).
 InkShelf is not affiliated with or endorsed by content providers, publishers, TachiyomiJ2K, Mihon, or third-party extension developers.
 
 Users are responsible for complying with the laws and terms applicable to the content and sources they choose to access.
+
+<!-- INKSHELF_SCREENSHOTS_START -->
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="screenshots/library.jpg" width="320" alt="InkShelf Library"><br>
+      <b>Library</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/discover.jpg" width="320" alt="InkShelf Discover"><br>
+      <b>Discover</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="screenshots/reading-universe.jpg" width="320" alt="InkShelf Reading Universe"><br>
+      <b>Reading Universe</b>
+    </td>
+    <td align="center">
+      <img src="screenshots/more.jpg" width="320" alt="InkShelf More screen"><br>
+      <b>More</b>
+    </td>
+  </tr>
+</table>
+<!-- INKSHELF_SCREENSHOTS_END -->
+
