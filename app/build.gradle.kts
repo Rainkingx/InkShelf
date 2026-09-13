@@ -1,4 +1,4 @@
-﻿import org.gradle.api.tasks.Copy
+import org.gradle.api.tasks.Copy
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -52,6 +52,21 @@ android {
         }
     }
 
+    val inkShelfReleaseStoreFile = System.getenv("INKSHELF_RELEASE_STORE_FILE")
+    val inkShelfReleasePassword = System.getenv("INKSHELF_RELEASE_PASSWORD")
+
+    signingConfigs {
+        create("inkshelfRelease") {
+            if (!inkShelfReleaseStoreFile.isNullOrBlank() &&
+                !inkShelfReleasePassword.isNullOrBlank()) {
+                storeFile = file(inkShelfReleaseStoreFile)
+                storePassword = inkShelfReleasePassword
+                keyAlias = "inkshelf"
+                keyPassword = inkShelfReleasePassword
+            }
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             applicationIdSuffix = ".debugJ2K"
@@ -59,6 +74,11 @@ android {
         }
         getByName("release") {
             applicationIdSuffix = ".j2k"
+
+            if (!inkShelfReleaseStoreFile.isNullOrBlank() &&
+                !inkShelfReleasePassword.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("inkshelfRelease")
+            }
             isShrinkResources = true
             isMinifyEnabled = true
             proguardFiles("proguard-android-optimize.txt", "proguard-rules.pro")

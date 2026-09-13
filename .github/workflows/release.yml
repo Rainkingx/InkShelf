@@ -31,21 +31,24 @@ jobs:
           mkdir -p ~/.gradle
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
-      - name: Restore InkShelf signing key
+      - name: Restore InkShelf release key
         env:
-          INKSHELF_DEBUG_KEYSTORE: ${{ secrets.INKSHELF_DEBUG_KEYSTORE }}
+          INKSHELF_RELEASE_KEYSTORE: ${{ secrets.INKSHELF_RELEASE_KEYSTORE }}
         run: |
-          mkdir -p ~/.android
-          echo "$INKSHELF_DEBUG_KEYSTORE" | base64 --decode > ~/.android/debug.keystore
-          chmod 600 ~/.android/debug.keystore
+          mkdir -p "$RUNNER_TEMP/inkshelf-signing"
+          echo "$INKSHELF_RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/inkshelf-signing/inkshelf-release.keystore"
+          chmod 600 "$RUNNER_TEMP/inkshelf-signing/inkshelf-release.keystore"
 
-      - name: Build InkShelf
-        run: ./gradlew :app:assembleDevDebug -x :app:formatKotlinMain
+      - name: Build signed InkShelf beta
+        env:
+          INKSHELF_RELEASE_STORE_FILE: ${{ runner.temp }}/inkshelf-signing/inkshelf-release.keystore
+          INKSHELF_RELEASE_PASSWORD: ${{ secrets.INKSHELF_RELEASE_PASSWORD }}
+        run: ./gradlew :app:assembleStandardBeta -x :app:formatKotlinMain
 
       - name: Prepare universal APK
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/dev/debug/*universal-debug.apk dist/InkShelf.apk
+          cp app/build/outputs/apk/standard/beta/*universal-beta.apk dist/InkShelf.apk
 
       - name: Publish GitHub Release
         env:
