@@ -51,11 +51,17 @@ jobs:
       - name: Build InkShelf
         run: ./gradlew :app:assembleDevDebug -x :app:formatKotlinMain
 
+      - name: Prepare InkShelf APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/dev/debug/*arm64-v8a-debug.apk dist/InkShelf.apk
+
       - name: Upload InkShelf APK
         uses: actions/upload-artifact@v4
         with:
-          name: InkShelf-dev-debug
-          path: app/build/outputs/apk/dev/debug/*.apk
+          name: InkShelf
+          path: dist/InkShelf.apk
           if-no-files-found: error
           retention-days: 14
+
 
