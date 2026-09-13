@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="monet_primary">@android:color/system_accent1_200</color>
+    <color name="monet_primary_container">@android:color/system_accent1_700</color>
+    <color name="monet_on_primary">@android:color/system_neutral2_900</color>
+    <color name="monet_primary_inverse">@android:color/system_accent1_600</color>
+    <color name="monet_surface_container">@android:color/system_neutral1_800</color>
+    <color name="monet_secondary">@android:color/system_accent1_100</color>
+    <color name="monet_secondary_container">@android:color/system_neutral2_700</color>
+    <color name="monet_on_secondary_container">@android:color/system_neutral2_100</color>
+    <color name="monet_tertiary">@android:color/system_accent3_800</color>
+    <color name="monet_on_tertiary">@color/md_white_1000</color>
+    <color name="monet_surface">@android:color/system_neutral1_900</color>
+    <color name="monet_background">@android:color/system_neutral1_900</color>
+    <color name="monet_on_background">@android:color/system_neutral1_10</color>
+    <color name="monet_action_bar_tint">@android:color/system_accent2_10</color>
+    <color name="monet_surface_container_lowest">@color/tachiyomi_surfaceContainerLowest</color>
+    <color name="monet_surface_container_low">@color/tachiyomi_surfaceContainerLow</color>
+    <color name="monet_surface_container_high">@color/tachiyomi_surfaceContainerHigh</color>
+    <color name="monet_surface_container_highest">@color/tachiyomi_surfaceContainerHighest</color>
+</resources>

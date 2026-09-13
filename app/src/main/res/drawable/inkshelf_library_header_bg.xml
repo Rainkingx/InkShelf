@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Neutral base follows the selected J2K appearance. -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorSurface" />
+        </shape>
+    </item>
+
+    <!-- Soft page-to-header transition. -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:startColor="?attr/colorSurfaceContainerHigh"
+                android:centerColor="?attr/colorSurface"
+                android:endColor="?attr/colorSurface" />
+        </shape>
+    </item>
+
+    <!-- Main moon glow: color comes from the active theme. -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.92"
+                android:centerY="0.10"
+                android:gradientRadius="210dp"
+                android:startColor="?attr/colorPrimaryContainer"
+                android:centerColor="?attr/colorSurfaceContainer"
+                android:endColor="@android:color/transparent" />
+        </shape>
+    </item>
+
+    <!-- Secondary nebula glow. -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.70"
+                android:centerY="0.36"
+                android:gradientRadius="220dp"
+                android:startColor="?attr/colorPrimaryContainer"
+                android:centerColor="?attr/colorSurface"
+                android:endColor="@android:color/transparent" />
+        </shape>
+    </item>
+
+    <!-- Stars stay neutral so they work with every accent colour. -->
+    <item android:width="3dp" android:height="3dp" android:right="92dp" android:top="14dp" android:gravity="top|right">
+        <shape android:shape="oval"><solid android:color="#D8FFFFFF" /></shape>
+    </item>
+    <item android:width="2dp" android:height="2dp" android:right="48dp" android:top="26dp" android:gravity="top|right">
+        <shape android:shape="oval"><solid android:color="#B6FFFFFF" /></shape>
+    </item>
+    <item android:width="4dp" android:height="4dp" android:right="118dp" android:top="44dp" android:gravity="top|right">
+        <shape android:shape="oval"><solid android:color="#80FFFFFF" /></shape>
+    </item>
+    <item android:width="2dp" android:height="2dp" android:right="136dp" android:top="20dp" android:gravity="top|right">
+        <shape android:shape="oval"><solid android:color="#CCFFFFFF" /></shape>
+    </item>
+    <item android:width="3dp" android:height="3dp" android:right="154dp" android:top="58dp" android:gravity="top|right">
+        <shape android:shape="oval"><solid android:color="#96FFFFFF" /></shape>
+    </item>
+    <item android:width="2dp" android:height="2dp" android:right="66dp" android:top="72dp" android:gravity="top|right">
+        <shape android:shape="oval"><solid android:color="#CCFFFFFF" /></shape>
+    </item>
+    <item android:width="2dp" android:height="2dp" android:right="28dp" android:top="88dp" android:gravity="top|right">
+        <shape android:shape="oval"><solid android:color="#BFFFFFFF" /></shape>
+    </item>
+</layer-list>

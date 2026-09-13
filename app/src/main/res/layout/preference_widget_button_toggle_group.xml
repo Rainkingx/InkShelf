@@ -1,0 +1,23 @@
+<com.google.android.material.button.MaterialButtonToggleGroup xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/toggle_group"
+    style="@style/Widget.Tachiyomi.MaterialButtonGroup.Connected"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:singleSelection="true"
+    app:selectionRequired="true"
+    android:spacing="4dp"
+    android:orientation="horizontal">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_start"
+        app:toggleCheckedStateOnClick="true"
+        style="@style/Widget.Tachiyomi.Button.OutlinedButton.Icon"
+        android:layout_marginEnd="4dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_end"
+        app:toggleCheckedStateOnClick="true"
+        style="@style/Widget.Tachiyomi.Button.OutlinedButton.Icon" />
+
+</com.google.android.material.button.MaterialButtonToggleGroup>

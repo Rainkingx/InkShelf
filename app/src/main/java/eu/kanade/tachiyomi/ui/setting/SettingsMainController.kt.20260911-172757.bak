@@ -1,0 +1,670 @@
+package eu.kanade.tachiyomi.ui.setting
+
+import android.app.Activity
+import android.app.ActivityManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.text.InputType
+import android.util.Xml
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.getSystemService
+import androidx.preference.Preference
+import androidx.preference.PreferenceScreen
+import com.bluelinelabs.conductor.Controller
+import com.bluelinelabs.conductor.RouterTransaction
+import com.bluelinelabs.conductor.changehandler.SimpleSwapChangeHandler
+import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.source.LocalSource
+import eu.kanade.tachiyomi.ui.main.FloatingSearchInterface
+import eu.kanade.tachiyomi.ui.main.MainActivity
+import eu.kanade.tachiyomi.ui.more.AboutController
+import eu.kanade.tachiyomi.ui.recents.RecentsController
+import eu.kanade.tachiyomi.ui.recents.RecentsViewType
+import eu.kanade.tachiyomi.ui.setting.search.SettingsSearchController
+import eu.kanade.tachiyomi.util.system.getResourceColor
+import eu.kanade.tachiyomi.util.view.activityBinding
+import eu.kanade.tachiyomi.util.view.fadeTransactionHandler
+import eu.kanade.tachiyomi.util.view.openInBrowser
+import eu.kanade.tachiyomi.util.view.withFadeTransaction
+import org.json.JSONObject
+import java.io.File
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import java.util.zip.ZipInputStream
+import kotlin.concurrent.thread
+
+class SettingsMainController :
+    SettingsController(),
+    FloatingSearchInterface {
+    private var comicVinePreference: Preference? = null
+
+    init {
+        setHasOptionsMenu(true)
+    }
+
+    override fun setupPreferenceScreen(screen: PreferenceScreen) =
+        with(screen) {
+            title = context.getString(R.string.inkshelf_more_title)
+
+            val tintColor = context.getResourceColor(R.attr.colorPrimary)
+
+            preferenceCategory {
+                title = context.getString(R.string.inkshelf_more_group_inkshelf)
+
+                preference {
+                    iconRes = R.drawable.ic_recents_outline_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.updates
+                    summary = context.getString(R.string.inkshelf_more_updates_summary)
+                    onClick { navigateTo(RecentsController(launchWithType = RecentsViewType.Updates)) }
+                }
+
+                preference {
+                    iconRes = R.drawable.ic_file_download_24dp
+                    iconTint = tintColor
+                    title = context.getString(R.string.inkshelf_more_import_local_comics)
+                    summary = context.getString(R.string.inkshelf_more_import_local_comics_summary)
+                    onClick { launchLocalComicImportPicker() }
+                }
+                preference {
+                    comicVinePreference = this
+                    iconRes = R.drawable.ic_cloud_24dp
+                    iconTint = tintColor
+                    title = context.getString(R.string.inkshelf_more_comic_vine)
+                    summary = comicVineSummary(context)
+                    onClick { showComicVineKeyDialog() }
+                }
+
+                preference {
+                    iconRes = R.drawable.ic_extension_updated_24dp
+                    iconTint = tintColor
+                    title = context.getString(R.string.inkshelf_more_new_user_setup)
+                    summary = context.getString(R.string.inkshelf_more_new_user_setup_summary)
+                    onClick { (activity as? MainActivity)?.showInkShelfSetup(force = true) }
+                }
+            }
+
+            preferenceCategory {
+                title = context.getString(R.string.inkshelf_more_group_reading)
+
+                preference {
+                    iconRes = R.drawable.ic_appearance_outline_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.appearance
+                    onClick { navigateTo(SettingsAppearanceController()) }
+                }
+                preference {
+                    iconRes = R.drawable.ic_library_outline_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.library
+                    onClick { navigateTo(SettingsLibraryController()) }
+                }
+                preference {
+                    iconRes = R.drawable.ic_read_outline_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.reader
+                    onClick { navigateTo(SettingsReaderController()) }
+                }
+                preference {
+                    iconRes = R.drawable.ic_file_download_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.downloads
+                    onClick { navigateTo(SettingsDownloadController()) }
+                }
+            }
+
+            preferenceCategory {
+                title = context.getString(R.string.inkshelf_more_group_content)
+
+                preference {
+                    iconRes = R.drawable.ic_browse_outline_24dp
+                    iconTint = tintColor
+                    title = context.getString(R.string.inkshelf_more_sources_extensions)
+                    summary = context.getString(R.string.inkshelf_more_sources_extensions_summary)
+                    onClick { navigateTo(SettingsBrowseController()) }
+                }
+                preference {
+                    iconRes = R.drawable.ic_sync_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.tracking
+                    onClick { navigateTo(SettingsTrackingController()) }
+                }
+            }
+
+            preferenceCategory {
+                title = context.getString(R.string.inkshelf_more_group_app)
+
+                preference {
+                    iconRes = R.drawable.ic_tune_24dp
+                    iconTint = tintColor
+                    title = context.getString(R.string.inkshelf_more_app_settings)
+                    onClick { navigateTo(SettingsGeneralController()) }
+                }
+                preference {
+                    iconRes = R.drawable.ic_backup_restore_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.backup_and_restore
+                    onClick { navigateTo(SettingsBackupController()) }
+                }
+                preference {
+                    iconRes = R.drawable.ic_security_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.security
+                    onClick { navigateTo(SettingsSecurityController()) }
+                }
+                preference {
+                    iconRes = R.drawable.ic_code_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.advanced
+                    onClick { navigateTo(SettingsAdvancedController()) }
+                }
+                preference {
+                    iconRes = R.drawable.ic_info_outline_24dp
+                    iconTint = tintColor
+                    titleRes = R.string.about
+                    onClick { navigateTo(AboutController()) }
+                }
+            }
+
+            this
+        }
+
+    private fun launchLocalComicImportPicker() {
+        val picker =
+            Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+            }
+
+        startActivityForResult(
+            Intent.createChooser(
+                picker,
+                applicationContext?.getString(R.string.inkshelf_local_import_picker_title),
+            ),
+            LOCAL_COMIC_IMPORT_REQUEST,
+        )
+    }
+
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?,
+    ) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (
+            requestCode != LOCAL_COMIC_IMPORT_REQUEST ||
+            resultCode != Activity.RESULT_OK ||
+            data == null
+        ) {
+            return
+        }
+
+        val uris = mutableListOf<Uri>()
+        data.clipData?.let { clip ->
+            for (index in 0 until clip.itemCount) {
+                uris += clip.getItemAt(index).uri
+            }
+        }
+        data.data?.let { uris += it }
+
+        val uniqueUris = uris.distinct()
+        if (uniqueUris.isEmpty()) return
+
+        importLocalComics(uniqueUris)
+    }
+
+    private fun importLocalComics(uris: List<Uri>) {
+        val hostActivity = activity ?: return
+
+        Toast.makeText(
+            hostActivity,
+            R.string.inkshelf_local_import_importing,
+            Toast.LENGTH_SHORT,
+        ).show()
+
+        thread(name = "InkShelf-Local-Comic-Import") {
+            val importRoot = LocalSource.getImportDirectory(hostActivity)
+            if (importRoot == null) {
+                hostActivity.runOnUiThread {
+                    Toast.makeText(
+                        hostActivity,
+                        R.string.inkshelf_local_import_storage_error,
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+                return@thread
+            }
+
+            val result = performLocalComicImport(hostActivity, importRoot, uris)
+
+            hostActivity.runOnUiThread {
+                val message =
+                    if (result.imported == 0 && result.skipped > 0 && result.failed == 0) {
+                        hostActivity.getString(R.string.inkshelf_local_import_none)
+                    } else {
+                        hostActivity.getString(
+                            R.string.inkshelf_local_import_result,
+                            result.imported,
+                            result.skipped,
+                            result.failed,
+                        )
+                    }
+
+                Toast.makeText(hostActivity, message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun performLocalComicImport(
+        context: Context,
+        importRoot: File,
+        uris: List<Uri>,
+    ): LocalImportResult {
+        val candidates = mutableListOf<LocalImportCandidate>()
+        var skipped = 0
+
+        uris.forEach { uri ->
+            val displayName = getDocumentDisplayName(context, uri)?.trim().orEmpty()
+            val extension = displayName.substringAfterLast('.', "").lowercase()
+
+            if (displayName.isBlank() || extension !in LOCAL_COMIC_IMPORT_TYPES) {
+                skipped++
+                return@forEach
+            }
+
+            val baseName = displayName.substringBeforeLast('.', displayName).trim()
+            val guessedSeries = guessSeriesName(baseName)
+            val comicInfoSeries = readComicInfoSeries(context, uri, extension)
+
+            candidates +=
+                LocalImportCandidate(
+                    uri = uri,
+                    displayName = displayName,
+                    baseName = baseName,
+                    guessedSeries = guessedSeries,
+                    comicInfoSeries = comicInfoSeries,
+                )
+        }
+
+        val guessedSeriesCounts =
+            candidates
+                .groupingBy { it.guessedSeries.lowercase() }
+                .eachCount()
+
+        var imported = 0
+        var failed = 0
+
+        candidates.forEach { candidate ->
+            val repeatedGuess =
+                guessedSeriesCounts[candidate.guessedSeries.lowercase()].orEmptyCount() > 1
+
+            val rawSeriesName =
+                candidate.comicInfoSeries
+                    ?.takeIf { it.isNotBlank() }
+                    ?: if (repeatedGuess) candidate.guessedSeries else candidate.baseName
+
+            val seriesName = sanitizeLocalSeriesName(rawSeriesName)
+            val seriesDirectory = File(importRoot, seriesName)
+
+            try {
+                if (!seriesDirectory.exists() && !seriesDirectory.mkdirs()) {
+                    failed++
+                    return@forEach
+                }
+
+                val destination = uniqueDestination(seriesDirectory, candidate.displayName)
+                val input = context.contentResolver.openInputStream(candidate.uri)
+                    ?: throw IllegalStateException("Unable to open selected comic")
+
+                input.use { source ->
+                    destination.outputStream().buffered().use { output ->
+                        source.copyTo(output)
+                    }
+                }
+
+                imported++
+            } catch (_: Exception) {
+                failed++
+            }
+        }
+
+        return LocalImportResult(
+            imported = imported,
+            skipped = skipped,
+            failed = failed,
+        )
+    }
+
+    private fun getDocumentDisplayName(
+        context: Context,
+        uri: Uri,
+    ): String? {
+        return try {
+            context.contentResolver
+                .query(
+                    uri,
+                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                )?.use { cursor ->
+                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+                }
+                ?: uri.lastPathSegment?.substringAfterLast('/')
+        } catch (_: Exception) {
+            uri.lastPathSegment?.substringAfterLast('/')
+        }
+    }
+
+    private fun readComicInfoSeries(
+        context: Context,
+        uri: Uri,
+        extension: String,
+    ): String? {
+        if (extension != "zip" && extension != "cbz") return null
+
+        return try {
+            val input = context.contentResolver.openInputStream(uri) ?: return null
+            input.use { source ->
+                ZipInputStream(source.buffered()).use { zip ->
+                    while (true) {
+                        val entry = zip.nextEntry ?: break
+                        val entryName = entry.name.substringAfterLast('/')
+
+                        if (!entry.isDirectory && entryName.equals("ComicInfo.xml", ignoreCase = true)) {
+                            return parseComicInfoSeries(zip)
+                        }
+
+                        zip.closeEntry()
+                    }
+                }
+            }
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun parseComicInfoSeries(input: InputStream): String? {
+        val parser = Xml.newPullParser()
+        parser.setInput(input, null)
+
+        var eventType = parser.eventType
+        while (eventType != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+            if (
+                eventType == org.xmlpull.v1.XmlPullParser.START_TAG &&
+                parser.name.equals("Series", ignoreCase = true)
+            ) {
+                return parser.nextText().trim().takeIf { it.isNotBlank() }
+            }
+            eventType = parser.next()
+        }
+
+        return null
+    }
+
+    private fun guessSeriesName(baseName: String): String {
+        val cleaned =
+            baseName
+                .replace(Regex("""[._]+"""), " ")
+                .replace(Regex("""\s+"""), " ")
+                .trim()
+
+        val withoutTrailingYear =
+            cleaned.replace(
+                Regex("""\s*[\[(](?:19|20)\d{2}[\])]\s*$""", RegexOption.IGNORE_CASE),
+                "",
+            )
+
+        val withoutIssueNumber =
+            withoutTrailingYear.replace(
+                Regex("""\s*(?:[-â€“â€”]\s*)?(?:#|issue\s*)?\d{1,4}(?:\.\d+)?\s*$""", RegexOption.IGNORE_CASE),
+                "",
+            ).trim()
+
+        return withoutIssueNumber.ifBlank { cleaned }
+    }
+
+    private fun sanitizeLocalSeriesName(name: String): String {
+        return name
+            .replace(Regex("""[\\/:*?"<>|]"""), "_")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+            .take(120)
+            .ifBlank { "Imported Comic" }
+    }
+
+    private fun uniqueDestination(
+        directory: File,
+        originalName: String,
+    ): File {
+        var candidate = File(directory, originalName)
+        if (!candidate.exists()) return candidate
+
+        val extension = originalName.substringAfterLast('.', "")
+        val baseName =
+            if (extension.isBlank()) {
+                originalName
+            } else {
+                originalName.dropLast(extension.length + 1)
+            }
+
+        var suffix = 2
+        while (candidate.exists()) {
+            val fileName =
+                if (extension.isBlank()) {
+                    "$baseName ($suffix)"
+                } else {
+                    "$baseName ($suffix).$extension"
+                }
+
+            candidate = File(directory, fileName)
+            suffix++
+        }
+
+        return candidate
+    }
+
+    private fun Int?.orEmptyCount(): Int = this ?: 0
+
+    private data class LocalImportCandidate(
+        val uri: Uri,
+        val displayName: String,
+        val baseName: String,
+        val guessedSeries: String,
+        val comicInfoSeries: String?,
+    )
+
+    private data class LocalImportResult(
+        val imported: Int,
+        val skipped: Int,
+        val failed: Int,
+    )
+    private fun showComicVineKeyDialog() {
+        val hostActivity = activity ?: return
+        val prefs = comicVinePreferences(hostActivity)
+        val existing = prefs.getString(COMIC_VINE_KEY, null).orEmpty()
+
+        val input =
+            EditText(hostActivity).apply {
+                hint = hostActivity.getString(R.string.inkshelf_more_comic_vine_key_hint)
+                setSingleLine(true)
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                setText(existing)
+                setSelection(text.length)
+            }
+
+        val horizontalPadding = (24 * hostActivity.resources.displayMetrics.density).toInt()
+        val inputContainer =
+            FrameLayout(hostActivity).apply {
+                setPadding(horizontalPadding, 0, horizontalPadding, 0)
+                addView(
+                    input,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                    ),
+                )
+            }
+
+        val builder =
+            AlertDialog.Builder(hostActivity)
+                .setTitle(R.string.inkshelf_more_comic_vine)
+                .setMessage(R.string.inkshelf_more_comic_vine_dialog_message)
+                .setView(inputContainer)
+                .setPositiveButton(R.string.inkshelf_more_save_test) { _, _ ->
+                    val newKey = input.text?.toString()?.trim().orEmpty()
+                    if (newKey.isBlank()) {
+                        Toast.makeText(hostActivity, R.string.inkshelf_more_key_required, Toast.LENGTH_SHORT).show()
+                        return@setPositiveButton
+                    }
+
+                    prefs.edit()
+                        .putString(COMIC_VINE_KEY, newKey)
+                        .putBoolean(COMIC_VINE_VERIFIED, false)
+                        .apply()
+                    updateComicVineSummary()
+                    testComicVineKey(newKey)
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+
+        if (existing.isNotBlank()) {
+            builder.setNeutralButton(R.string.inkshelf_more_remove_key) { _, _ ->
+                prefs.edit()
+                    .remove(COMIC_VINE_KEY)
+                    .remove(COMIC_VINE_VERIFIED)
+                    .apply()
+                updateComicVineSummary()
+                Toast.makeText(hostActivity, R.string.inkshelf_more_key_removed, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        builder.show()
+    }
+
+    private fun testComicVineKey(apiKey: String) {
+        val hostActivity = activity ?: return
+        Toast.makeText(hostActivity, R.string.inkshelf_more_testing_connection, Toast.LENGTH_SHORT).show()
+
+        thread(name = "InkShelf-ComicVine-Connection-Test") {
+            val success = isComicVineKeyValid(apiKey)
+
+            hostActivity.runOnUiThread {
+                val prefs = comicVinePreferences(hostActivity)
+                if (prefs.getString(COMIC_VINE_KEY, null).orEmpty() == apiKey) {
+                    prefs.edit().putBoolean(COMIC_VINE_VERIFIED, success).apply()
+                    updateComicVineSummary()
+                }
+
+                Toast.makeText(
+                    hostActivity,
+                    if (success) {
+                        R.string.inkshelf_more_connection_success
+                    } else {
+                        R.string.inkshelf_more_connection_failed
+                    },
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
+
+    private fun isComicVineKeyValid(apiKey: String): Boolean {
+        if (apiKey.isBlank()) return false
+        val encodedKey = URLEncoder.encode(apiKey, Charsets.UTF_8.name())
+        val connection =
+            URL(
+                "https://comicvine.gamespot.com/api/issues/" +
+                    "?api_key=$encodedKey&format=json&limit=1&field_list=id",
+            ).openConnection() as HttpURLConnection
+
+        return try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 6_000
+            connection.readTimeout = 8_000
+            connection.setRequestProperty(
+                "User-Agent",
+                "InkShelf-ComicVine-Settings Android non-commercial personal test",
+            )
+            connection.setRequestProperty("Accept", "application/json")
+
+            if (connection.responseCode !in 200..299) return false
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            JSONObject(body).optInt("status_code", 0) == 1
+        } catch (_: Exception) {
+            false
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun updateComicVineSummary() {
+        val pref = comicVinePreference ?: return
+        pref.summary = comicVineSummary(pref.context)
+    }
+
+    private fun comicVineSummary(context: Context): String {
+        val prefs = comicVinePreferences(context)
+        val key = prefs.getString(COMIC_VINE_KEY, null).orEmpty().trim()
+        return when {
+            key.isBlank() -> context.getString(R.string.inkshelf_more_comic_vine_not_configured)
+            prefs.getBoolean(COMIC_VINE_VERIFIED, false) ->
+                context.getString(R.string.inkshelf_more_comic_vine_connected)
+            else -> context.getString(R.string.inkshelf_more_comic_vine_saved)
+        }
+    }
+
+    private fun comicVinePreferences(context: Context) =
+        context.applicationContext.getSharedPreferences(COMIC_VINE_PREFS, Context.MODE_PRIVATE)
+
+    override fun onCreateOptionsMenu(
+        menu: Menu,
+        inflater: MenuInflater,
+    ) {
+        inflater.inflate(R.menu.settings_main, menu)
+        activityBinding?.searchToolbar?.searchQueryHint = applicationContext?.getString(R.string.search_settings)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.action_help -> openInBrowser(URL_HELP)
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    override fun onActionViewExpand(item: MenuItem?) {
+        val isLowRam = activity?.getSystemService<ActivityManager>()?.isLowRamDevice == true
+        router.pushController(
+            RouterTransaction
+                .with(SettingsSearchController())
+                .pushChangeHandler(SimpleSwapChangeHandler(removesFromViewOnPush = isLowRam))
+                .popChangeHandler(fadeTransactionHandler()),
+        )
+    }
+
+    private fun navigateTo(controller: Controller) {
+        router.pushController(controller.withFadeTransaction())
+    }
+
+    private companion object {
+        private const val LOCAL_COMIC_IMPORT_REQUEST = 4701
+        private val LOCAL_COMIC_IMPORT_TYPES = setOf("zip", "cbz", "rar", "cbr", "epub")
+        private const val URL_HELP = "https://mihon.app/docs/guides/troubleshooting/"
+        private const val COMIC_VINE_PREFS = "inkshelf_comicvine_test"
+        private const val COMIC_VINE_KEY = "api_key"
+        private const val COMIC_VINE_VERIFIED = "verified"
+    }
+}

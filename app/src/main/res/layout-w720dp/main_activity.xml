@@ -1,0 +1,550 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_content"
+    android:background="?background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.bluelinelabs.conductor.ChangeHandlerFrameLayout
+        android:id="@+id/controller_container"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@id/side_nav"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="1.0">
+        <ImageView
+            android:id="@+id/back_shadow"
+            android:layout_width="6dp"
+            android:alpha="0.25"
+            android:visibility="gone"
+            android:layout_height="match_parent"
+            android:src="@drawable/shape_gradient_start_shadow"
+            android:importantForAccessibility="no" />
+    </com.bluelinelabs.conductor.ChangeHandlerFrameLayout>
+
+    <View
+        android:id="@+id/status_bar"
+        android:layout_width="0dp"
+        app:layout_constraintStart_toEndOf="@id/side_nav"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_height="0dp" />
+
+    <eu.kanade.tachiyomi.ui.base.ExpandedAppBarLayout
+        android:id="@+id/app_bar"
+        android:layout_width="0dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:layout_height="wrap_content"
+        android:stateListAnimator="@null"
+        android:theme="?attr/actionBarTheme"
+        android:elevation="0dp"
+        app:layout_constraintStart_toEndOf="@id/side_nav"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <eu.kanade.tachiyomi.ui.base.CenteredToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            app:titleTextColor="?actionBarTintColor"
+            android:layout_height="?mainActionBarSize"
+            android:translationZ="5dp"
+            android:outlineProvider="none"
+            app:collapseIcon="@drawable/ic_arrow_back_24dp"
+            android:background="@android:color/transparent">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/toolbar_title"
+                style="?textAppearanceTitleLarge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:drawableTint="?actionBarTintColor"
+                android:ellipsize="end"
+                android:layout_gravity="center"
+                android:maxLines="1"
+                android:textColor="?actionBarTintColor"
+                android:textSize="20sp"
+                tools:drawableEnd="@drawable/ic_arrow_drop_down_24dp"
+                tools:drawableStart="@drawable/ic_blank_24dp"
+                tools:text="Title Text" />
+        </eu.kanade.tachiyomi.ui.base.CenteredToolbar>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/big_toolbar"
+            android:layout_width="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:paddingBottom="6dp"
+            android:layout_height="wrap_content">
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/inkshelf_header_container"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inkshelf_header_art_height"
+                android:minHeight="@dimen/inkshelf_header_min_height"
+                android:background="@android:color/black"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp"
+                android:visibility="visible">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/inkshelf_header_art"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/inkshelf_header_comic"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <LinearLayout
+                    android:id="@+id/inkshelf_brand_block"
+                    android:visibility="gone"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="@dimen/inkshelf_brand_top_margin"
+                    android:layout_marginEnd="6dp"
+                    android:layout_marginBottom="@dimen/inkshelf_brand_bottom_margin"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/inkshelf_moon_frame"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:id="@+id/inkshelf_brand_logo"
+                        android:layout_width="@dimen/inkshelf_logo_size"
+                        android:layout_height="@dimen/inkshelf_logo_size"
+                        android:contentDescription="@string/app_name"
+                        android:src="@mipmap/ic_launcher" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:baselineAligned="false"
+                            android:gravity="bottom"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/inkshelf_word_ink"
+                                style="?textAppearanceHeadlineMedium"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:includeFontPadding="false"
+                                android:letterSpacing="0.01"
+                                android:text="Ink"
+                                android:textColor="?attr/colorPrimary"
+                                android:textSize="@dimen/inkshelf_title_text_size"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/inkshelf_word_shelf"
+                                style="?textAppearanceHeadlineMedium"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:includeFontPadding="false"
+                                android:letterSpacing="0.01"
+                                android:text="Shelf"
+                                android:textColor="?attr/colorOnBackground"
+                                android:textSize="@dimen/inkshelf_title_text_size"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/inkshelf_brand_subtitle"
+                            style="?textAppearanceBodyMedium"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif-medium"
+                            android:includeFontPadding="false"
+                            android:letterSpacing="0.05"
+                            android:maxLines="1"
+                            android:singleLine="true"
+                            android:text="Explore Ã¢â‚¬Â¢ Read Ã¢â‚¬Â¢ Collect"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="@dimen/inkshelf_subtitle_text_size" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <FrameLayout
+                    android:id="@+id/inkshelf_moon_frame"
+                    android:visibility="gone"
+                    android:layout_width="@dimen/inkshelf_moon_frame_width"
+                    android:layout_height="@dimen/inkshelf_moon_frame_height"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:id="@+id/inkshelf_moon_image"
+                        android:layout_width="@dimen/inkshelf_moon_size"
+                        android:layout_height="@dimen/inkshelf_moon_size"
+                        android:layout_gravity="top|end"
+                        android:alpha="0.94"
+                        android:adjustViewBounds="true"
+                        android:contentDescription="@null"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/inkshelf_theme_moon"
+                        android:translationY="@dimen/inkshelf_moon_translation_y"
+                        app:tint="?attr/colorPrimary"
+                        app:tintMode="multiply" />
+
+                    <LinearLayout
+                        android:id="@+id/inkshelf_moon_text_wrap"
+                        android:layout_width="@dimen/inkshelf_moon_size"
+                        android:layout_height="@dimen/inkshelf_moon_frame_height"
+                        android:layout_gravity="top|end"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:paddingTop="@dimen/inkshelf_moon_text_top_padding">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/inkshelf_moon_text"
+                            style="?textAppearanceBodySmall"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:gravity="center"
+                            android:includeFontPadding="false"
+                            android:letterSpacing="0.16"
+                            android:lineSpacingExtra="1dp"
+                            android:text="READ&#10;MORE&#10;WORLDS"
+                            android:textAlignment="center"
+                            android:textAllCaps="true"
+                            android:textColor="?attr/colorOnBackground"
+                            android:textSize="@dimen/inkshelf_moon_text_size" />
+
+                        <View
+                            android:id="@+id/inkshelf_moon_accent"
+                            android:layout_width="@dimen/inkshelf_accent_width"
+                            android:layout_height="3dp"
+                            android:layout_marginTop="6dp"
+                            android:background="?attr/colorPrimary" />
+                    </LinearLayout>
+                </FrameLayout>
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/inkshelf_header_horizon"
+                    android:visibility="gone"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:alpha="0.62"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/inkshelf_header_horizon"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:tint="?attr/colorOutlineVariant" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <FrameLayout
+                android:id="@+id/big_icon_layout"
+                android:layout_width="52dp"
+                android:layout_height="0dp"
+                app:layout_constraintHeight_min="wrap"
+                app:layout_constraintVertical_bias="1.0"
+                android:layout_marginStart="16dp"
+                app:layout_constraintTop_toTopOf="@id/big_title"
+                app:layout_constraintBottom_toBottomOf="@id/big_title"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/big_title">
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/big_icon"
+                    android:visibility="gone"
+                    tools:visibility="visible"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:layout_gravity="center"
+                    tools:srcCompat="@mipmap/ic_launcher" />
+            </FrameLayout>
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/inkshelf_page_kicker"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:fontFamily="sans-serif-medium"
+                android:includeFontPadding="false"
+                android:letterSpacing="0.14"
+                android:text="@string/inkshelf_library_kicker"
+                android:textAllCaps="true"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/big_title"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp"
+                style="?textAppearanceHeadlineLarge"
+                android:layout_width="0dp"
+                android:maxLines="2"
+                android:layout_marginTop="0dp"
+                app:layout_constraintTop_toTopOf="parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toEndOf="@id/big_icon_layout"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:drawableTint="?actionBarTintColor"
+                android:ellipsize="end"
+                android:layout_gravity="start"
+                android:textColor="?actionBarTintColor"
+                android:textSize="34sp"
+                android:textStyle="bold"
+                tools:text="Title Text" />
+            <View
+                android:id="@+id/inkshelf_page_title_underline"
+                android:layout_width="64dp"
+                android:layout_height="3dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="8dp"
+                android:background="?attr/colorPrimary"
+                android:visibility="gone"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/big_title" />
+
+
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/big_subtitle"
+                style="?textAppearanceBodyMedium"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="0dp"
+                android:layout_marginEnd="16dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/big_title"
+                tools:text="12 series Ã¢â‚¬Â¢ 5,678 chapters"
+                tools:visibility="visible" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/library_search_bar"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/inkshelf_library_search_horizontal_margin"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="@dimen/inkshelf_library_search_horizontal_margin"
+            android:layout_marginBottom="@dimen/inkshelf_library_search_bottom_margin"
+            android:minHeight="@dimen/inkshelf_library_search_height"
+            android:hint="@string/inkshelf_library_search_hint"
+            android:visibility="gone"
+            app:boxCornerRadiusBottomEnd="22dp"
+            app:boxCornerRadiusBottomStart="22dp"
+            app:boxCornerRadiusTopEnd="22dp"
+            app:boxCornerRadiusTopStart="22dp"
+            app:boxStrokeColor="@color/inkshelf_search_outline"
+            app:boxStrokeWidth="2dp"
+            app:boxStrokeWidthFocused="2dp"
+            app:expandedHintEnabled="true"
+            app:endIconContentDescription="@string/search"
+            app:endIconDrawable="@drawable/ic_search_24dp"
+            app:endIconMode="custom"
+            app:endIconTint="?attr/colorPrimary"
+            tools:visibility="visible">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/library_search_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:maxLines="1"
+                android:singleLine="true" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <LinearLayout
+            android:id="@+id/card_frame"
+            android:layout_width="match_parent"
+            android:layout_height="?mainActionBarSize"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:clipToPadding="false"
+            android:orientation="horizontal">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_view"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="0dp"
+                app:cardBackgroundColor="@android:color/transparent"
+                android:layout_marginBottom="0dp"
+                app:strokeWidth="0dp"
+                app:cardCornerRadius="0dp"
+                app:cardElevation="0dp"
+                android:layout_height="match_parent" >
+
+                <eu.kanade.tachiyomi.ui.base.FloatingToolbar
+                    android:id="@+id/search_toolbar"
+                    tools:title="Search Library..."
+                    app:contentInsetStartWithNavigation="0dp"
+                    app:contentInsetEndWithActions="0dp"
+                    app:contentInsetStart="0dp"
+                    app:contentInsetEnd="0dp"
+                    android:background="@android:color/transparent"
+                    app:navigationIconTint="@color/text_color_secondary"
+                    app:navigationIcon="@drawable/ic_search_24dp"
+                    app:titleTextAppearance="@style/TextAppearance.FloatingTitle"
+                    app:subtitleTextAppearance="?textAppearanceBodySmall"
+                    app:collapseIcon="@drawable/ic_arrow_back_24dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" >
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="start|center"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/card_incog_image"
+                            app:tint="?actionBarTintColor"
+                            android:layout_gravity="center|start"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_marginEnd="6dp"
+                            android:layout_marginStart="0dp"
+                            android:contentDescription="@string/incognito_mode"
+                            android:src="@drawable/ic_incognito_circle_24dp"/>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:gravity="start|center"
+                            android:orientation="vertical">
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/card_title"
+                                style="?textAppearanceTitleLarge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:drawableTint="?actionBarTintColor"
+                                android:ellipsize="end"
+                                android:layout_gravity="center"
+                                android:maxLines="1"
+                                android:textColor="?actionBarTintColor"
+                                android:textSize="28sp"
+                                android:textStyle="bold"
+                                tools:drawableEnd="@drawable/ic_arrow_drop_down_24dp"
+                                tools:drawableStart="@drawable/ic_blank_24dp"
+                                tools:text="Title Text" />
+
+                            <com.google.android.material.textview.MaterialTextView
+                                android:id="@+id/card_subtitle"
+                                style="?textAppearanceTitleLarge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:layout_gravity="start|center"
+                                android:maxLines="1"
+                                android:textColor="?actionBarTintColor"
+                                android:textSize="12sp"
+                                tools:text="Title Text" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </eu.kanade.tachiyomi.ui.base.FloatingToolbar>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toolbar_filter_button"
+                style="@style/Widget.Tachiyomi.Button.IconButton.ToolbarFilled"
+                android:layout_width="?mainActionBarSize"
+                android:layout_marginStart="6dp"
+                android:contentDescription="@string/filter"
+                android:visibility="gone"
+                android:tooltipText="@string/search_filters"
+                tools:visibility="visible"
+                android:layout_height="match_parent"
+                app:icon="@drawable/ic_filter_alt_24dp" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/tabs_frame_layout"
+            android:clickable="true"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            tools:ignore="KeyboardInaccessibleWidget">
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/main_tabs"
+                style="@style/Theme.Widget.Tabs.Highlight"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:tabGravity="fill"/>
+        </FrameLayout>
+    </eu.kanade.tachiyomi.ui.base.ExpandedAppBarLayout>
+
+
+    <eu.kanade.tachiyomi.ui.base.SideNavView
+        android:id="@+id/side_nav"
+        app:elevation="0dp"
+        app:submenuDividersEnabled="true"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:menuGravity="center"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:headerLayout="@layout/side_nav_header"
+        app:expandedMinWidth="@dimen/nav_expand_min_width"
+        app:menu="@menu/side_navigation" />
+
+    <View
+        android:id="@+id/action_mode_status_bar"
+        android:layout_width="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_height="0dp" />
+
+    <View
+        android:id="@+id/nav_bar"
+        android:layout_width="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_height="0dp" />
+</androidx.constraintlayout.widget.ConstraintLayout>

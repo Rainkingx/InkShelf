@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_pfy_title">Picked for You</string>
+    <string name="inkshelf_pfy_kicker">INKSHELF RECOMMENDS</string>
+    <string name="inkshelf_pfy_see_all">See all  ›</string>
+    <string name="inkshelf_pfy_see_more">See more picks</string>
+    <string name="inkshelf_pfy_intro">Chosen from what you read, finish and collect</string>
+    <string name="inkshelf_pfy_tagline">Three mighty reads picked just for you.</string>
+    <string name="inkshelf_pfy_intro_body">Your library tells a story. From the heroes you follow to the creators, worlds and genres you keep coming back to, we’ve searched for three comics worthy of your next adventure — with a surprise or two along the way.</string>
+    <plurals name="inkshelf_pfy_count">
+        <item quantity="one">Showing %1$d strongest pick • fixed for this app session</item>
+        <item quantity="other">Showing %1$d strongest picks • fixed for this app session</item>
+    </plurals>
+    <string name="inkshelf_pfy_about_label">About this comic</string>
+    <string name="inkshelf_pfy_refresh">Refresh picks</string>
+    <string name="inkshelf_pfy_refresh_note">Refresh for another curated set of three. Otherwise, your picks stay fixed until the next app restart.</string>
+    <string name="inkshelf_pfy_refreshing">Refreshing your picks…</string>
+    <string name="inkshelf_pfy_empty">Your recommendations are not ready yet. Go back to Discover and let Picked for You finish loading.</string>
+    <string name="inkshelf_cv_test_title">Comic Vine metadata</string>
+    <string name="inkshelf_cv_test_off">Optional. Add your Comic Vine API key for richer synopsis, publisher, year, issue count and creator metadata.</string>
+    <string name="inkshelf_cv_test_on">Comic Vine enrichment is enabled. InkShelf is checking your three displayed picks and will fall back to source metadata when needed.</string>
+    <string name="inkshelf_cv_add_key">Comic Vine key</string>
+    <string name="inkshelf_cv_edit_key">Edit key / retest</string>
+    <string name="inkshelf_cv_key_hint">Comic Vine API key</string>
+    <string name="inkshelf_cv_dialog_title">Comic Vine metadata</string>
+    <string name="inkshelf_cv_dialog_message">Paste your own Comic Vine API key. The key is stored only in InkShelf app-private preferences and is not built into the APK.</string>
+    <string name="inkshelf_cv_save_and_test">Save &amp; test</string>
+    <string name="inkshelf_cv_remove_key">Remove key</string>
+    <string name="inkshelf_cv_enriching">Comic Vine: checking %1$d of %2$d picks…</string>
+    <string name="inkshelf_cv_complete">Comic Vine enriched %1$d of %2$d displayed picks.</string>
+    <string name="inkshelf_cv_no_matches">No confident Comic Vine matches were found. InkShelf kept the original source metadata.</string>
+</resources>

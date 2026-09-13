@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="inkshelf_header_min_height">200dp</dimen>
+    <dimen name="inkshelf_header_art_height">200dp</dimen>
+    <dimen name="inkshelf_brand_top_margin">18dp</dimen>
+    <dimen name="inkshelf_brand_bottom_margin">14dp</dimen>
+    <dimen name="inkshelf_logo_size">38dp</dimen>
+    <dimen name="inkshelf_title_text_size">31sp</dimen>
+    <dimen name="inkshelf_subtitle_text_size">11.5sp</dimen>
+    <dimen name="inkshelf_search_size">46dp</dimen>
+    <dimen name="inkshelf_moon_frame_width">154dp</dimen>
+    <dimen name="inkshelf_moon_frame_height">120dp</dimen>
+    <dimen name="inkshelf_moon_size">140dp</dimen>
+    <dimen name="inkshelf_moon_translation_y">-9dp</dimen>
+    <dimen name="inkshelf_moon_text_top_padding">9dp</dimen>
+    <dimen name="inkshelf_moon_text_size">10.5sp</dimen>
+    <dimen name="inkshelf_accent_width">42dp</dimen>
+    <dimen name="inkshelf_discover_content_top_padding">20dp</dimen>
+</resources>

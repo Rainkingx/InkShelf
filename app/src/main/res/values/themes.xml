@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!--============-->
+    <!-- Base Theme -->
+    <!--============-->
+    <style name="Theme"/>
+
+    <style name="Theme.Base" parent="Theme.Material3Expressive.DynamicColors.DayNight.NoActionBar">
+        <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/splashBackground</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenAnimationDuration" tools:targetApi="31">0</item>
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="28">shortEdges</item>
+        <!--Standard Material colors -->
+        <item name="colorPrimary">@color/primaryTachiyomi</item>
+        <item name="colorPrimaryInverse">@color/primaryInverseTachiyomi</item>
+        <item name="colorSecondary">@color/secondaryTachiyomi</item>
+        <item name="colorAccent">?attr/colorPrimary</item>
+        <item name="android:colorAccent">?attr/colorPrimary</item>
+        <item name="colorSurface">@color/background</item> //old colorSecondary
+        <item name="colorSurfaceVariant">?colorSurfaceContainer</item> //old colorSecondary
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="colorOnSecondary">@color/md_white_1000</item>
+        <item name="colorOnPrimary">@color/onPrimaryTachiyomi</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerTachiyomi</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerTachiyomi</item>
+        <item name="colorTertiaryContainer">@color/tertiary_container</item>
+        <item name="colorSurfaceContainer">@color/tachiyomi_surfaceContainer</item>
+        <item name="colorSurfaceContainerHigh">@color/tachiyomi_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/tachiyomi_surfaceContainerHighest</item>
+        <item name="colorSurfaceContainerLow">@color/tachiyomi_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerLowest">@color/tachiyomi_surfaceContainerLowest</item>
+        <item name="colorOnSurfaceVariant">@color/tachiyomi_onSurfaceVariant</item>
+        <item name="colorOutline">@color/tachiyomi_outline</item>
+        <item name="colorOutlineVariant">@color/tachiyomi_outlineVariant</item>
+        <item name="colorOnPrimaryContainer">@color/tachiyomi_onPrimaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/tachiyomi_onSecondaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/tachiyomi_onTertiaryContainer</item>
+        <item name="colorError">@color/tachiyomi_error</item>
+        <item name="colorOnError">@color/tachiyomi_onError</item>
+        <item name="colorErrorContainer">@color/tachiyomi_errorContainer</item>
+        <item name="colorOnErrorContainer">@color/tachiyomi_onErrorContainer</item>
+        <item name="background">@color/background</item>
+        <item name="colorOnBackground">@color/colorOnBackground</item>
+        <item name="colorBackgroundFloating">?colorSurface</item>
+
+        <item name="colorTertiary">@color/download_badge</item>
+        <item name="colorOnTertiary">@color/download_badge_text</item>
+
+        <item name="readerBackground">@color/tachiyomi_surfaceContainer</item>
+        <item name="android:listSelector">?attr/colorPrimary</item>
+        <item name="android:divider">@color/divider</item>
+        <item name="android:listDivider">@drawable/line_divider</item>
+        <item name="colorControlHighlight">@color/rippleColorTachiyomi</item>
+        <item name="actionModeStyle">@style/Widget.Tachiyomi.ActionMode</item>
+        <item name="materialSwitchStyle">@style/Widget.Material3.CompoundButton.MaterialSwitch</item>
+        <item name="materialCardViewOutlinedStyle">@style/Widget.Tachiyomi.CardView.Outlined</item>
+        <item name="materialCardViewFilledStyle">@style/Widget.Tachiyomi.CardView.Filled</item>
+        <item name="materialCardViewElevatedStyle">@style/Widget.Tachiyomi.CardView.Elevated</item>
+        <item name="switchPreferenceCompatStyle">@style/Widget.Tachiyomi.SwitchPreferenceCompat</item>
+        <item name="android:colorBackground">?background</item>
+        <item name="android:textColor">?colorOnBackground</item>
+        <item name="android:textColorPrimary">?colorOnBackground</item>
+        <item name="android:textColorSecondary">@color/text_color_secondary</item>
+        <item name="android:textColorHint">@color/text_color_hint</item>
+        <item name="textAppearanceButton">@style/TextAppearance.Tachiyomi.Button</item>
+        <item name="textAppearanceBodySecondary">@style/TextAppearance.Tachiyomi.BodySecondary</item>
+        <item name="switchStyle">@style/Widget.Tachiyomi.CompoundButton.Switch</item>
+        <item name="sliderStyle">@style/Widget.Tachiyomi.Slider</item>
+        <item name="bottomNavigationStyle">@style/Widget.Tachiyomi.BottomNavigationView</item>
+        <item name="materialButtonStyle">@style/Widget.Tachiyomi.Button.Primary</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.Tachiyomi.Button.OutlinedButton</item>
+        <item name="navigationRailStyle">@style/Widget.Tachiyomi.NavigationRail</item>
+        <item name="elevationOverlayEnabled">false</item>
+
+        <!-- Handles RTL Text -->
+        <item name="android:textAlignment">gravity</item>
+        <item name="android:textDirection">locale</item>
+
+        <!-- Themes -->
+        <item name="windowActionModeOverlay">true</item>
+        <item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item>
+        <item name="actionBarTheme">@style/Theme.ActionBar.DayNight</item>
+        <item name="preferenceTheme">@style/Tachiyomi.PreferenceTheme</item>
+        <item name="materialIconButtonStyle">@style/Widget.Tachiyomi.Button.IconButton.Standard</item>
+
+        <!-- Custom Attributes-->
+        <item name="actionBarTintColor">?attr/colorOnBackground</item>
+        <item name="tabBarIconColor">?attr/colorPrimary</item>
+        <item name="tabBarIconInactive">@color/colorPrimaryInactive</item>
+        <item name="tabBarTextColor">?attr/actionBarTintColor</item>
+        <item name="android:navigationBarColor">#00000000</item>
+        <item name="android:statusBarColor">#00000000</item>
+        <item name="android:colorEdgeEffect">?attr/colorPrimary</item>
+        <item name="tabHighlightBackground">@color/primary_alpha</item>
+        <item name="mainActionBarSize">56dp</item>
+
+        <item name="android:windowLightStatusBar">@bool/isLightMode</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">@bool/isLightMode</item>
+    </style>
+
+    <style name="Theme.Tachiyomi" parent="Theme.Base"/>
+
+    <style name="ThemeOverlay.Tachiyomi.Amoled" parent="">
+        <item name="colorSurface">@color/md_black_1000</item>
+        <item name="colorSurfaceContainer">@color/md_black_1000</item>
+        <item name="background">@color/md_black_1000</item>
+        <item name="readerBackground">@color/md_black_1000</item>
+        <item name="colorSurfaceContainerHigh">@color/amoled_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/amoled_surfaceContainerHighest</item>
+        <item name="colorSurfaceContainerLow">@color/amoled_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerLowest">@color/amoled_surfaceContainerLowest</item>
+    </style>
+
+    <style name="Theme.Tachiyomi.FlatLime">
+        <item name="colorPrimary">@color/primaryLime</item>
+        <item name="colorOnPrimary">@color/onPrimaryLime</item>
+        <item name="colorPrimaryInverse">@color/primaryInverseLime</item>
+        <item name="colorControlHighlight">@color/rippleColorLime</item>
+        <item name="colorSecondary">@color/secondaryLime</item>
+        <item name="colorSurfaceContainer">@color/surfaceContainerLime</item>
+        <item name="colorSurface">@color/backgroundLime</item>
+        <item name="background">@color/backgroundLime</item>
+        <item name="colorTertiary">@color/downloadBadgeLime</item>
+        <item name="colorOnTertiary">@color/colorOnDownloadBadgeDayNight</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariantLime</item>
+        <item name="colorOutline">@color/outlineLime</item>
+        <item name="colorOutlineVariant">@color/outlineVariantLime</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerLime</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerLime</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainerLime</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainerLime</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainerLime</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceContainerHighLime</item>
+        <item name="colorSurfaceContainerHighest">@color/surfaceContainerHighestLime</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceContainerLowLime</item>
+        <item name="colorSurfaceContainerLowest">@color/surfaceContainerLowestLime</item>
+        <item name="colorSurfaceDim">@color/surfaceDimLime</item>
+        <item name="colorSurfaceBright">@color/surfaceBrightLime</item>
+    </style>
+
+    <style name="Theme.Tachiyomi.MidnightDusk">
+        <item name="colorPrimary">@color/primaryDuskDawn</item>
+        <item name="colorPrimaryInverse">@color/primaryInverseDuskDawn</item>
+        <item name="colorOnPrimary">@color/onPrimaryDuskDawn</item>
+        <item name="colorControlHighlight">@color/rippleColorDuskDawn</item>
+        <item name="colorSecondary">@color/secondaryDuskDawn</item>
+        <item name="colorSurfaceContainer">@color/surfaceContainerDuskDawn</item>
+        <item name="colorSurface">@color/backgroundDuskDawn</item>
+        <item name="background">@color/backgroundDuskDawn</item>
+        <item name="colorOnBackground">@color/colorOnBackgroundDuskDawn</item>
+        <item name="actionBarTintColor">@color/appBarTextDuskDawn</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariantDuskDawn</item>
+        <item name="colorOutline">@color/outlineDuskDawn</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerDuskDawn</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerDuskDawn</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainerDuskDawn</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainerDuskDawn</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainerDuskDawn</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceContainerHighDuskDawn</item>
+        <item name="colorSurfaceContainerHighest">@color/surfaceContainerHighestDuskDawn</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceContainerLowDuskDawn</item>
+        <item name="colorSurfaceContainerLowest">@color/surfaceContainerLowestDuskDawn</item>
+    </style>
+
+    <style name="Theme.Tachiyomi.SapphireDusk">
+        <item name="colorPrimary">@color/primaryTealSapphire</item>
+        <item name="colorPrimaryInverse">@color/primaryInverseTealSapphire</item>
+        <item name="colorOnPrimary">@color/onPrimaryTealSapphire</item>
+        <item name="colorOnSecondary">@color/colorOnDownloadBadgeDayNight</item>
+        <item name="colorSecondary">@color/secondaryTealSapphire</item>
+        <item name="colorSurfaceContainer">@color/surfaceContainerTealSapphire</item>
+        <item name="colorTertiary">@color/download_badge_light</item>
+        <item name="colorOnTertiary">@color/download_badge_light_text</item>
+        <item name="colorControlHighlight">@color/rippleColorTealSapphire</item>
+        <item name="tabBarIconColor">@color/tabBarIconColorTealSapphire</item>
+        <item name="background">@color/backgroundTealSapphire</item>
+        <item name="colorOnBackground">@color/colorOnBackgroundTealSapphire</item>
+        <item name="colorSurface">@color/backgroundTealSapphire</item>
+        <item name="actionBarTintColor">@color/appBarTextTealSapphire</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariantTealSapphire</item>
+        <item name="colorOutline">@color/outlineTealSapphire</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerTealSapphire</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerTealSapphire</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainerTealSapphire</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainerTealSapphire</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainerTealSapphire</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceContainerHighTealSapphire</item>
+        <item name="colorSurfaceContainerHighest">@color/surfaceContainerHighestTealSapphire</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceContainerLowTealSapphire</item>
+        <item name="colorSurfaceContainerLowest">@color/surfaceContainerLowestTealSapphire</item>
+    </style>
+
+    <style name="Theme.Tachiyomi.Lavender">
+        <item name="colorPrimary">@color/lavender_primary</item>
+        <item name="colorPrimaryInverse">@color/lavender_primary_inverse</item>
+        <item name="colorOnPrimary">@color/lavender_on_primary</item>
+        <item name="colorOnSecondary">@color/lavender_on_secondary</item>
+        <item name="colorSecondary">@color/lavender_secondary</item>
+        <item name="colorSurfaceContainer">@color/lavender_surface_container</item>
+        <item name="colorTertiary">@color/lavender_tertiary</item>
+        <item name="colorOnTertiary">@color/lavender_on_tertiary</item>
+        <item name="colorControlHighlight">@color/lavender_highlight</item>
+        <item name="tabBarIconColor">@color/lavender_tab_bar_icon</item>
+        <item name="background">@color/lavender_background</item>
+        <item name="colorOnBackground">@color/lavender_on_background</item>
+        <item name="colorSurface">@color/lavender_surface</item>
+        <item name="actionBarTintColor">@color/lavender_on_surface</item>
+        <item name="elevationOverlayColor">@color/lavender_elevation_overlay</item>
+        <item name="colorOnSurfaceVariant">@color/lavender_on_surface_variant</item>
+        <item name="colorOutline">@color/lavender_outline</item>
+        <item name="colorOutlineVariant">@color/lavender_outline_variant</item>
+        <item name="colorPrimaryContainer">@color/lavender_primary_container</item>
+        <item name="colorSecondaryContainer">@color/lavender_secondary_container</item>
+        <item name="colorOnPrimaryContainer">@color/lavender_on_primary_container</item>
+        <item name="colorOnSecondaryContainer">@color/lavender_on_secondary_container</item>
+        <item name="colorOnTertiaryContainer">@color/lavender_on_tertiary_container</item>
+        <item name="colorSurfaceContainerHigh">@color/lavender_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/lavender_surface_container_highest</item>
+        <item name="colorSurfaceContainerLow">@color/lavender_surface_container_low</item>
+        <item name="colorSurfaceContainerLowest">@color/lavender_surface_container_lowest</item>
+        <item name="colorSurfaceDim">@color/lavender_surface_dim</item>
+        <item name="colorSurfaceBright">@color/lavender_surface_bright</item>
+    </style>
+
+    <style name="Theme.Tachiyomi.Strawberries">
+        <item name="colorPrimary">@color/primaryStrawberry</item>
+        <item name="colorPrimaryInverse">@color/primaryInverseStrawberry</item>
+        <item name="colorOnPrimary">@color/onPrimaryStrawberry</item>
+        <item name="colorSurface">@color/backgroundStrawberries</item>
+        <item name="colorControlHighlight">@color/rippleColorStrawberry</item>
+        <item name="colorSecondary">@color/secondaryStrawberry</item>
+        <item name="colorTertiary">@color/downloadBadgeDayNightInverse</item>
+        <item name="colorOnTertiary">@color/colorOnDownloadBadgeDayNightInverse</item>
+        <item name="colorSurfaceContainer">@color/surfaceContainerStrawberry</item>
+        <item name="background">@color/backgroundStrawberries</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariantStrawberry</item>
+        <item name="colorOutline">@color/outlineStrawberry</item>
+        <item name="colorOutlineVariant">@color/outlineVariantStrawberry</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerStrawberry</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerStrawberry</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainerStrawberry</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainerStrawberry</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainerStrawberry</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceContainerHighStrawberry</item>
+        <item name="colorSurfaceContainerHighest">@color/surfaceContainerHighestStrawberry</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceContainerLowStrawberry</item>
+        <item name="colorSurfaceContainerLowest">@color/surfaceContainerLowestStrawberry</item>
+        <item name="colorSurfaceDim">@color/surfaceDimStrawberry</item>
+        <item name="colorSurfaceBright">@color/surfaceBrightStrawberry</item>
+    </style>
+
+
+    <!--== Modern Library Theme ==-->
+    <style name="Theme.Tachiyomi.ModernLibrary">
+        <item name="colorPrimary">@color/modern_library_primary</item>
+        <item name="colorPrimaryInverse">@color/modern_library_primary_inverse</item>
+        <item name="colorOnPrimary">@color/modern_library_on_primary</item>
+        <item name="colorSecondary">@color/modern_library_secondary</item>
+        <item name="colorOnSecondary">@color/modern_library_on_secondary</item>
+        <item name="colorTertiary">@color/modern_library_tertiary</item>
+        <item name="colorOnTertiary">@color/modern_library_on_tertiary</item>
+        <item name="background">@color/modern_library_background</item>
+        <item name="colorOnBackground">@color/modern_library_on_background</item>
+        <item name="colorSurface">@color/modern_library_surface</item>
+        <item name="colorSurfaceContainer">@color/modern_library_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/modern_library_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/modern_library_surface_container_highest</item>
+        <item name="colorSurfaceContainerLow">@color/modern_library_surface_container_low</item>
+        <item name="colorSurfaceContainerLowest">@color/modern_library_surface_container_lowest</item>
+        <item name="colorOnSurfaceVariant">@color/modern_library_on_surface_variant</item>
+        <item name="colorOutline">@color/modern_library_outline</item>
+        <item name="colorOutlineVariant">@color/modern_library_outline_variant</item>
+        <item name="colorPrimaryContainer">@color/modern_library_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/modern_library_on_primary_container</item>
+        <item name="colorSecondaryContainer">@color/modern_library_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/modern_library_on_secondary_container</item>
+        <item name="colorTertiaryContainer">@color/modern_library_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/modern_library_on_tertiary_container</item>
+        <item name="colorControlHighlight">@color/modern_library_ripple</item>
+        <item name="actionBarTintColor">@color/modern_library_on_background</item>
+        <item name="tabBarIconColor">@color/modern_library_primary</item>
+        <item name="tabBarIconInactive">@color/modern_library_inactive</item>
+        <item name="tabBarTextColor">@color/modern_library_on_surface_variant</item>
+    </style>
+
+    <!--== Tokyo Night Theme ==-->
+    <style name="Theme.Tachiyomi.TokyoNight">
+        <item name="colorPrimary">@color/tokyonight_primary</item>
+        <item name="colorPrimaryContainer">@color/tokyonight_primary_container</item>
+        <item name="colorPrimaryInverse">@color/tokyonight_primary_inverse</item>
+        <item name="colorOnPrimary">@color/tokyonight_on_primary</item>
+        <item name="colorSecondary">@color/tokyonight_secondary</item>
+        <item name="colorOnSecondary">@color/tokyonight_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/tokyonight_secondary_container</item>
+        <item name="colorControlHighlight">@color/tokyonight_ripple</item>
+        <item name="colorTertiary">@color/tokyonight_tertiary</item>
+        <item name="colorOnTertiary">@color/tokyonight_on_tertiary</item>
+        <item name="background">@color/tokyonight_background</item>
+        <item name="colorOnBackground">@color/tokyonight_on_background</item>
+        <item name="colorSurface">@color/tokyonight_surface</item>
+        <item name="colorSurfaceContainer">@color/tokyonight_surface_container</item>
+        <item name="tabBarIconInactive">@color/tokyonight_inactive</item>
+        <item name="tabBarTextColor">@color/tokyonight_secondary</item>
+        <item name="colorOnSurfaceVariant">@color/tokyonight_on_surface_variant</item>
+        <item name="colorSurfaceContainerHigh">@color/tokyonight_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/tokyonight_surface_container_highest</item>
+        <item name="colorSurfaceContainerLow">@color/tokyonight_surface_container_low</item>
+        <item name="colorSurfaceContainerLowest">@color/tokyonight_surface_container_lowest</item>
+    </style>
+
+    <!--== Tako Theme ==-->
+    <style name="Theme.Tachiyomi.Tako">
+        <item name="colorPrimary">@color/primaryTako</item>
+        <item name="colorPrimaryInverse">@color/primaryInverseTako</item>
+        <item name="colorOnPrimary">@color/onPrimaryTako</item>
+        <item name="colorOnSecondary">@color/onSecondaryTako</item>
+        <item name="colorSecondary">@color/secondaryTako</item>
+        <item name="colorSurfaceContainer">@color/surfaceContainerTako</item>
+        <item name="colorTertiary">@color/downloadBadgeDayNight</item>
+        <item name="colorOnTertiary">@color/colorOnDownloadBadgeDayNight</item>
+        <item name="tabBarIconColor">@color/tabBarIconColorTako</item>
+        <item name="colorControlHighlight">@color/rippleColorTako</item>
+        <item name="colorSurface">@color/backgroundTako</item>
+        <item name="actionBarTintColor">@color/actionTintTako</item>
+        <item name="background">@color/backgroundTako</item>
+        <item name="tabBarIconInactive">@color/inactiveTabTako</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariantTako</item>
+        <item name="colorOutline">@color/outlineTako</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerTako</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerTako</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainerTako</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainerTako</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainerTako</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceContainerHighTako</item>
+        <item name="colorSurfaceContainerHighest">@color/surfaceContainerHighestTako</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceContainerLowTako</item>
+        <item name="colorSurfaceContainerLowest">@color/surfaceContainerLowestTako</item>
+    </style>
+
+    <style name="Theme.Tachiyomi.Yotsuba">
+        <item name="colorPrimary">@color/primaryYotsuba</item>
+        <item name="colorPrimaryInverse">@color/primaryInverseYotsuba</item>
+        <item name="colorOnPrimary">@color/onPrimaryYotsuba</item>
+        <item name="colorControlHighlight">@color/rippleColorYotsuba</item>
+        <item name="colorSecondary">@color/secondaryYotsuba</item>
+        <item name="colorSurfaceContainer">@color/surfaceContainerYotsuba</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariantYotsuba</item>
+        <item name="colorOutline">@color/outlineYotsuba</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerYotsuba</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerYotsuba</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainerYotsuba</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainerYotsuba</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainerYotsuba</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceContainerHighYotsuba</item>
+        <item name="colorSurfaceContainerHighest">@color/surfaceContainerHighestYotsuba</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceContainerLowYotsuba</item>
+        <item name="colorSurfaceContainerLowest">@color/surfaceContainerLowestYotsuba</item>
+    </style>
+
+    <!--== Yin Yang theme ==-->
+    <style name="Theme.Tachiyomi.YinYang">
+        <!-- Theme colors -->
+        <item name="colorPrimary">@color/primaryYinYang</item>
+        <item name="colorOnPrimary">@color/onPrimaryYinYang</item>
+        <item name="colorPrimaryInverse">@color/primaryInverseYinYang</item>
+        <item name="colorControlHighlight">@color/rippleColorYinYang</item>
+        <item name="colorOnSecondary">@color/onSecondaryYinYang</item>
+        <item name="colorSecondary">@color/secondaryYinYang</item>
+        <item name="colorSurfaceContainer">@color/surfaceContainerYinYang</item>
+        <item name="colorTertiary">@color/onSecondaryYinYang</item>
+        <item name="colorOnTertiary">@color/colorOnDownloadBadgeDayNight</item>
+        <item name="colorOnSurfaceVariant">@color/onSurfaceVariantYinYang</item>
+        <item name="colorOutline">@color/outlineYinYang</item>
+        <item name="colorPrimaryContainer">@color/primaryContainerYinYang</item>
+        <item name="colorSecondaryContainer">@color/secondaryContainerYinYang</item>
+        <item name="colorOnPrimaryContainer">@color/onPrimaryContainerYinYang</item>
+        <item name="colorOnSecondaryContainer">@color/onSecondaryContainerYinYang</item>
+        <item name="colorOnTertiaryContainer">@color/onTertiaryContainerYinYang</item>
+        <item name="colorSurfaceContainerHigh">@color/surfaceContainerHighYinYang</item>
+        <item name="colorSurfaceContainerHighest">@color/surfaceContainerHighestYinYang</item>
+        <item name="colorSurfaceContainerLow">@color/surfaceContainerLowYinYang</item>
+        <item name="colorSurfaceContainerLowest">@color/surfaceContainerLowestYinYang</item>
+    </style>
+    <style name="Theme.Tachiyomi.Monet"/>
+
+    <!--===============-->
+    <!-- Launch Screen -->
+    <!--===============-->
+    <style name="Theme.Splash" parent="Theme.Tachiyomi">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:statusBarColor">#00000000</item>
+        <item name="android:navigationBarColor">#00000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+    </style>
+
+    <style name="Theme.OSS" parent="Theme.Tachiyomi.Monet">
+        <item name="colorPrimary">?colorSurfaceContainer</item>
+        <item name="android:statusBarColor">?colorSurfaceContainer</item>
+        <item name="windowActionBar">true</item>
+        <item name="windowNoTitle">false</item>
+    </style>
+</resources>

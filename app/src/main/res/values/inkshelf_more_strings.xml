@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_more_title">More</string>
+    <string name="inkshelf_more_group_inkshelf">InkShelf</string>
+    <string name="inkshelf_more_group_reading">Reading &amp; appearance</string>
+    <string name="inkshelf_more_group_content">Content &amp; services</string>
+    <string name="inkshelf_more_group_app">App &amp; data</string>
+
+    <string name="inkshelf_more_updates_summary">Check recent chapter and library updates</string>
+    <string name="inkshelf_more_new_user_setup">New User Setup</string>
+    <string name="inkshelf_more_new_user_setup_summary">Install or repair your recommended comic sources</string>
+    <string name="inkshelf_more_sources_extensions">Sources &amp; extensions</string>
+    <string name="inkshelf_more_sources_extensions_summary">Manage source languages, extensions and repositories</string>
+    <string name="inkshelf_more_app_settings">App settings</string>
+
+    <string name="inkshelf_more_comic_vine">Comic Vine metadata</string>
+    <string name="inkshelf_more_comic_vine_not_configured">Not configured • add your API key</string>
+    <string name="inkshelf_more_comic_vine_connected">Connected • richer comic metadata enabled</string>
+    <string name="inkshelf_more_comic_vine_saved">Key saved • tap to test connection</string>
+    <string name="inkshelf_more_comic_vine_key_hint">Comic Vine API key</string>
+    <string name="inkshelf_more_comic_vine_dialog_message">Comic Vine enriches Picked for You with publisher, year, issue count, creators and synopsis data. Your key stays in InkShelf’s private app storage.</string>
+    <string name="inkshelf_more_save_test">Save &amp; test</string>
+    <string name="inkshelf_more_remove_key">Remove key</string>
+    <string name="inkshelf_more_key_required">Enter a Comic Vine API key first.</string>
+    <string name="inkshelf_more_key_removed">Comic Vine API key removed.</string>
+    <string name="inkshelf_more_testing_connection">Testing Comic Vine connection…</string>
+    <string name="inkshelf_more_connection_success">Comic Vine connected successfully.</string>
+    <string name="inkshelf_more_connection_failed">Couldn’t verify Comic Vine. Check the key or your connection.</string>
+</resources>

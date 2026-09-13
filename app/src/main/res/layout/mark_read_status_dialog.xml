@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="20dp"
+    android:paddingBottom="8dp">
+
+    <eu.kanade.tachiyomi.ui.library.MangaStackRecyclerView
+        android:id="@+id/manga_stack"
+        android:layout_width="match_parent"
+        android:layout_height="165dp"
+        android:layout_marginBottom="16dp"
+        android:clipToPadding="false"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        tools:listitem="@layout/manga_cover_stack_item" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/message"
+        style="?textAppearanceBodyMedium"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        tools:text="Mark all chapters as read?" />
+
+</LinearLayout>

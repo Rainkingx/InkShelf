@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="modern_library_empty_all_comics">Your library is empty. Add comics from Browse to get started.</string>
+    <string name="modern_library_empty_reading">Nothing to continue yet. Start reading a comic marked Reading and it will appear here.</string>
+    <string name="modern_library_empty_completed">No completed comics yet.</string>
+    <string name="modern_library_empty_on_hold">Nothing is on hold.</string>
+    <string name="modern_library_empty_plan_to_read">Nothing in Plan to Read yet.</string>
+</resources>

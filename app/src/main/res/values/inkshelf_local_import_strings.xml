@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_more_import_local_comics">Import Local Comics</string>
+    <string name="inkshelf_more_import_local_comics_summary">Add CBZ, CBR, ZIP, RAR or EPUB files to your InkShelf local library. Your originals are left untouched.</string>
+    <string name="inkshelf_local_import_picker_title">Choose comics to import</string>
+    <string name="inkshelf_local_import_importing">Importing local comicsÃ¢â‚¬Â¦</string>
+    <string name="inkshelf_local_import_storage_error">InkShelf couldnÃ¢â‚¬â„¢t open its local comics folder.</string>
+    <string name="inkshelf_local_import_none">No supported comic files were selected.</string>
+    <string name="inkshelf_local_import_result">%1$d imported Ã¢â‚¬Â¢ %2$d skipped Ã¢â‚¬Â¢ %3$d failed</string>
+    <string name="inkshelf_local_import_result_v2">%1$d imported â€¢ %2$d series ready in Library â€¢ %3$d skipped â€¢ %4$d failed</string></resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_discover_subtitle">New worlds. Amazing stories. Your next adventure is only a tap away.</string>
+    <string name="inkshelf_discover_search_hint">Search thousands of comics…</string>
+    <string name="inkshelf_discover_search_helper">Find new comics and add them straight to your library.</string>
+    <string name="inkshelf_quick_searches_title">Quick searches</string>
+    <string name="inkshelf_quick_search_batman">Batman</string>
+    <string name="inkshelf_quick_search_spiderman">Spider-Man</string>
+    <string name="inkshelf_quick_search_xmen">X-Men</string>
+    <string name="inkshelf_quick_search_horror">Horror</string>
+    <string name="inkshelf_quick_search_scifi">Sci-Fi</string>
+</resources>

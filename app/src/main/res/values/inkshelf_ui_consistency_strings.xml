@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_library_kicker">Your collection</string>
+    <string name="inkshelf_library_title">Library</string>
+    <string name="inkshelf_library_search_hint">Search your library</string>
+    <string name="inkshelf_discover_kicker">Explore new worlds</string>
+</resources>

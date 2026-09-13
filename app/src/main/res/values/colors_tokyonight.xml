@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Colors for Tokyo Light theme (light variant of Tokyo Night)
+  ~ https://github.com/folke/tokyonight.nvim/blob/main/lua/tokyonight/colors/day.lua
+  ~
+  ~ Key colors:
+  ~ Primary #2E7DE9
+  ~ Secondary #007197
+  ~ Tertiary #9854F1
+-->
+<resources>
+    <color name="tokyonight_primary">#007197</color>
+    <color name="tokyonight_primary_container">#D6EDF5</color>
+    <color name="tokyonight_on_primary">#FFFFFF</color>
+    <color name="tokyonight_surface_container">#C1C9DF</color>
+    <color name="tokyonight_primary_inverse">#7890DD</color>
+    <color name="tokyonight_on_secondary">#FFFFFF</color>
+    <color name="tokyonight_secondary">#006A83</color>
+    <color name="tokyonight_secondary_container">#A9C6D3</color>
+    <color name="tokyonight_inactive">#6172B0</color>
+    <color name="tokyonight_ripple">#1F007197</color>
+    <color name="tokyonight_tertiary">#C099FF</color>
+    <color name="tokyonight_on_tertiary">#1B1D2B</color>
+    <color name="tokyonight_background">#E1E2E7</color>
+    <color name="tokyonight_on_background">#3760BF</color>
+    <color name="tokyonight_surface">#E1E2E7</color>
+    <color name="tokyonight_on_surface_variant">@color/tokyonight_inactive</color>
+    <color name="tokyonight_surface_container_high">#BAC3DC</color>
+    <color name="tokyonight_surface_container_highest">#B4BDD8</color>
+    <color name="tokyonight_surface_container_low">#E3E6F0</color>
+    <color name="tokyonight_surface_container_lowest">#F7F8FB</color>
+</resources>

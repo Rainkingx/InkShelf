@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Tachiyomi.Monet">
+        <item name="colorPrimary">@color/monet_primary</item>
+        <item name="colorPrimaryContainer">@color/monet_primary_container</item>
+        <item name="colorOnPrimary">@color/monet_on_primary</item>
+        <item name="colorPrimaryInverse">@color/monet_primary_inverse</item>
+        <item name="colorSurfaceContainer">@color/monet_surface_container</item>
+        <item name="colorSecondary">@color/monet_secondary</item>
+        <item name="colorSecondaryContainer">@color/monet_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/monet_on_secondary_container</item>
+        <item name="colorControlHighlight">@color/primary_highlight</item>
+        <item name="colorTertiary">@color/monet_tertiary</item>
+        <item name="colorOnTertiary">@color/monet_on_tertiary</item>
+        <item name="colorSurface">@color/monet_surface</item>
+        <item name="background">@color/monet_background</item>
+        <item name="colorOnBackground">@color/monet_on_background</item>
+        <item name="actionBarTintColor">@color/monet_action_bar_tint</item>
+        <item name="colorSurfaceContainerLowest">@color/monet_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/monet_surface_container_low</item>
+        <item name="colorSurfaceContainerHigh">@color/monet_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/monet_surface_container_highest</item>
+    </style>
+
+    <style name="Theme.OSS" parent="Theme.Tachiyomi.Monet">
+        <item name="colorPrimary">?colorSurfaceContainer</item>
+        <item name="android:statusBarColor">?colorSurfaceContainer</item>
+        <item name="windowActionBar">true</item>
+        <item name="windowNoTitle">false</item>
+    </style>
+</resources>

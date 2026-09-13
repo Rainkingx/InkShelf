@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Extension/source problem
+    url: https://mihon.app/docs/faq/browse/extensions
+    about: Third-party source and extension problems are not handled by InkShelf.
+  - name: Mihon project
+    url: https://github.com/mihonapp/mihon/issues
+    about: Check here if the same problem also exists outside InkShelf.

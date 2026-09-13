@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="modern_browse_heading">Discover New Comics</string>
+    <string name="modern_browse_subtitle">Search across all your enabled sources</string>
+    <string name="modern_browse_search_hint">Search comics</string>
+    <string name="modern_browse_search_help">Results are searched across every enabled source.</string>
+    <string name="modern_browse_manage_sources">Manage Sources</string>
+    <string name="modern_browse_enabled_sources">Enabled sources</string>
+    <string name="modern_browse_extensions">Extensions</string>
+    <string name="modern_browse_migration">Migration</string>
+    <string name="modern_browse_settings">Browse settings</string>
+    <string name="modern_browse_results">Results across enabled sources</string>
+    <string name="modern_browse_no_results">No comics found</string>
+</resources>

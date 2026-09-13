@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="90dp"
+    android:layout_marginStart="4dp"
+    android:layout_marginTop="3dp"
+    android:layout_marginEnd="4dp"
+    android:layout_marginBottom="3dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardBackgroundColor="@android:color/transparent"
+    app:cardCornerRadius="15dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/modern_library_panel_bg"
+        android:paddingStart="8dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="7dp"
+        android:paddingBottom="8dp">
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cover_card"
+            android:layout_width="58dp"
+            android:layout_height="74dp"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <ImageView
+                android:id="@+id/cover_thumbnail"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                tools:ignore="ContentDescription"
+                tools:src="@mipmap/ic_launcher" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <LinearLayout
+            android:id="@+id/right_controls"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <FrameLayout
+                android:id="@+id/progress_wrap"
+                android:layout_width="40dp"
+                android:layout_height="40dp">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progress_ring"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:indeterminate="false"
+                    android:max="100"
+                    android:progress="59"
+                    android:visibility="visible"
+                    app:indicatorColor="?attr/colorPrimary"
+                    app:indicatorInset="0dp"
+                    app:indicatorSize="40dp"
+                    app:trackColor="#24FFFFFF"
+                    app:trackThickness="3dp" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/percent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="10.5sp"
+                    android:textStyle="bold"
+                    tools:text="59%" />
+            </FrameLayout>
+
+            <ImageView
+                android:id="@+id/resume_icon"
+                android:layout_width="30dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="2dp"
+                android:contentDescription="@string/start_reading"
+                android:padding="3dp"
+                android:src="@drawable/ic_more_vert_24dp"
+                app:tint="@android:color/white" />
+        </LinearLayout>
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/title"
+            style="?textAppearanceTitleMedium"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="1dp"
+            android:layout_marginEnd="7dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/colorOnBackground"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@id/right_controls"
+            app:layout_constraintStart_toEndOf="@id/cover_card"
+            app:layout_constraintTop_toTopOf="@id/cover_card"
+            tools:text="Ultimate Spider-Man (2024-)" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/progress_label"
+            style="?textAppearanceBodyLarge"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="7dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#D9FFFFFF"
+            app:layout_constraintEnd_toStartOf="@id/right_controls"
+            app:layout_constraintStart_toEndOf="@id/cover_card"
+            app:layout_constraintTop_toBottomOf="@id/title"
+            tools:text="#23" />
+
+        <ProgressBar
+            android:id="@+id/progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="3dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp"
+            android:indeterminate="false"
+            android:max="100"
+            android:progress="59"
+            android:progressBackgroundTint="#1FFFFFFF"
+            android:progressTint="?attr/colorPrimary"
+            app:layout_constraintEnd_toStartOf="@id/right_controls"
+            app:layout_constraintStart_toEndOf="@id/cover_card"
+            app:layout_constraintTop_toBottomOf="@id/progress_label" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>

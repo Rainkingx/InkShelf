@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_ru_top_worlds">Top worlds</string>
+    <string name="inkshelf_ru_top_worlds_note">The stories and creators you’ve spent the most time with</string>
+    <string name="inkshelf_ru_most_read_series">Most-read series</string>
+    <string name="inkshelf_ru_top_genre">Top genre</string>
+    <string name="inkshelf_ru_top_creator">Top creator</string>
+    <string name="inkshelf_ru_longest_series">Longest series</string>
+    <string name="inkshelf_ru_read_count">%1$d issues / chapters read</string>
+    <string name="inkshelf_ru_chapter_count">%1$d chapters</string>
+</resources>

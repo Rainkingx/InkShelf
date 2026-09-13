@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Keep the main library background near-black. -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#07090C" />
+        </shape>
+    </item>
+
+    <!-- Deeper violet transition around the existing top-right glow. -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.98"
+                android:centerY="0.01"
+                android:gradientRadius="175dp"
+                android:startColor="#4C1D95"
+                android:centerColor="#1E1033"
+                android:endColor="#0007090C" />
+        </shape>
+    </item>
+
+    <!-- Main purple highlight: #7C3AED. -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="1.0"
+                android:centerY="0.0"
+                android:gradientRadius="105dp"
+                android:startColor="#7C3AED"
+                android:centerColor="#6D28D9"
+                android:endColor="#004C1D95" />
+        </shape>
+    </item>
+
+</layer-list>

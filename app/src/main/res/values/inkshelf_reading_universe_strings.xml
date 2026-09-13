@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_reading_universe">Your Reading Universe</string>
+    <string name="inkshelf_reading_universe_summary">Your library, progress and reading habits at a glance</string>
+</resources>

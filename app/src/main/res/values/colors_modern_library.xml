@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="modern_library_primary">#A66BFF</color>
+    <color name="modern_library_primary_inverse">#6F3AB9</color>
+    <color name="modern_library_on_primary">#FFFFFF</color>
+    <color name="modern_library_secondary">#C6B8D2</color>
+    <color name="modern_library_on_secondary">#211727</color>
+    <color name="modern_library_tertiary">#C97886</color>
+    <color name="modern_library_on_tertiary">#2B1118</color>
+    <color name="modern_library_background">#07080B</color>
+    <color name="modern_library_on_background">#F4F0F7</color>
+    <color name="modern_library_surface">#0A0B0F</color>
+    <color name="modern_library_surface_container">#0D0E12</color>
+    <color name="modern_library_surface_container_high">#16141B</color>
+    <color name="modern_library_surface_container_highest">#201A23</color>
+    <color name="modern_library_surface_container_low">#090A0D</color>
+    <color name="modern_library_surface_container_lowest">#050608</color>
+    <color name="modern_library_on_surface_variant">#C9C0CB</color>
+    <color name="modern_library_outline">#413842</color>
+    <color name="modern_library_outline_variant">#2B252D</color>
+    <color name="modern_library_primary_container">#37204F</color>
+    <color name="modern_library_on_primary_container">#ECDFFF</color>
+    <color name="modern_library_secondary_container">#2B222F</color>
+    <color name="modern_library_on_secondary_container">#EEE2F1</color>
+    <color name="modern_library_tertiary_container">#49242D</color>
+    <color name="modern_library_on_tertiary_container">#FFD9DF</color>
+    <color name="modern_library_inactive">#8E8792</color>
+    <color name="modern_library_ripple">#33A66BFF</color>
+</resources>

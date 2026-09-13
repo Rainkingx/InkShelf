@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="inkshelf_library_search_height">60dp</dimen>
+    <dimen name="inkshelf_library_search_horizontal_margin">120dp</dimen>
+    <dimen name="inkshelf_library_search_bottom_margin">8dp</dimen>
+    <dimen name="inkshelf_setup_horizontal_padding">200dp</dimen>
+</resources>

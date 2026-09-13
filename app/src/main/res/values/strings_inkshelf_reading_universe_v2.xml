@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_ru_this_month">This month</string>
+    <string name="inkshelf_ru_issues_read">Issues / chapters</string>
+    <string name="inkshelf_ru_titles_touched">Titles touched</string>
+    <string name="inkshelf_ru_reading_time">Reading time</string>
+    <string name="inkshelf_ru_month_more">%1$d more than last month</string>
+    <string name="inkshelf_ru_month_fewer">%1$d fewer than last month</string>
+    <string name="inkshelf_ru_month_same">Same as last month</string>
+</resources>

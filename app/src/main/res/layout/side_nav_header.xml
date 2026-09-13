@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The rail replaces this view's layout params when it attaches the header, so gravity and
+     margins are applied in MainActivity instead of here. -->
+<com.google.android.material.button.MaterialButton
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/side_nav_toggle_btn"
+    style="?attr/materialIconButtonStyle"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:iconTint="?actionBarTintColor"
+    app:icon="@drawable/ic_menu_collapse_24dp" />

@@ -1,0 +1,16 @@
+.gradle/
+/local.properties
+/.idea/
+*.iml
+.DS_Store
+/build/
+**/build/
+.kotlin/
+
+# InkShelf local work/backup folders
+.inkshelf-backups/
+.inkshelf-patch-backups/
+mnt/
+
+# Upstream Firebase configuration is intentionally not distributed
+/app/src/standard/google-services.json

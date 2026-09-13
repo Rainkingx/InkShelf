@@ -1,0 +1,78 @@
+name: Bug report
+description: Report an InkShelf bug
+labels: [bug]
+body:
+  - type: textarea
+    id: reproduce-steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Tap ...
+        3. The problem occurs
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+
+  - type: input
+    id: inkshelf-version
+    attributes:
+      label: InkShelf version/build
+      description: Find this under More → About.
+      placeholder: Example: dev build / release version
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      placeholder: Example: Android 16
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: Example: Samsung Galaxy S24
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs/screenshots
+      description: Add useful logs or screenshots. Remove personal information, API keys and private content first.
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Additional details
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and could not find the same bug.
+          required: true
+        - label: I tested this on the current InkShelf build available to me.
+          required: true
+        - label: This is an InkShelf/app issue rather than only a third-party source/extension problem.
+          required: true
+        - label: I removed private information and credentials from anything I attached.
+          required: true

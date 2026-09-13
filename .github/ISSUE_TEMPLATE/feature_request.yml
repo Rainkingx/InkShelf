@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest an improvement to InkShelf
+labels: [feature]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Explain what is difficult or missing today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Suggested behaviour
+      description: Explain how you would like InkShelf to behave.
+      placeholder: |
+        Example:
+        "When I ..., InkShelf should ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-details
+    attributes:
+      label: Additional details
+      description: Add screenshots, mock-ups or related information if useful.
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and could not find the same request.
+          required: true
+        - label: This request is about InkShelf rather than a third-party source/extension.
+          required: true
+        - label: I checked the existing InkShelf settings before requesting a new option.
+          required: true

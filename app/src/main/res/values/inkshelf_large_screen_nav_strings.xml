@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_large_nav_sort">Sort</string>
+    <string name="inkshelf_large_nav_discover">Discover</string>
+    <string name="inkshelf_large_nav_more">More</string>
+</resources>

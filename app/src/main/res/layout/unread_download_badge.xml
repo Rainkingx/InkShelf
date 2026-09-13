@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<eu.kanade.tachiyomi.ui.library.LibraryBadge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/badge_view"
+    app:strokeColor="@color/library_stroke_selector"
+    app:strokeWidth="0.75dp"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="@android:color/transparent"
+    android:layout_marginStart="2dp"
+    android:layout_marginTop="5dp"
+    android:visibility="gone"
+    tools:visibility="visible">
+
+    <!-- Fills and dividers are painted by LibraryBadgeDrawable, the parts below only hold text -->
+    <LinearLayout
+        android:id="@+id/badge_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <!--
+            Takes the height of the row rather than adding to it: adjustViewBounds and maxHeight
+            keep the flag's own size out of the row's measurement, then match_parent stretches it
+            to whatever the text ends up being.
+        -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/lang_image"
+            android:layout_width="26sp"
+            android:layout_height="match_parent"
+            android:adjustViewBounds="true"
+            android:maxHeight="17sp"
+            android:scaleType="centerCrop"
+            app:strokeWidth="0dp"
+            android:visibility="gone"
+            tools:srcCompat="@drawable/ic_flag_en"
+            tools:visibility="visible" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/download_text"
+            style="?textAppearanceCaption"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:maxLines="1"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:textColor="@color/download_badge_text"
+            android:textSize="13sp"
+            android:visibility="gone"
+            tools:text="1"
+            tools:paddingEnd="8dp"
+            tools:visibility="visible" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/unread_text"
+            style="?textAppearanceCaption"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:maxLines="1"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:textColor="?colorOnPrimary"
+            android:textSize="13sp"
+            android:visibility="gone"
+            tools:text="20"
+            tools:paddingStart="2dp"
+            tools:visibility="visible" />
+    </LinearLayout>
+</eu.kanade.tachiyomi.ui.library.LibraryBadge>

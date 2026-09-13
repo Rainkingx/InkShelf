@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Keep Library as the selected destination. -->
+    <item
+        android:checked="true"
+        android:id="@+id/nav_library"
+        android:icon="@drawable/ic_library_selector_24dp"
+        android:title="@string/library" />
+
+    <!--
+        Retained in the menu model for legacy Recents shortcuts/deep links.
+        SideNavView deliberately hides this row on large screens.
+    -->
+    <item
+        android:id="@+id/nav_recents"
+        android:icon="@drawable/ic_recents_selector_24dp"
+        android:title="@string/recents" />
+
+    <!--
+        InkShelf large-screen Sort section.
+        Existing Recents submenu ids are intentionally reused so no new navigation ids leak
+        into phone layouts; MainActivity maps these four ids to the existing Library sort state.
+    -->
+    <item
+        android:id="@+id/nav_recents_group"
+        android:title="@string/inkshelf_large_nav_sort">
+        <menu android:id="@+id/recents_menu_group">
+            <item
+                android:id="@+id/nav_summary"
+                android:icon="@drawable/ic_recents_selector_24dp"
+                android:title="@string/modern_library_sort_recently_added" />
+            <item
+                android:id="@+id/nav_ungrouped"
+                android:icon="@drawable/ic_sort_by_alpha_24dp"
+                android:title="@string/modern_library_sort_title_az" />
+            <item
+                android:id="@+id/nav_history"
+                android:icon="@drawable/ic_updates_selector_24dp"
+                android:title="@string/modern_library_sort_latest_update" />
+            <item
+                android:id="@+id/nav_updates"
+                android:icon="@drawable/ic_sort_24dp"
+                android:title="@string/modern_library_sort_character" />
+        </menu>
+    </item>
+
+    <item
+        android:id="@+id/nav_browse"
+        android:icon="@drawable/ic_browse_selector_24dp"
+        android:title="@string/inkshelf_large_nav_discover" />
+
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_more_horiz_24dp"
+        android:title="@string/inkshelf_large_nav_more" />
+
+</menu>

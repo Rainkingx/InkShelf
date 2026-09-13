@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_ru_at_a_glance">At a glance</string>
+    <string name="inkshelf_ru_library_snapshot">Library snapshot</string>
+    <string name="inkshelf_ru_connections">Your collection</string>
+    <string name="inkshelf_ru_status">Library status</string>
+    <string name="inkshelf_ru_scores">Your scores</string>
+    <string name="inkshelf_ru_real_data_note">Built from your InkShelf library and reading history</string>
+</resources>
