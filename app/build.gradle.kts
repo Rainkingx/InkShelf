@@ -1,4 +1,4 @@
-import org.gradle.api.tasks.Copy
+﻿import org.gradle.api.tasks.Copy
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -90,7 +90,7 @@ android {
         create("dev") {
             // androidResources.localeFilters is shared across all product flavors rather than
             // being scoped to this one, so only mutate it when a Dev-flavor task is actually
-            // being run â€” otherwise this strips every locale from Standard builds too.
+            // being run Ã¢â‚¬â€ otherwise this strips every locale from Standard builds too.
             if (gradle.startParameter.taskRequests.toString().contains("Dev")) {
                 androidResources.localeFilters.clear()
                 androidResources.localeFilters.add("en")
@@ -251,8 +251,8 @@ dependencies {
     val fastAdapterVersion = "5.7.0"
     implementation("com.mikepenz:fastadapter:$fastAdapterVersion")
     implementation("com.mikepenz:fastadapter-extensions-binding:$fastAdapterVersion")
-    implementation("com.github.arkon.FlexibleAdapter:flexible-adapter:c8013533")
-    implementation("com.github.arkon.FlexibleAdapter:flexible-adapter-ui:c8013533")
+    implementation("eu.davidea:flexible-adapter:5.1.0")
+    implementation("eu.davidea:flexible-adapter-ui:1.0.0")
     implementation("com.nightlynexus.viewstatepageradapter:viewstatepageradapter:1.1.0")
     implementation("com.github.mthli:Slice:v1.2")
     implementation("io.noties.markwon:core:4.6.2")
@@ -342,4 +342,5 @@ tasks {
         dependsOn(formatKotlin, copyHebrewStrings)
     }
 }
+
 
