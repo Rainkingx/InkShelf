@@ -1,4 +1,4 @@
-﻿# InkShelf
+# InkShelf
 
 **InkShelf** is an Android comic and manga reader built as a custom fork of [TachiyomiJ2K](https://github.com/Jays2Kings/tachiyomiJ2K).
 
@@ -11,7 +11,7 @@ The project keeps the proven J2K reader, library, source/extension, download, ba
 - **Comic-focused Library** with reading-status tabs, pinned search and Continue Reading.
 - **Discover** with recommendations, trending titles, new releases and background caching.
 - **Your Reading Universe** with real reading-history and library statistics.
-- **Panel Flow â€” BETA**: optional guided reading for Western/LTR comics.
+- **Panel Flow &mdash; BETA**: optional guided reading for Western/LTR comics.
   - Uses on-device OCR.
   - Moves through recognised dialogue while keeping artwork context visible.
   - Groups busy dialogue areas into readable stops.
@@ -22,7 +22,7 @@ The project keeps the proven J2K reader, library, source/extension, download, ba
 - Source/extension support inherited from the Tachiyomi/Mihon ecosystem.
 - Tablet, foldable and landscape support.
 
-## Panel Flow â€” BETA
+## Panel Flow &mdash; BETA
 
 Panel Flow is an optional guided-reading mode designed primarily for Western left-to-right comics.
 
