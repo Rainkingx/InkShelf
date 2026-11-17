@@ -9,10 +9,13 @@ import androidx.core.animation.doOnEnd
 import androidx.core.animation.doOnStart
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.isVisible
+import coil.load
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.data.image.coil.loadManga
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.databinding.ChaptersItemBinding
+import eu.kanade.tachiyomi.ui.manga.InkShelfIssueMetadata
 import eu.kanade.tachiyomi.ui.manga.MangaDetailsAdapter
 import eu.kanade.tachiyomi.util.chapter.ChapterUtil
 import eu.kanade.tachiyomi.util.chapter.ChapterUtil.Companion.preferredChapterName
@@ -46,6 +49,16 @@ class ChapterHolder(
         val chapter = item.chapter
         val isLocked = item.isLocked
         itemView.transitionName = "details chapter ${chapter.id ?: 0L} transition"
+        val issueCoverUrl = InkShelfIssueMetadata.from(chapter).coverUrl
+        if (issueCoverUrl == null) {
+            binding.issueCover.loadManga(manga)
+        } else {
+            // Real per-issue artwork is optional. If a URL fails, retain a genuine
+            // series cover, never a guessed cover or the first reading page.
+            binding.issueCover.load(issueCoverUrl) {
+                listener(onError = { _, _ -> binding.issueCover.loadManga(manga) })
+            }
+        }
         binding.chapterTitle.text =
             chapter.preferredChapterName(itemView.context, manga, adapter.preferences)
 
