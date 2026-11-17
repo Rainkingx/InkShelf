@@ -3,6 +3,10 @@ package eu.kanade.tachiyomi.ui.setting
 import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
+import android.text.InputType
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
 import eu.kanade.tachiyomi.BuildConfig
@@ -14,6 +18,7 @@ import eu.kanade.tachiyomi.data.updater.AppDownloadInstallJob
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.extension.ExtensionUpdateJob
 import eu.kanade.tachiyomi.extension.util.ExtensionInstaller
+import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCredentials
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.migration.MigrationController
@@ -114,6 +119,53 @@ class SettingsBrowseController : SettingsController() {
                         arrayOf(intPref, infoPref, switchPref).forEach { it?.isVisible = value }
                     }
                 }
+            }
+
+            preferenceCategory {
+                title = "Comic issue artwork"
+                preference {
+                    key = "inkshelf_metron_api_token_settings"
+                    title = "Metron API token"
+                    summary = if (InkShelfMetronCredentials.get(context).isNullOrBlank()) {
+                        "Tap to add your private token and enable issue cover lookups"
+                    } else {
+                        "Configured — tap to replace or clear your token"
+                    }
+                    onClick {
+                        val tokenField = EditText(context).apply {
+                            hint = "Paste Metron API token"
+                            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                            setSingleLine(true)
+                            val pad = (20 * resources.displayMetrics.density).toInt()
+                            setPadding(pad, pad, pad, pad)
+                        }
+                        AlertDialog.Builder(context)
+                            .setTitle("Metron API token")
+                            .setMessage("Your token stays encrypted on this device. InkShelf sends it only to metron.cloud for metadata lookups. Leave this blank to clear it.")
+                            .setView(tokenField)
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .setNeutralButton("Clear") { _, _ ->
+                                InkShelfMetronCredentials.clear(context)
+                                summary = "Tap to add your private token and enable issue cover lookups"
+                                Toast.makeText(context, "Metron token cleared", Toast.LENGTH_SHORT).show()
+                            }
+                            .setPositiveButton("Save") { _, _ ->
+                                val value = tokenField.text.toString().trim()
+                                if (InkShelfMetronCredentials.save(context, value)) {
+                                    summary = if (value.isBlank()) {
+                                        "Tap to add your private token and enable issue cover lookups"
+                                    } else {
+                                        "Configured — tap to replace or clear your token"
+                                    }
+                                    Toast.makeText(context, "Metron setting saved", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Could not save Metron token", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                            .show()
+                    }
+                }
+                infoPreference(R.string.inkshelf_metron_info)
             }
 
             preferenceCategory {
