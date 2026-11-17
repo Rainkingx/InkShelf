@@ -311,7 +311,11 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
             val added = withContext(Dispatchers.IO) {
                 runCatching {
                     val savedManga = db.getManga(manga.url, manga.source).executeAsBlocking() ?: manga
-                    if (savedManga.favorite) return@runCatching true
+                    if (savedManga.favorite) {
+                        manga.favorite = true
+                        manga.id = savedManga.id
+                        return@runCatching true
+                    }
                     savedManga.favorite = true
                     savedManga.date_added = System.currentTimeMillis()
                     if (savedManga.id == null) {
@@ -322,6 +326,8 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
                         db.updateMangaAdded(savedManga).executeAsBlocking()
                     }
                     manga.favorite = true
+                    manga.id = savedManga.id
+                    manga.date_added = savedManga.date_added
                     true
                 }.getOrDefault(false)
             }
