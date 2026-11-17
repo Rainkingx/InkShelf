@@ -19,6 +19,7 @@ import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.extension.ExtensionUpdateJob
 import eu.kanade.tachiyomi.extension.util.ExtensionInstaller
 import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCredentials
+import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.migration.MigrationController
@@ -26,6 +27,7 @@ import eu.kanade.tachiyomi.ui.source.browse.repos.RepoController
 import eu.kanade.tachiyomi.util.view.snack
 import eu.kanade.tachiyomi.util.view.withFadeTransaction
 import uy.kohesive.injekt.injectLazy
+import kotlinx.coroutines.launch
 
 class SettingsBrowseController : SettingsController() {
     val sourceManager: SourceManager by injectLazy()
@@ -163,6 +165,18 @@ class SettingsBrowseController : SettingsController() {
                                 }
                             }
                             .show()
+                    }
+                }
+                preference {
+                    key = "inkshelf_metron_test_connection"
+                    title = "Test Metron connection"
+                    summary = "Check your token and see whether Absolute Wonder Woman (2024) has matching covers"
+                    onClick {
+                        Toast.makeText(context, "Checking Metron…", Toast.LENGTH_SHORT).show()
+                        viewScope.launch {
+                            val message = InkShelfMetronCovers.testConnection(context)
+                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
                 infoPreference(R.string.inkshelf_metron_info)
