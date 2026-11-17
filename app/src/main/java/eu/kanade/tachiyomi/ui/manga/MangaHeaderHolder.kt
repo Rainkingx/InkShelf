@@ -163,6 +163,7 @@ class MangaHeaderHolder(
             shareButton.setOnClickListener { adapter.delegate.prepareToShareManga() }
             headerDownloadButton.setOnClickListener { adapter.delegate.showHeaderDownloadMenu(it) }
             headerMoreButton.setOnClickListener { adapter.delegate.showHeaderMoreMenu(it) }
+            favoriteButton.setCheckable(true)
             favoriteButton.setOnClickListener {
                 adapter.delegate.favoriteManga(false)
             }
