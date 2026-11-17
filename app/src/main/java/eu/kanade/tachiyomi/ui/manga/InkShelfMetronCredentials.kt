@@ -23,6 +23,9 @@ internal object InkShelfMetronCredentials {
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    fun isConfigured(context: Context): Boolean =
+        !prefs(context).getString(KEY_CIPHERTEXT, null).isNullOrBlank()
+
     fun clear(context: Context) {
         prefs(context).edit().remove(KEY_CIPHERTEXT).remove(KEY_IV).apply()
     }
