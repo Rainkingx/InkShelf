@@ -118,6 +118,63 @@ internal object InkShelfMetronCovers {
         }
     }
 
+    /**
+     * A safe, user-triggered health check. Reports HTTP errors and confirmed
+     * matches without exposing the user's token in logs or messages.
+     */
+    suspend fun testConnection(context: Context): String = withContext(Dispatchers.IO) {
+        val token = InkShelfMetronCredentials.get(context)
+            ?: return@withContext "No Metron token saved. Add one first."
+        try {
+            val search = endpoint("series").newBuilder()
+                .addQueryParameter("name", "Absolute Wonder Woman")
+                .addQueryParameter("year_began", "2024")
+                .build()
+            val response = getJson(search, token)
+                ?: return@withContext "Connected to Metron, but received no series data."
+            val results = response.optJSONArray("results")
+                ?: return@withContext "Connected to Metron, but series data was unavailable."
+            val ids = buildList {
+                for (index in 0 until results.length()) {
+                    val candidate = results.optJSONObject(index) ?: continue
+                    val title = candidate.optString("series")
+                        .ifBlank { candidate.optString("name") }
+                    if (normalized(seriesTitle(title)) != "absolute wonder woman") continue
+                    if (candidate.optInt("year_began") != 2024) continue
+                    val id = candidate.optInt("id")
+                    if (id > 0) add(id)
+                }
+            }.distinct()
+            if (ids.isEmpty()) {
+                return@withContext "Metron token works, but no exact Absolute Wonder Woman (2024) series was found."
+            }
+            if (ids.size > 1) {
+                return@withContext "Metron token works, but multiple matching series need disambiguation."
+            }
+            val issueResponse = getJson(
+                endpoint("series", ids.single().toString(), "issue_list"),
+                token,
+            ) ?: return@withContext "Series matched, but Metron returned no issue list."
+            val issues = issueResponse.optJSONArray("results")
+                ?: return@withContext "Series matched, but Metron returned no issue data."
+            var validCovers = 0
+            for (index in 0 until issues.length()) {
+                val issue = issues.optJSONObject(index) ?: continue
+                if (validImageUrl(issue.optString("image"))) validCovers++
+            }
+            "Metron connected. Absolute Wonder Woman (2024) matched: $validCovers issue covers on the first page."
+        } catch (error: MetronApiException) {
+            when (error.status) {
+                401 -> "Metron rejected the token (HTTP 401). Check or regenerate it."
+                403 -> "Metron denied access (HTTP 403). Check API permissions."
+                429 -> "Metron rate limit reached (HTTP 429). Try again later."
+                else -> "Metron request failed (HTTP ${error.status})."
+            }
+        } catch (_: Exception) {
+            "Could not connect to Metron. Check your internet connection and retry."
+        }
+    }
+
     /** This same cover service can be reused by the upcoming Daily Recommendations shelf. */
     private suspend fun lookupSeriesIssues(title: String, year: Int?, token: String): Map<Int, String> {
         val searchUrl = endpoint("series")
