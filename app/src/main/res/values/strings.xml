@@ -78,6 +78,10 @@
         <item quantity="one">%1$s chapter</item>
         <item quantity="other">%1$s chapters</item>
     </plurals>
+    <plurals name="inkshelf_issues_plural">
+        <item quantity="one">Issue (%1$d)</item>
+        <item quantity="other">Issues (%1$d)</item>
+    </plurals>
     <plurals name="pages_left">
         <item quantity="one">%1$d page left</item>
         <item quantity="other">%1$d pages left</item>
@@ -575,6 +579,7 @@
     <string name="continue_reading">Continue reading</string>
     <!-- InkShelf 2.0 comic details: only show issue information when sources provide it. -->
     <string name="inkshelf_about_current_issue">About this issue</string>
+    <string name="inkshelf_synopsis">Synopsis</string>
     <string name="inkshelf_synopsis_unavailable">No synopsis is available from this source yet. Pull down to refresh the comic details.</string>
     <string name="chapters_">Chapters %1$s</string>
     <string name="volume_">Volume %1$d</string>
