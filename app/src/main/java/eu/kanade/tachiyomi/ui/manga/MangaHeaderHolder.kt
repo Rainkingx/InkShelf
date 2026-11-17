@@ -752,7 +752,12 @@ class MangaHeaderHolder(
             baseStatusColor?.let { c -> it.mangaStatus.setTextColor(c.hueShiftedTo(accent)) }
             baseSourceColor?.let { c -> it.mangaSource.setTextColor(c.hueShiftedTo(accent)) }
             baseSummaryLabelColor?.let { c -> it.mangaSummaryLabel.setTextColor(c.hueShiftedTo(accent)) }
-            baseSummaryColor?.let { c -> it.mangaSummary.setTextColor(c.hueShiftedTo(accent)) }
+            baseSummaryColor?.let { c ->
+                val background =
+                    adapter.delegate.themeColors().background
+                        ?: itemView.context.getResourceColor(R.attr.background)
+                it.mangaSummary.setTextColor(readableSummaryColor(c.hueShiftedTo(accent), background))
+            }
             baseChaptersTitleColor?.let { c -> it.chaptersTitle.setTextColor(c.hueShiftedTo(accent)) }
             baseFiltersTextColor?.let { c -> it.filtersText.setTextColor(c.hueShiftedTo(accent)) }
         }
@@ -924,6 +929,20 @@ class MangaHeaderHolder(
                 setGenreTags(this, manga)
             }
         }
+    }
+
+    /** Keep synopsis readable against AMOLED and cover-tinted backgrounds. */
+    private fun readableSummaryColor(textColor: Int, backgroundColor: Int): Int {
+        val background = ColorUtils.setAlphaComponent(backgroundColor, 255)
+        val original = ColorUtils.setAlphaComponent(textColor, 255)
+        if (ColorUtils.calculateContrast(original, background) >= 4.5) return original
+
+        val highContrast = contrastingTextColor(background)
+        for (step in 1..20) {
+            val candidate = ColorUtils.blendARGB(original, highContrast, step / 20f)
+            if (ColorUtils.calculateContrast(candidate, background) >= 4.5) return candidate
+        }
+        return highContrast
     }
 
     /** Picks whichever of black/white has higher contrast against [background], guaranteeing WCAG AA-level legibility regardless of the cover's extracted accent hue. */
