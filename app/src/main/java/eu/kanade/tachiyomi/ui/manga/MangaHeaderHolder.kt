@@ -401,7 +401,14 @@ class MangaHeaderHolder(
         }
     }
 
-    private fun missingChapterCount(presenter: MangaDetailsPresenter): Int = missingChaptersCount(presenter.chapters.map { it.chapter })
+    private fun missingChapterCount(presenter: MangaDetailsPresenter): Int {
+        val chapters = presenter.chapters.map { it.chapter }
+        return if (presenter.manga.seriesType(sourceManager = presenter.sourceManager) == Manga.TYPE_COMIC) {
+            InkShelfComicIssueGaps.countMissing(chapters)
+        } else {
+            missingChaptersCount(chapters)
+        }
+    }
 
     @SuppressLint("SetTextI18n")
     fun bind(
