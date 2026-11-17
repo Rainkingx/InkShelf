@@ -1,6 +1,9 @@
 package eu.kanade.tachiyomi.ui.home
 
 import android.graphics.Color
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -61,8 +64,15 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         // Reserve the visible, existing InkShelf cosmic header instead of
         // drawing a duplicate masthead above it.
         val header = view.resources.getDimensionPixelSize(R.dimen.inkshelf_header_art_height)
-        binding.homeScroll.setPadding(0, header + dp(18), 0, 0)
+        binding.homeScroll.setPadding(0, header + dp(5), 0, 0)
         dayTheme = themeForToday()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Portrait source covers make poor wide banners. Blur only the
+            // ambient backdrop; keep the genuine cover sharp in the foreground.
+            binding.homeHeroCover.setRenderEffect(
+                RenderEffect.createBlurEffect(9f, 9f, Shader.TileMode.MIRROR),
+            )
+        }
         bindThemeTitle()
         binding.homeThemeSubtitle.text = "Three real comics to explore today"
 
@@ -128,31 +138,77 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         val daySeed = calendar.get(Calendar.YEAR) * 400 + calendar.get(Calendar.DAY_OF_YEAR)
         val candidates = mutableListOf<DailyPick>()
         val used = mutableSetOf<String>()
+        // A high search rank is NOT proof that the comic belongs to today's
+        // theme. Previously unrelated DC series appeared on Indie Tuesday.
         fun add(pool: List<Manga>, label: String) {
-            val choices = pool.sortedWith(
-                compareByDescending<Manga> { manga ->
-                    val text = (manga.title + " " + manga.genre.orEmpty()).lowercase(Locale.ROOT)
-                    theme.keywords.count { it in text }
-                }.thenBy { ((it.title.hashCode() * 31L) xor daySeed.toLong()) },
-            )
-            val next = choices.firstOrNull { candidate ->
-                candidate.thumbnail_url?.isNotBlank() == true &&
-                    candidate.title.lowercase(Locale.ROOT).trim() !in used
-            } ?: return
+            if (candidates.size >= 3) return
+            val choices = pool
+                .asSequence()
+                .filter { !it.thumbnail_url.isNullOrBlank() }
+                .map { it to themeMatchScore(it, theme) }
+                .filter { it.second > 0 }
+                .sortedWith(
+                    compareByDescending<Pair<Manga, Int>> { it.second }
+                        .thenBy { (manga, _) ->
+                            (manga.title.hashCode().toLong() * 31L) xor daySeed.toLong()
+                        },
+                )
+            val next = choices.firstOrNull { (manga, _) ->
+                manga.title.lowercase(Locale.ROOT).trim() !in used
+            }?.first ?: return
             used += next.title.lowercase(Locale.ROOT).trim()
             candidates += DailyPick(next, label)
         }
         add(new.map { it.manga }, "New this week")
         add(trending.map { it.manga }, "Trending")
-        add(suggested.map { it.manga }, "Suggested for you")
-        // Show real library items when Discover hasn't refreshed yet. Don't
-        // falsely call those items "trending" or "critically acclaimed".
-        while (candidates.size < 3) {
-            val oldSize = candidates.size
-            add(library.filter { it.favorite }, "From your library")
-            if (candidates.size == oldSize) break
+        add(suggested.map { it.manga }, "Recommended")
+        // Only theme-appropriate comics can fill the spare slots. Never claim
+        // a random series from the library is a featured indie or classic.
+        for (item in library.filter { it.favorite }) {
+            if (candidates.size >= 3) break
+            add(listOf(item), "From your library")
         }
         return candidates.take(3)
+    }
+
+    /**
+     * A conservative match is better than displaying a convincingly
+     * presented but wrong recommendation. Generic genre tags (Action, Adventure)
+     * do not establish a publisher or themed character.
+     */
+    private fun themeMatchScore(manga: Manga, theme: Theme): Int {
+        val title = manga.title.lowercase(Locale.ROOT)
+        val genres = listOfNotNull(manga.genre, manga.originalGenre).joinToString(" ").lowercase(Locale.ROOT)
+        val searchable = "$title $genres"
+        if (theme.title == "INDIE TUESDAY") {
+            val majorPublisher = Regex(
+                """\\b(dc comics|marvel comics|dc universe|marvel universe|avengers|batman|wonder woman|superman|spider[- ]man|x[- ]men|harley quinn|martian manhunter)\\b""",
+            )
+            if (majorPublisher.containsMatchIn(searchable)) return 0
+            val independentPublishers = listOf(
+                "image comics", "dark horse", "boom! studios", "boom studios",
+                "idw publishing", "idw", "dynamite entertainment", "vault comics",
+                "oni press", "mad cave", "aftershock", "indie", "independent comic",
+            )
+            val knownIndies = listOf(
+                "saga", "spawn", "invincible", "monstress", "radiant black",
+                "something is killing the children", "the walking dead",
+                "descender", "east of west", "paper girls", "hellboy",
+                "umbrella academy", "locke & key", "usagi yojimbo",
+            )
+            return when {
+                independentPublishers.any { it in genres } -> 5
+                knownIndies.any { name -> title == name || title.startsWith("$name (") || title.startsWith("$name:") } -> 3
+                else -> 0
+            }
+        }
+        if (theme.title == "WHAT'S NEW WEDNESDAY") {
+            // Today's pool is already provided by Discover; here use only a
+            // verified publication year/title or source-supplied new tag.
+            val currentYear = Calendar.getInstance().get(Calendar.YEAR).toString()
+            return if (currentYear in title || "new release" in genres || "new this week" in genres) 2 else 0
+        }
+        return theme.keywords.count { keyword -> keyword in searchable }
     }
 
     private fun bindHistory(items: List<MangaChapterHistory>) {
@@ -213,6 +269,8 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         val pick = featured.getOrNull(heroIndex)
         if (pick != null) {
             binding.homeHeroCover.loadManga(pick.manga)
+            binding.homeHeroForegroundCard.isVisible = true
+            binding.homeHeroForeground.loadManga(pick.manga)
             binding.homeThemeKicker.text = "DAILY COMICS  •  ${pick.label.uppercase(Locale.ROOT)}"
             binding.homeThemeSubtitle.text =
                 "${featured.size} PICKS   •   " +
@@ -227,8 +285,10 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
             binding.homeOpenPick.text = "▶  Read Now"
         } else {
             binding.homeHeroCover.setImageDrawable(null)
+            binding.homeHeroForeground.setImageDrawable(null)
+            binding.homeHeroForegroundCard.isVisible = false
             binding.homeThemeKicker.text = "DAILY COMICS"
-            binding.homeThemeSubtitle.text = "Explore real comics from your sources"
+            binding.homeThemeSubtitle.text = "No verified matches yet — explore more in Discover"
             binding.homeOpenPick.text = "Discover"
         }
 
