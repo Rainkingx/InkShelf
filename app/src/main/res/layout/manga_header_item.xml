@@ -174,7 +174,7 @@
         app:overflowMode="menu"
         android:spacing="4dp"
         app:layout_constraintWidth_default="wrap"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="10dp"
         android:orientation="horizontal"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
@@ -182,7 +182,7 @@
         app:layout_constraintBottom_toTopOf="@id/manga_summary_label"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/bottom_line">
+        app:layout_constraintTop_toBottomOf="@id/start_reading_button">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/favorite_button"
@@ -247,7 +247,7 @@
         android:layout_marginEnd="16dp"
         android:clickable="true"
         android:focusable="true"
-        android:maxLines="3"
+        android:maxLines="5"
         app:layout_constraintBottom_toTopOf="@id/manga_genres_tags"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -347,7 +347,7 @@
         android:paddingEnd="0dp"
         app:drawableTint="?colorPrimary"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/start_reading_button"
+        app:layout_constraintBottom_toTopOf="@id/chapter_layout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/manga_genres_tags"
@@ -367,10 +367,10 @@
         android:layout_marginTop="12dp"
         android:layout_marginEnd="16dp"
         android:text="@string/start_reading"
-        app:layout_constraintBottom_toTopOf="@id/chapter_layout"
+        app:layout_constraintBottom_toTopOf="@id/button_layout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/less_button"
+        app:layout_constraintTop_toBottomOf="@id/bottom_line"
         tools:text="Continue Reading Chapter 17.1" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -383,7 +383,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/start_reading_button">
+        app:layout_constraintTop_toBottomOf="@id/less_button">
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/chapters_title"
@@ -395,7 +395,7 @@
             android:layout_marginBottom="12dp"
             android:maxLines="1"
             android:text="@string/chapters"
-            android:textSize="17sp"
+            android:textSize="19sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/filters_text"
             app:layout_constraintStart_toStartOf="parent"
