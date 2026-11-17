@@ -10,7 +10,7 @@
         android:id="@+id/true_backdrop"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="@id/bottom_line"
+        app:layout_constraintBottom_toBottomOf="@id/start_reading_button"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHeight_min="200dp"
         app:layout_constraintStart_toStartOf="parent"
@@ -30,13 +30,27 @@
         app:layout_constraintTop_toTopOf="@+id/true_backdrop"
         tools:src="@mipmap/ic_launcher" />
 
+    <!-- Maintain legibility on pale artwork without hiding the cover on the left. -->
+    <View
+        android:id="@+id/backdrop_title_scrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/inkshelf_hero_title_scrim"
+        app:layout_constraintTop_toTopOf="@id/true_backdrop"
+        app:layout_constraintBottom_toBottomOf="@id/true_backdrop"
+        app:layout_constraintStart_toStartOf="@id/true_backdrop"
+        app:layout_constraintEnd_toEndOf="@id/true_backdrop" />
+
+    <!-- Full-height gradual fade to the exact themed page background. -->
     <View
         android:id="@+id/backdrop_gradient"
-        android:layout_width="match_parent"
-        android:layout_height="220dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:background="@drawable/gradient_shape"
-        android:backgroundTint="?attr/background"
-        app:layout_constraintBottom_toBottomOf="@+id/true_backdrop" />
+        app:layout_constraintTop_toTopOf="@id/true_backdrop"
+        app:layout_constraintBottom_toBottomOf="@id/true_backdrop"
+        app:layout_constraintStart_toStartOf="@id/true_backdrop"
+        app:layout_constraintEnd_toEndOf="@id/true_backdrop" />
 
     <View
         android:id="@+id/backdrop_fill"
@@ -99,7 +113,7 @@
         android:layout_marginStart="12dp"
         android:layout_marginEnd="16dp"
         android:ellipsize="end"
-        android:maxLines="4"
+        android:maxLines="8"
         android:text="@string/title"
         android:textIsSelectable="false"
         android:textSize="24sp"
