@@ -568,6 +568,11 @@
         <item quantity="one">Missing %d chapter</item>
         <item quantity="other">Missing %d chapters</item>
     </plurals>
+    <plurals name="inkshelf_missing_issues">
+        <item quantity="one">Missing %d issue</item>
+        <item quantity="other">Missing %d issues</item>
+    </plurals>
+    <string name="inkshelf_missing_issues_range">Missing issues %1$s</string>
     <string name="missing_chapters_count">Missing %d</string>
     <string name="missing_chapters_range">Missing chapters %1$s</string>
 
