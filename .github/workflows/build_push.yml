@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - inkshelf-2.0
   pull_request:
     branches:
       - main
