@@ -295,7 +295,7 @@ class MangaHeaderHolder(
         }
         binding.mangaSummary.setTextIsSelectable(false)
         binding.mangaSummary.isClickable = true
-        binding.mangaSummary.maxLines = 3
+        binding.mangaSummary.maxLines = 5
         setDescription()
         binding.mangaGenresTags.isVisible = false
         binding.lessButton.isVisible = false
@@ -369,7 +369,13 @@ class MangaHeaderHolder(
         count: Int,
         presenter: MangaDetailsPresenter,
     ): CharSequence {
-        val base = itemView.resources.getQuantityString(R.plurals.chapters_plural, count, count)
+        val issueList = presenter.manga.seriesType(sourceManager = presenter.sourceManager) == Manga.TYPE_COMIC
+        val base =
+            if (issueList) {
+                itemView.resources.getQuantityString(R.plurals.inkshelf_issues_plural, count, count)
+            } else {
+                itemView.resources.getQuantityString(R.plurals.chapters_plural, count, count)
+            }
         val missingCount = missingChapterCount(presenter)
         if (missingCount <= 0 || !adapter.preferences.showChapterMissingWarnings().get()) return base
         return buildSpannedString {
@@ -442,10 +448,12 @@ class MangaHeaderHolder(
             }
         }
         binding.mangaSummaryLabel.text =
-            if (InkShelfIssueMetadata.missingSynopsis(manga.description) && currentIssueMetadata().synopsis != null) {
-                itemView.context.getString(R.string.inkshelf_about_current_issue)
-            } else {
-                itemView.context.getString(
+            when {
+                InkShelfIssueMetadata.missingSynopsis(manga.description) && currentIssueMetadata().synopsis != null ->
+                    itemView.context.getString(R.string.inkshelf_about_current_issue)
+                manga.seriesType(sourceManager = presenter.sourceManager) == Manga.TYPE_COMIC ->
+                    itemView.context.getString(R.string.inkshelf_synopsis)
+                else -> itemView.context.getString(
                     R.string.about_this_,
                     manga.seriesType(itemView.context),
                 )
