@@ -14,6 +14,7 @@ class MissingChaptersItem(
     val count: Int,
     val startChapter: Int,
     val endChapter: Int,
+    val comic: Boolean = false,
 ) : AbstractFlexibleItem<MissingChaptersItem.Holder>() {
     override fun getLayoutRes(): Int = R.layout.missing_chapters_item
 
@@ -28,7 +29,7 @@ class MissingChaptersItem(
         position: Int,
         payloads: MutableList<Any>,
     ) {
-        holder.bind(count)
+        holder.bind(count, comic)
     }
 
     override fun isSelectable(): Boolean = false
@@ -40,7 +41,7 @@ class MissingChaptersItem(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is MissingChaptersItem) return false
-        return id == other.id && count == other.count
+        return id == other.id && count == other.count && comic == other.comic
     }
 
     override fun hashCode(): Int = id.hashCode()
@@ -51,8 +52,9 @@ class MissingChaptersItem(
     ) : FlexibleViewHolder(view, adapter) {
         private val text: TextView = view.findViewById(R.id.missing_chapters_text)
 
-        fun bind(count: Int) {
-            text.text = itemView.resources.getQuantityString(R.plurals.missing_chapters, count, count)
+        fun bind(count: Int, comic: Boolean) {
+            val label = if (comic) R.plurals.inkshelf_missing_issues else R.plurals.missing_chapters
+            text.text = itemView.resources.getQuantityString(label, count, count)
         }
     }
 }
