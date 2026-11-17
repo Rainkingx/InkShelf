@@ -3,6 +3,10 @@
     <group android:id="@+id/group_feature">
         <item
             android:checked="true"
+            android:id="@+id/nav_home"
+            android:icon="@drawable/ic_inkshelf_home_24dp"
+            android:title="@string/inkshelf_home_title" />
+        <item
             android:id="@+id/nav_library"
             android:icon="@drawable/ic_library_selector_24dp"
             android:title="@string/library" />
