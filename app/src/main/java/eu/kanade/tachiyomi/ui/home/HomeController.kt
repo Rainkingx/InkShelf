@@ -259,13 +259,17 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         card.homeCoverImage.loadManga(manga)
         card.homeCoverTitle.text = manga.title
         card.homeCoverDetail.text = description
-        card.homeCoverProgressOverlay.isVisible = progress != null
-        card.homeCoverTitle.isVisible = progress == null
-        card.homeCoverDetail.isVisible = progress == null
-        if (progress != null) {
-            card.homeCoverProgress.progress = progress
-            card.homeCoverPercent.text = "$progress%"
-        }
+        // Some history entries have no page-count metadata. Showing their
+        // title underneath made the *entire* horizontal shelf taller, leaving
+        // a large empty strip before Today's Picks. Every history card now
+        // uses the same cover-only footprint, with a "Resume" fallback.
+        val isContinueCard = row === binding.homeContinueRow
+        card.homeCoverProgressOverlay.isVisible = isContinueCard
+        card.homeCoverTitle.isVisible = !isContinueCard
+        card.homeCoverDetail.isVisible = !isContinueCard
+        card.homeCoverProgress.isVisible = progress != null
+        if (progress != null) card.homeCoverProgress.progress = progress
+        card.homeCoverPercent.text = if (progress != null) "$progress%" else "Resume"
         card.root.contentDescription = "${manga.title}${if (progress != null) ", $progress% read" else ", $description"}"
         card.root.setOnClickListener { onClick() }
         row.addView(card.root)
@@ -280,7 +284,7 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
             binding.homeHeroForeground.loadManga(pick.manga)
             binding.homeThemeKicker.text = "DAILY COMICS  •  ${pick.label.uppercase(Locale.ROOT)}"
             binding.homeThemeSubtitle.text =
-                "${featured.size} PICKS   •   " +
+                "${featured.size} ${if (featured.size == 1) "PICK" else "PICKS"}   •   " +
                     featured.joinToString("   •   ") { daily ->
                         when (daily.label) {
                             "New this week" -> "New"
