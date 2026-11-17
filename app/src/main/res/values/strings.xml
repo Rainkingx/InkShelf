@@ -585,6 +585,7 @@
     <!-- InkShelf 2.0 comic details: only show issue information when sources provide it. -->
     <string name="inkshelf_about_current_issue">About this issue</string>
     <string name="inkshelf_synopsis">Synopsis</string>
+    <string name="inkshelf_home_title">Home</string>
     <string name="inkshelf_metron_info">Optional: Use your own Metron API token to find genuine issue covers. Results are cached to reduce API requests. Covers remain subject to their original rights.</string>
     <string name="inkshelf_action_add">Add</string>
     <string name="inkshelf_synopsis_unavailable">No synopsis is available from this source yet. Pull down to refresh the comic details.</string>
