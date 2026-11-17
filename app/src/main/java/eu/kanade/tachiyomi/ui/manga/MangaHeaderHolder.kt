@@ -215,11 +215,11 @@ class MangaHeaderHolder(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // Keep cover artwork recognisable while preserving contrast behind the title.
             // The layout's gradient still darkens the bottom of the hero.
-            binding?.backdrop?.alpha = 0.24f
+            binding?.backdrop?.alpha = 0.76f
             binding?.backdrop?.setRenderEffect(
                 RenderEffect.createBlurEffect(
-                    14f,
-                    14f,
+                    6f,
+                    6f,
                     Shader.TileMode.MIRROR,
                 ),
             )
@@ -601,6 +601,7 @@ class MangaHeaderHolder(
         binding: MangaHeaderItemBinding,
         manga: Manga,
     ) {
+        binding.publisherTags.removeAllViews()
         with(binding.mangaGenresTags) {
             removeAllViews()
             val dark = context.isInNightMode()
@@ -659,10 +660,18 @@ class MangaHeaderHolder(
             val colorStateList = ColorStateList(states, colors)
             if (manga.genre.isNullOrBlank().not()) {
                 (manga.getGenres() ?: emptyList()).map { genreText ->
+                    val isPublisher =
+                        genreText.trim().lowercase(java.util.Locale.ROOT) in
+                            setOf(
+                                "dc comics", "marvel comics", "image comics", "dark horse comics",
+                                "idw publishing", "boom! studios", "dynamite entertainment",
+                                "valiant comics", "archie comics", "oni press", "vertigo",
+                            )
+                    val chipParent = if (isPublisher) binding.publisherTags else this
                     val chip =
                         LayoutInflater.from(binding.root.context).inflate(
                             R.layout.genre_chip,
-                            this,
+                            chipParent,
                             false,
                         ) as Chip
                     val id = View.generateViewId()
@@ -677,10 +686,11 @@ class MangaHeaderHolder(
                         adapter.delegate.copyContentToClipboard(genreText, genreText)
                         true
                     }
-                    this.addView(chip)
+                    chipParent.addView(chip)
                 }
             }
         }
+        binding.publisherTags.isVisible = binding.publisherTags.childCount > 0
     }
 
     /** Marks that the next bind() should force the favorite button to re-measure its width */
