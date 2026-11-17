@@ -63,7 +63,7 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
 
         // Reserve the visible, existing InkShelf cosmic header instead of
         // drawing a duplicate masthead above it.
-        val header = view.resources.getDimensionPixelSize(R.dimen.inkshelf_header_art_height)
+        val header = view.resources.getDimensionPixelSize(R.dimen.inkshelf_home_header_height)
         binding.homeScroll.setPadding(0, header + dp(5), 0, 0)
         dayTheme = themeForToday()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -145,7 +145,14 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
             val choices = pool
                 .asSequence()
                 .filter { !it.thumbnail_url.isNullOrBlank() }
-                .map { it to themeMatchScore(it, theme) }
+                .map { manga ->
+                    manga to if (theme.title == "WHAT'S NEW WEDNESDAY" && label == "New this week") {
+                        // NEW_THIS_WEEK is an explicitly date-filtered Discover shelf.
+                        4
+                    } else {
+                        themeMatchScore(manga, theme)
+                    }
+                }
                 .filter { it.second > 0 }
                 .sortedWith(
                     compareByDescending<Pair<Manga, Int>> { it.second }
@@ -182,7 +189,7 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         val searchable = "$title $genres"
         if (theme.title == "INDIE TUESDAY") {
             val majorPublisher = Regex(
-                """\\b(dc comics|marvel comics|dc universe|marvel universe|avengers|batman|wonder woman|superman|spider[- ]man|x[- ]men|harley quinn|martian manhunter)\\b""",
+                """\b(dc comics|marvel comics|dc universe|marvel universe|avengers|batman|wonder woman|superman|spider[- ]man|x[- ]men|harley quinn|martian manhunter)\b""",
             )
             if (majorPublisher.containsMatchIn(searchable)) return 0
             val independentPublishers = listOf(
