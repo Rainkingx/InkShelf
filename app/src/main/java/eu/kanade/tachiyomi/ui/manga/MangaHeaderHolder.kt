@@ -21,6 +21,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.drawable.toDrawable
+import androidx.core.text.HtmlCompat
 import androidx.core.text.buildSpannedString
 import androidx.core.text.color
 import androidx.core.text.inSpans
@@ -32,7 +33,9 @@ import androidx.core.view.updateLayoutParams
 import androidx.core.widget.TextViewCompat
 import androidx.transition.TransitionSet
 import androidx.vectordrawable.graphics.drawable.AnimatedVectorDrawableCompat
+import coil.Coil
 import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonGroup
 import com.google.android.material.chip.Chip
@@ -97,6 +100,7 @@ class MangaHeaderHolder(
     var hadSelection = false
     private var canCollapse = true
     private var forceFavoriteButtonResize = false
+    private var coverRequestVersion = 0
 
     init {
 
@@ -313,25 +317,39 @@ class MangaHeaderHolder(
                 }
             }.build()
 
+    private fun currentIssueMetadata(): InkShelfIssueMetadata.Details =
+        InkShelfIssueMetadata.from(adapter.delegate.mangaPresenter().getNextUnreadChapter()?.chapter)
+
     private fun setDescription() {
-        if (binding != null) {
-            val desc =
-                adapter.controller
-                    .mangaPresenter()
-                    .manga.description
-            binding.mangaSummary.text =
-                when {
-                    desc.isNullOrBlank() -> itemView.context.getString(R.string.no_description)
-                    binding.mangaSummary.maxLines != Int.MAX_VALUE ->
-                        desc
-                            .replace(Regex("\\s+", setOf(RegexOption.MULTILINE)), " ")
-                            .trim()
-                    else -> markwon().toMarkdown(desc.trim())
+        val details = binding ?: return
+        val seriesDescription = adapter.controller.mangaPresenter().manga.description
+        val issueSynopsis =
+            if (InkShelfIssueMetadata.missingSynopsis(seriesDescription)) currentIssueMetadata().synopsis else null
+        val description =
+            if (InkShelfIssueMetadata.missingSynopsis(seriesDescription)) issueSynopsis else seriesDescription
+
+        // Some Western comic sources return HTML instead of Markdown. Convert known HTML
+        // formatting to readable text without leaking raw tags into the synopsis.
+        val cleanDescription =
+            description?.let { value ->
+                if (Regex("<(?:p|br|div|ul|ol|li|strong|em|b|i)\\b", RegexOption.IGNORE_CASE).containsMatchIn(value)) {
+                    HtmlCompat.fromHtml(value, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
+                } else {
+                    value.trim()
                 }
-            // setTextIsSelectable() resets the movement method, so it must be re-applied
-            // after every text/selectable change or link taps fall through to the row click.
-            binding.mangaSummary.movementMethod = LinkMovementMethod.getInstance()
-        }
+            }
+
+        details.mangaSummary.text =
+            when {
+                cleanDescription.isNullOrBlank() -> itemView.context.getString(R.string.inkshelf_synopsis_unavailable)
+                details.mangaSummary.maxLines != Int.MAX_VALUE ->
+                    cleanDescription
+                        .replace(Regex("\\s+"), " ")
+                        .trim()
+                else -> markwon().toMarkdown(cleanDescription)
+            }
+        // Text selection resets the movement method; restore it for links.
+        details.mangaSummary.movementMethod = LinkMovementMethod.getInstance()
     }
 
     fun bindChapters() {
@@ -424,10 +442,14 @@ class MangaHeaderHolder(
             }
         }
         binding.mangaSummaryLabel.text =
-            itemView.context.getString(
-                R.string.about_this_,
-                manga.seriesType(itemView.context),
-            )
+            if (InkShelfIssueMetadata.missingSynopsis(manga.description) && currentIssueMetadata().synopsis != null) {
+                itemView.context.getString(R.string.inkshelf_about_current_issue)
+            } else {
+                itemView.context.getString(
+                    R.string.about_this_,
+                    manga.seriesType(itemView.context),
+                )
+            }
         with(binding.favoriteButton) {
             icon =
                 ContextCompat.getDrawable(
@@ -917,6 +939,9 @@ class MangaHeaderHolder(
         binding ?: return
         if (!manga.initialized) return
         val drawable = adapter.controller.binding.mangaCoverFull.drawable
+        val issueCoverUrl = currentIssueMetadata().coverUrl
+        // A version guard stops a slower issue-cover request from updating a recycled holder.
+        val requestVersion = ++coverRequestVersion
         // mangaCover and backdrop show the same cover, decoded once and applied to both together
         // instead of two separate requests finishing at two separate, unsynced moments.
         binding.mangaCover.loadManga(
@@ -941,11 +966,31 @@ class MangaHeaderHolder(
                         override fun onSuccess(result: Drawable) {
                             super.onSuccess(result)
                             setBackdrop(result)
+                            if (issueCoverUrl != null) {
+                                loadIssueBackdrop(issueCoverUrl, requestVersion)
+                            }
                         }
                     },
                 )
             },
         )
+    }
+
+    /**
+     * Only use explicit issue artwork supplied by the extension. The main cover and cover
+     * zoom retain the series art, while the blurred hero can reflect the current issue.
+     */
+    private fun loadIssueBackdrop(url: String, version: Int) {
+        val request =
+            ImageRequest.Builder(itemView.context)
+                .data(url)
+                .target(
+                    onSuccess = { drawable ->
+                        if (version == coverRequestVersion) setBackdrop(drawable)
+                    },
+                )
+                .build()
+        Coil.imageLoader(itemView.context).enqueue(request)
     }
 
     private fun setBackdrop(drawable: Drawable) {
