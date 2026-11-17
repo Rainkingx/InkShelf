@@ -16,6 +16,8 @@ import eu.kanade.tachiyomi.data.image.coil.loadManga
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.databinding.ChaptersItemBinding
 import eu.kanade.tachiyomi.ui.manga.InkShelfIssueMetadata
+import eu.kanade.tachiyomi.ui.manga.InkShelfComicIssueGaps
+import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
 import eu.kanade.tachiyomi.ui.manga.MangaDetailsAdapter
 import eu.kanade.tachiyomi.util.chapter.ChapterUtil
 import eu.kanade.tachiyomi.util.chapter.ChapterUtil.Companion.preferredChapterName
@@ -31,6 +33,7 @@ class ChapterHolder(
 ) : BaseChapterHolder(view, adapter) {
     private val binding = ChaptersItemBinding.bind(view)
     private var localSource = false
+    private var boundChapterKey: String? = null
 
     init {
         binding.downloadButton.downloadButton.setOnLongClickListener {
@@ -51,11 +54,27 @@ class ChapterHolder(
         itemView.transitionName = "details chapter ${chapter.id ?: 0L} transition"
         val issueMetadata = InkShelfIssueMetadata.from(chapter)
         val issueCoverUrl = issueMetadata.coverUrl
+        val chapterKey = "${manga.source}|${chapter.id ?: chapter.url}"
+        boundChapterKey = chapterKey
         if (issueCoverUrl == null) {
+            // Instant original cover while waiting for optional, confirmed Metron art.
             binding.issueCover.loadManga(manga)
+            if (manga.seriesType(sourceManager = adapter.presenter.sourceManager) == Manga.TYPE_COMIC) {
+                InkShelfComicIssueGaps.issueNumber(chapter)?.let { number ->
+                    InkShelfMetronCovers.requestIssueCover(itemView.context, manga, number) { metronUrl ->
+                        // RecyclerView holders are recycled while the request is running.
+                        if (boundChapterKey == chapterKey) {
+                            binding.issueCover.load(metronUrl) {
+                                listener(onError = { _, _ ->
+                                    if (boundChapterKey == chapterKey) binding.issueCover.loadManga(manga)
+                                })
+                            }
+                        }
+                    }
+                }
+            }
         } else {
-            // Real per-issue artwork is optional. If a URL fails, retain a genuine
-            // series cover, never a guessed cover or the first reading page.
+            // Real per-issue artwork supplied directly by the extension takes precedence.
             binding.issueCover.load(issueCoverUrl) {
                 listener(onError = { _, _ -> binding.issueCover.loadManga(manga) })
             }
