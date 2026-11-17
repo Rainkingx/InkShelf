@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.manga
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import coil.Coil
@@ -142,11 +143,52 @@ class MangaDetailsPresenter(
             setTrackItems()
         }
         refreshTracking(false)
+        refreshMissingSynopsisIfNeeded()
         if (!downloadManager.isCacheInitialized) {
             presenterScope.launch {
                 downloadManager.awaitDownloadCacheReady()
                 setDownloadedChapters(chapters)
                 withContext(Dispatchers.Main) { view?.updateChapters(chapters) }
+            }
+        }
+    }
+
+    /**
+     * Retry genuinely missing descriptions from the existing extension at most once per
+     * comic per week. Only updates the synopsis: never overwrite user-edited titles,
+     * cover artwork, reading progress or the rest of the source metadata.
+     *
+     * A failed or empty response is cached too, so sources aren't hammered each time
+     * the Details screen opens.
+     */
+    private fun refreshMissingSynopsisIfNeeded() {
+        if (!manga.initialized ||
+            manga.isLocal() ||
+            isLockedFromSearch ||
+            view?.isNotOnline() == true ||
+            !InkShelfIssueMetadata.missingSynopsis(manga.description)
+        ) {
+            return
+        }
+        val id = manga.id ?: return
+        val cache = preferences.context.getSharedPreferences("inkshelf_synopsis_attempts", Context.MODE_PRIVATE)
+        val key = "source_${source.id}_comic_$id"
+        val now = System.currentTimeMillis()
+        val lastAttempt = cache.getLong(key, 0L)
+        if (lastAttempt > 0 && now - lastAttempt < 7L * 24 * 60 * 60 * 1000) return
+        cache.edit().putLong(key, now).apply()
+
+        presenterScope.launch {
+            val synopsis =
+                withContext(Dispatchers.IO) {
+                    runCatching { source.getMangaDetails(manga.copy()).description }.getOrNull()
+                }?.takeUnless { InkShelfIssueMetadata.missingSynopsis(it) }
+            if (synopsis != null && InkShelfIssueMetadata.missingSynopsis(manga.description)) {
+                manga.description = synopsis
+                withContext(Dispatchers.IO) {
+                    db.updateMangaInfo(manga).executeAsBlocking()
+                }
+                view?.updateHeader()
             }
         }
     }
