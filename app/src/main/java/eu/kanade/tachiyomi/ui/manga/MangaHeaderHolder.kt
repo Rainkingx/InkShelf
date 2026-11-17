@@ -213,11 +213,13 @@ class MangaHeaderHolder(
 
     private fun applyBlur() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            binding?.backdrop?.alpha = 0.2f
+            // Keep cover artwork recognisable while preserving contrast behind the title.
+            // The layout's gradient still darkens the bottom of the hero.
+            binding?.backdrop?.alpha = 0.24f
             binding?.backdrop?.setRenderEffect(
                 RenderEffect.createBlurEffect(
-                    20f,
-                    20f,
+                    14f,
+                    14f,
                     Shader.TileMode.MIRROR,
                 ),
             )
