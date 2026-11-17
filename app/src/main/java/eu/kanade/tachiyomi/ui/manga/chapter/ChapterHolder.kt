@@ -49,7 +49,8 @@ class ChapterHolder(
         val chapter = item.chapter
         val isLocked = item.isLocked
         itemView.transitionName = "details chapter ${chapter.id ?: 0L} transition"
-        val issueCoverUrl = InkShelfIssueMetadata.from(chapter).coverUrl
+        val issueMetadata = InkShelfIssueMetadata.from(chapter)
+        val issueCoverUrl = issueMetadata.coverUrl
         if (issueCoverUrl == null) {
             binding.issueCover.loadManga(manga)
         } else {
@@ -66,6 +67,7 @@ class ChapterHolder(
         localSource = manga.isLocal()
 
         val accent = adapter.delegate.themeColors().accent
+        binding.issueArtCard.strokeColor = accent ?: itemView.context.getResourceColor(R.attr.colorOutlineVariant)
         ChapterUtil.setTextViewForChapter(binding.chapterTitle, item, hideStatus = isLocked, accent = accent)
 
         val statuses = mutableListOf<String>()
@@ -87,6 +89,19 @@ class ChapterHolder(
                 itemView.context.getString(
                     R.string.page_,
                     chapter.last_page_read + 1,
+                ),
+            )
+        }
+
+        if (chapter.read && !isLocked) {
+            statuses.add(itemView.context.getString(R.string.read))
+        } else if (!showPagesLeft && !isLocked && issueMetadata.pageCount != null) {
+            // Page totals appear only when supplied explicitly by the source.
+            statuses.add(
+                itemView.resources.getQuantityString(
+                    R.plurals.pages_plural,
+                    issueMetadata.pageCount,
+                    issueMetadata.pageCount,
                 ),
             )
         }
