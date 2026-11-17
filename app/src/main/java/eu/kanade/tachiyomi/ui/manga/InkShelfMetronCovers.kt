@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -149,7 +150,7 @@ internal object InkShelfMetronCovers {
             }
             pages++
             val next = body.optString("next").takeIf { it.startsWith("https://metron.cloud/api/") }
-            nextUrl = next?.let { runCatching { HttpUrl.get(it) }.getOrNull() }
+            nextUrl = next?.toHttpUrlOrNull()
         }
         return covers
     }
@@ -180,7 +181,7 @@ internal object InkShelfMetronCovers {
     private fun endpoint(vararg parts: String): HttpUrl {
         val builder = HttpUrl.Builder().scheme("https").host("metron.cloud")
             .addPathSegment("api")
-        parts.forEach(builder::addPathSegment)
+        parts.forEach { builder.addPathSegment(it) }
         return builder.addPathSegment("").build()
     }
 
