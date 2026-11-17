@@ -161,6 +161,8 @@ class MangaHeaderHolder(
 
             webviewButton.setOnClickListener { adapter.delegate.openInWebView() }
             shareButton.setOnClickListener { adapter.delegate.prepareToShareManga() }
+            headerDownloadButton.setOnClickListener { adapter.delegate.showHeaderDownloadMenu(it) }
+            headerMoreButton.setOnClickListener { adapter.delegate.showHeaderMoreMenu(it) }
             favoriteButton.setOnClickListener {
                 adapter.delegate.favoriteManga(false)
             }
@@ -466,26 +468,29 @@ class MangaHeaderHolder(
                     itemView.context,
                     when {
                         item.isLocked -> R.drawable.ic_lock_24dp
-                        manga.favorite -> R.drawable.ic_heart_24dp
-                        else -> R.drawable.ic_heart_outline_24dp
+                        else -> R.drawable.ic_book_24dp
                     },
                 )
-            text =
+            val labelRes =
+                when {
+                    item.isLocked -> R.string.unlock
+                    manga.favorite -> R.string.in_library
+                    else -> R.string.add_to_library
+                }
+            // Circle stays icon-only; the label is placed below it.
+            contentDescription = itemView.resources.getString(labelRes)
+            binding.favoriteActionLabel.text =
                 itemView.resources.getString(
                     when {
                         item.isLocked -> R.string.unlock
                         manga.favorite -> R.string.in_library
-                        else -> R.string.add_to_library
+                        else -> R.string.inkshelf_action_add
                     },
                 )
+            text = ""
             isChecked = !item.isLocked && manga.favorite
             adapter.delegate.setFavButtonPopup(this)
-            // MaterialButtonGroup locks the button's width on first pass, so resetting the width
-            // forces a readjustment
-            if (forceFavoriteButtonResize) {
-                forceFavoriteButtonResize = false
-                updateLayoutParams<ViewGroup.LayoutParams> { width = ViewGroup.LayoutParams.WRAP_CONTENT }
-            }
+            forceFavoriteButtonResize = false
         }
         binding.trueBackdrop.setBackgroundColor(
             adapter.delegate.themeColors().cover
@@ -497,7 +502,8 @@ class MangaHeaderHolder(
         val tracked = presenter.isTracked() && !item.isLocked
 
         with(binding.trackButton) {
-            isVisible = presenter.hasTrackers()
+            // Tracking has moved to the More popup; preserve the model/control binding.
+            isVisible = false
             text =
                 itemView.context.getString(
                     if (tracked) {
@@ -585,10 +591,9 @@ class MangaHeaderHolder(
 
         binding.filtersText.text = presenter.currentFilters()
 
-        if (manga.isLocal()) {
-            (binding.buttonLayout as ViewGroup).removeView(binding.webviewButton)
-            binding.buttonLayout.removeView(binding.shareButton)
-        }
+        binding.webviewButton.isVisible = false
+        binding.shareActionItem.isVisible = !manga.isLocal()
+        binding.downloadActionItem.isVisible = !manga.isLocal() && !item.isLocked
 
         if (!manga.initialized) return
         updateCover(manga)
@@ -800,11 +805,9 @@ class MangaHeaderHolder(
                     ),
                     contrastingTextColor(accentColor),
                 )
-            val overflowButton =
-                buttonLayout
-                    .children
-                    .first { it.tag == MaterialButtonGroup.OVERFLOW_BUTTON_TAG } as? MaterialButton
-            overflowButton ?.iconTint = ColorStateList.valueOf(accentColor)
+            // Each new icon is a real action, not an overflow button.
+            headerDownloadButton.iconTint = ColorStateList.valueOf(accentColor)
+            headerMoreButton.iconTint = ColorStateList.valueOf(accentColor)
             startReadingButton.setTextColor(ColorStateList(states, textColors))
             baseWebviewIconColor?.let { webviewButton.iconTint = ColorStateList.valueOf(it.hueShiftedTo(accentColor)) }
             baseShareIconColor?.let { shareButton.iconTint = ColorStateList.valueOf(it.hueShiftedTo(accentColor)) }
@@ -823,10 +826,12 @@ class MangaHeaderHolder(
             // would be redundant there - only the icon-only buttons keep it in every state.
             val checkableOutline = ColorStateList(checkedStates, intArrayOf(Color.TRANSPARENT, buttonOutlineColor))
             val outlineColorList = ColorStateList.valueOf(buttonOutlineColor)
-            favoriteButton.strokeColor = checkableOutline
+            favoriteButton.strokeColor = outlineColorList
             trackButton.strokeColor = checkableOutline
             webviewButton.strokeColor = outlineColorList
             shareButton.strokeColor = outlineColorList
+            headerDownloadButton.strokeColor = outlineColorList
+            headerMoreButton.strokeColor = outlineColorList
 
             val onBGHsl = FloatArray(3)
             val accentHsl = FloatArray(3)
