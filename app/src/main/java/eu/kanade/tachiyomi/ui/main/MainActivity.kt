@@ -2048,9 +2048,24 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
         binding.inkshelfHeaderArt.imageAlpha = 255
     }
 
+    /** Home uses a shorter masthead; existing Library/Discover header sizes stay unchanged. */
+    private fun inkShelfHeaderHeightFor(controller: Controller?): Int =
+        resources.getDimensionPixelSize(
+            if (controller is HomeController) R.dimen.inkshelf_home_header_height
+            else R.dimen.inkshelf_header_art_height,
+        )
+
     private fun applyInkShelfMainTitleTreatment(controller: Controller?) {
         if (ownsInkShelfHeader(controller)) {
             applyInkShelfHeaderAppearance()
+        }
+
+        // The bitmap header and legacy title spacer must agree in height, or
+        // Home gets a large blank strip while other root pages are unaffected.
+        val artHeight = inkShelfHeaderHeightFor(controller)
+        binding.inkshelfHeaderContainer.minimumHeight = artHeight
+        binding.inkshelfHeaderContainer.updateLayoutParams<ViewGroup.LayoutParams> {
+            height = artHeight
         }
 
         val isRootLibrary = controller is LibraryController && !controller.isSubClass
@@ -2125,7 +2140,7 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
             // keeps exactly the same positioning logic as v12.35 instead of being pushed away.
             binding.bigTitle.isVisible = true
             binding.bigTitle.alpha = 0f
-            val inkShelfHeaderHeight = resources.getDimensionPixelSize(R.dimen.inkshelf_header_min_height)
+            val inkShelfHeaderHeight = inkShelfHeaderHeightFor(controller)
             binding.bigTitle.minimumHeight = inkShelfHeaderHeight
             binding.bigTitle.updateLayoutParams<ViewGroup.LayoutParams> {
                 height = inkShelfHeaderHeight
@@ -2208,7 +2223,7 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
             // insets remain on the proven v12.35 path. The visible title is our InkShelf masthead.
             binding.bigTitle.isVisible = true
             binding.bigTitle.alpha = 0f
-            val inkShelfHeaderHeight = resources.getDimensionPixelSize(R.dimen.inkshelf_header_min_height)
+            val inkShelfHeaderHeight = inkShelfHeaderHeightFor(to)
             binding.bigTitle.minimumHeight = inkShelfHeaderHeight
             binding.bigTitle.updateLayoutParams<ViewGroup.LayoutParams> {
                 height = inkShelfHeaderHeight
