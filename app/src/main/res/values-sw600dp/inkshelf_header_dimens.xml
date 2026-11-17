@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="inkshelf_header_min_height">200dp</dimen>
+    <dimen name="inkshelf_home_header_height">144dp</dimen>
     <dimen name="inkshelf_header_art_height">200dp</dimen>
     <dimen name="inkshelf_brand_top_margin">18dp</dimen>
     <dimen name="inkshelf_brand_bottom_margin">14dp</dimen>
