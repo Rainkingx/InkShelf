@@ -6,6 +6,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.ItemTouchHelper
 import eu.davidea.flexibleadapter.items.IFlexible
 import eu.kanade.tachiyomi.R
+import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.ui.manga.chapter.BaseChapterAdapter
 import eu.kanade.tachiyomi.ui.manga.chapter.ChapterItem
@@ -71,6 +72,9 @@ class MangaDetailsAdapter(
 
     private fun insertMissingChapterItems(chapters: List<ChapterItem>): List<IFlexible<*>> {
         if (chapters.size < 2 || !preferences.showChapterMissingWarnings().get()) return chapters
+        if (presenter.manga.seriesType(sourceManager = presenter.sourceManager) == Manga.TYPE_COMIC) {
+            return insertMissingComicIssues(chapters)
+        }
 
         val descending = presenter.sortDescending()
         val result = ArrayList<IFlexible<*>>(chapters.size + 1)
@@ -104,6 +108,37 @@ class MangaDetailsAdapter(
         if (missingFromStart > 0) {
             val startItem = MissingChaptersItem("start-${oldestChapter.chapter.id}", missingFromStart, 1, missingFromStart)
             if (descending) result.add(startItem) else result.add(0, startItem)
+        }
+        return result
+    }
+
+    /**
+     * Western comic annuals and specials may be numbered by their publication year.
+     * Ignore those entries for gaps while keeping them visible in the issue list.
+     * Never infer unlisted issues before the first available issue of a run.
+     */
+    private fun insertMissingComicIssues(chapters: List<ChapterItem>): List<IFlexible<*>> {
+        val descending = presenter.sortDescending()
+        val result = ArrayList<IFlexible<*>>(chapters.size + 2)
+        var previousNumbered: ChapterItem? = null
+
+        for (current in chapters) {
+            if (InkShelfComicIssueGaps.issueNumber(current.chapter) != null) {
+                val earlier = previousNumbered
+                if (earlier != null) {
+                    val (higher, lower) = if (descending) earlier to current else current to earlier
+                    val gap = InkShelfComicIssueGaps.gap(lower.chapter, higher.chapter)
+                    if (gap > 0) {
+                        val start = InkShelfComicIssueGaps.issueNumber(lower.chapter)!! + 1
+                        val end = InkShelfComicIssueGaps.issueNumber(higher.chapter)!! - 1
+                        result.add(
+                            MissingChaptersItem("comic-${lower.chapter.id}-${higher.chapter.id}", gap, start, end),
+                        )
+                    }
+                }
+                previousNumbered = current
+            }
+            result.add(current)
         }
         return result
     }
