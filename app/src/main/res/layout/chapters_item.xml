@@ -49,39 +49,64 @@
         android:id="@+id/front_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:minHeight="82dp"
         app:layout_constraintBottom_toBottomOf="parent"
         android:background="@drawable/transparent_item_selector"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
+        <!-- Issue art: real issue image when the source supplies one, otherwise series art. -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/issue_art_card"
+            android:layout_width="84dp"
+            android:layout_height="62dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/modern_library_outline_variant"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+            <ImageView
+                android:id="@+id/issue_cover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/cover_of_image"
+                android:scaleType="centerCrop"
+                tools:src="@mipmap/ic_launcher" />
+        </com.google.android.material.card.MaterialCardView>
+
         <TextView
             android:id="@+id/chapter_title"
             style="?textAppearanceBodyMedium"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="12dp"
             android:layout_marginTop="12dp"
             android:ellipsize="end"
             android:maxLines="2"
             app:layout_constraintBottom_toTopOf="@id/chapter_scanlator"
             app:layout_constraintEnd_toStartOf="@id/download_button"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@id/issue_art_card"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="Chapter 123 - The Real One" />
+            tools:text="Issue #3 - The Real One" />
 
         <TextView
             android:id="@+id/chapter_scanlator"
             style="?textAppearanceBodySmall"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="12dp"
             android:layout_marginBottom="12dp"
             android:ellipsize="end"
             android:maxLines="1"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/download_button"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@id/issue_art_card"
             app:layout_constraintTop_toBottomOf="@+id/chapter_title"
             tools:text="3 days ago • On page 45 • Scanlator" />
 
