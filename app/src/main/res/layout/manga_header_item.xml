@@ -67,7 +67,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="12dp"
         android:maxHeight="240dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="12dp"
         app:layout_constraintWidth_max="156dp"
         app:layout_constraintWidth_min="92dp"
         app:layout_constraintWidth_percent="0.38"
@@ -174,7 +174,7 @@
         app:overflowMode="menu"
         android:spacing="4dp"
         app:layout_constraintWidth_default="wrap"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="8dp"
         android:orientation="horizontal"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
@@ -196,7 +196,7 @@
             android:id="@+id/track_button"
             style="@style/Widget.Tachiyomi.Button.OutlinedButton.Icon"
             android:text="@string/tracking"
-            android:layout_marginEnd="20dp"
+            android:layout_marginEnd="8dp"
             app:icon="@drawable/ic_sync_24dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -206,6 +206,8 @@
             app:iconGravity="textStart"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:minHeight="48dp"
+            android:minWidth="48dp"
             android:contentDescription="@string/open_in_webview"
             app:icon="@drawable/ic_open_in_webview_24dp"
             android:tooltipText="@string/open_in_webview" />
@@ -216,6 +218,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:minHeight="48dp"
+            android:minWidth="48dp"
             android:contentDescription="@string/share"
             app:icon="@drawable/ic_share_24dp"
             android:tooltipText="@string/share" />
@@ -364,7 +368,7 @@
         app:backgroundTint="@color/modern_library_primary"
         app:cornerRadius="16dp"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
         android:text="@string/start_reading"
         app:layout_constraintBottom_toTopOf="@id/button_layout"
