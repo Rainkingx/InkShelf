@@ -105,6 +105,7 @@ import eu.kanade.tachiyomi.ui.base.SmallToolbarInterface
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.base.controller.BaseController
 import eu.kanade.tachiyomi.ui.base.controller.DialogController
+import eu.kanade.tachiyomi.ui.home.HomeController
 import eu.kanade.tachiyomi.ui.library.LibraryController
 import eu.kanade.tachiyomi.ui.manga.MangaDetailsController
 import eu.kanade.tachiyomi.ui.more.AboutController
@@ -583,6 +584,7 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
         if (router.hasRootController()) {
             nav.selectedItemId =
                 when (router.backstack.firstOrNull()?.controller) {
+                    is HomeController -> R.id.nav_home
                     is RecentsController -> R.id.nav_recents
                     is BrowseController -> R.id.nav_browse
                     else -> R.id.nav_library
@@ -679,6 +681,7 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
             if (currentRoot?.tag()?.toIntOrNull() != id) {
                 setRoot(
                     when (id) {
+                        R.id.nav_home -> HomeController()
                         R.id.nav_library -> LibraryController()
                         R.id.nav_recents -> RecentsController(launchWithType = RecentsViewType.Updates)
                         else -> BrowseController()
@@ -1033,6 +1036,7 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
     @IdRes
     private fun currentTabId(): Int =
         when (router.backstack.firstOrNull()?.controller) {
+            is HomeController -> R.id.nav_home
             is RecentsController -> R.id.nav_recents
             is BrowseController -> R.id.nav_browse
             else -> R.id.nav_library
@@ -1676,6 +1680,7 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
     @IdRes
     private fun startingTab(): Int =
         when (preferences.startingTab().get()) {
+            -4 -> R.id.nav_home
             0, -1, 1, -2 -> R.id.nav_library
             -3 -> R.id.nav_browse
             else -> R.id.nav_library
@@ -1881,6 +1886,13 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
 
     fun openDiscoverAfterInkShelfSetup() {
         nav.selectedItemId = R.id.nav_browse
+    }
+
+    /** A tab-safe entry point for the new InkShelf Home and its shelf shortcuts. */
+    fun openInkShelfTab(tabId: Int) {
+        if (tabId == R.id.nav_home || tabId == R.id.nav_library || tabId == R.id.nav_browse) {
+            nav.selectedItemId = tabId
+        }
     }
 
     fun showSettings() {
