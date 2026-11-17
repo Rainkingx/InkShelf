@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Darken the title side of the full-bleed comic artwork, not the cover side.
+     The separately generated vertical fade blends the artwork into the user's theme. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="0"
+        android:startColor="#08000000"
+        android:centerColor="#46000000"
+        android:endColor="#B0000000" />
+</shape>
