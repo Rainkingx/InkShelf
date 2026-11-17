@@ -22,7 +22,7 @@
         android:id="@+id/backdrop"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:alpha="0.38"
+        android:alpha="0.76"
         android:scaleType="centerCrop"
         app:layout_constraintBottom_toBottomOf="@+id/true_backdrop"
         app:layout_constraintEnd_toEndOf="parent"
@@ -60,8 +60,8 @@
         android:id="@+id/cover_card"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        app:strokeWidth="1dp"
-        app:strokeColor="@color/modern_library_outline"
+        app:strokeWidth="2dp"
+        app:strokeColor="@color/modern_library_primary"
         app:cardCornerRadius="14dp"
         app:cardElevation="8dp"
         android:layout_marginStart="16dp"
@@ -157,6 +157,19 @@
         app:layout_constraintTop_toBottomOf="@id/manga_status"
         tools:text="Mangadex (EN)" />
 
+    <!-- Publisher belongs with the comic identity, not underneath its synopsis. -->
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/publisher_tags"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="16dp"
+        android:visibility="gone"
+        app:singleLine="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@id/title"
+        app:layout_constraintTop_toBottomOf="@id/manga_source" />
+
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/bottom_line"
         android:layout_width="wrap_content"
@@ -164,7 +177,7 @@
         android:layout_margin="6dp"
         android:orientation="horizontal"
         app:barrierDirection="bottom"
-        app:constraint_referenced_ids="manga_source,cover_card" />
+        app:constraint_referenced_ids="manga_source,publisher_tags,cover_card" />
 
     <com.google.android.material.button.MaterialButtonGroup
         android:id="@+id/button_layout"
