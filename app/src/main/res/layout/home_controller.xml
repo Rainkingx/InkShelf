@@ -20,7 +20,7 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/home_hero_card"
             android:layout_width="match_parent"
-            android:layout_height="328dp"
+            android:layout_height="356dp"
             app:cardCornerRadius="22dp"
             app:cardElevation="0dp"
             app:strokeColor="?attr/colorOutlineVariant"
@@ -36,7 +36,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
-                    android:alpha="0.86"
+                    android:alpha="1"
                     android:contentDescription="@string/cover_of_image" />
 
                 <View
@@ -52,13 +52,13 @@
                     android:orientation="vertical"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
-                    android:paddingBottom="18dp">
+                    android:paddingBottom="20dp">
 
                     <TextView
                         android:id="@+id/home_theme_kicker"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="DAILY COMICS"
+                        android:text="THE COMIC PICK OF THE DAY"
                         android:textColor="#E7C5FF"
                         android:textStyle="bold"
                         android:letterSpacing="0.15"
@@ -68,25 +68,53 @@
                         android:id="@+id/home_theme_title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="4dp"
                         android:maxLines="2"
                         android:fontFamily="sans-serif-condensed"
-                        android:text="MUTANT MONDAY"
+                        android:text="MUTANT"
                         android:textColor="#FFFFFFFF"
-                        android:shadowColor="#CC000000"
+                        android:shadowColor="#EE000000"
+                        android:shadowDx="2"
+                        android:shadowDy="3"
                         android:shadowRadius="8"
-                        android:textStyle="bold"
-                        android:textSize="34sp" />
+                        android:rotation="-3"
+                        android:textStyle="bold|italic"
+                        android:textSize="43sp" />
+
+                    <TextView
+                        android:id="@+id/home_theme_accent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="-8dp"
+                        android:layout_marginStart="10dp"
+                        android:fontFamily="sans-serif-condensed"
+                        android:text="MONDAY"
+                        android:textColor="#FFD524"
+                        android:shadowColor="#D5000000"
+                        android:shadowDx="2"
+                        android:shadowDy="3"
+                        android:shadowRadius="8"
+                        android:rotation="-3"
+                        android:textStyle="bold|italic"
+                        android:textSize="47sp"
+                        android:maxLines="1"
+                        android:autoSizeTextType="uniform"
+                        android:autoSizeMinTextSize="29sp"
+                        android:autoSizeMaxTextSize="47sp"
+                        android:autoSizeStepGranularity="1sp" />
 
                     <TextView
                         android:id="@+id/home_theme_subtitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="12dp"
                         android:maxLines="2"
-                        android:text="Three comics to explore today"
-                        android:textColor="#E9E6F0"
-                        android:textSize="13sp" />
+                        android:text="3 PICKS  •  New &amp; Trending  •  For You"
+                        android:textColor="#F9F4FF"
+                        android:textStyle="bold"
+                        android:shadowColor="#D5000000"
+                        android:shadowRadius="4"
+                        android:textSize="12sp" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -99,11 +127,12 @@
                             android:layout_width="0dp"
                             android:layout_height="44dp"
                             android:layout_weight="1"
-                            android:text="Explore pick"
+                            android:text="▶  Read Now"
+                            android:textStyle="bold"
                             android:textAllCaps="false"
-                            app:backgroundTint="?attr/colorPrimary"
-                            android:textColor="?attr/colorOnPrimary"
-                            app:cornerRadius="14dp" />
+                            app:backgroundTint="#B93EF2"
+                            android:textColor="#FFFFFFFF"
+                            app:cornerRadius="28dp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/home_browse_button"
@@ -112,10 +141,13 @@
                             android:layout_height="44dp"
                             android:layout_weight="1"
                             android:layout_marginStart="10dp"
-                            android:text="Discover"
+                            android:text="+  Save"
+                            android:textStyle="bold"
                             android:textColor="#FFFFFFFF"
                             android:textAllCaps="false"
-                            app:cornerRadius="14dp" />
+                            app:strokeColor="#B973E5"
+                            app:strokeWidth="1dp"
+                            app:cornerRadius="28dp" />
                     </LinearLayout>
                 </LinearLayout>
 
