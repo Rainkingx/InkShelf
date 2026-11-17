@@ -132,7 +132,7 @@ class MangaDetailsAdapter(
                         val start = InkShelfComicIssueGaps.issueNumber(lower.chapter)!! + 1
                         val end = InkShelfComicIssueGaps.issueNumber(higher.chapter)!! - 1
                         result.add(
-                            MissingChaptersItem("comic-${lower.chapter.id}-${higher.chapter.id}", gap, start, end),
+                            MissingChaptersItem("comic-${lower.chapter.id}-${higher.chapter.id}", gap, start, end, comic = true),
                         )
                     }
                 }
@@ -202,7 +202,10 @@ class MangaDetailsAdapter(
             } else {
                 "${item.startChapter}-${item.endChapter}"
             }
-        return recyclerView.context.getString(R.string.missing_chapters_range, range)
+        return recyclerView.context.getString(
+            if (item.comic) R.string.inkshelf_missing_issues_range else R.string.missing_chapters_range,
+            range,
+        )
     }
 
     private fun getChapterName(item: ChapterItem): String =
