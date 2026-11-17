@@ -129,8 +129,8 @@ class MangaDetailsAdapter(
                     val (higher, lower) = if (descending) earlier to current else current to earlier
                     val gap = InkShelfComicIssueGaps.gap(lower.chapter, higher.chapter)
                     if (gap > 0) {
-                        val start = InkShelfComicIssueGaps.issueNumber(lower.chapter)!! + 1
-                        val end = InkShelfComicIssueGaps.issueNumber(higher.chapter)!! - 1
+                        val start = InkShelfComicIssueGaps.coveredNumbers(lower.chapter).max() + 1
+                        val end = InkShelfComicIssueGaps.coveredNumbers(higher.chapter).min() - 1
                         result.add(
                             MissingChaptersItem("comic-${lower.chapter.id}-${higher.chapter.id}", gap, start, end, comic = true),
                         )
