@@ -179,64 +179,184 @@
         app:barrierDirection="bottom"
         app:constraint_referenced_ids="manga_source,publisher_tags,cover_card" />
 
-    <com.google.android.material.button.MaterialButtonGroup
+    <!-- Four equal-sized circular actions, matching the premium comic mock-up. -->
+    <LinearLayout
         android:id="@+id/button_layout"
-        style="@style/Widget.Tachiyomi.MaterialButtonGroup"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        app:overflowMode="menu"
-        android:spacing="4dp"
-        app:layout_constraintWidth_default="wrap"
-        android:layout_marginTop="8dp"
-        android:orientation="horizontal"
+        android:layout_marginTop="10dp"
         android:layout_marginStart="16dp"
-        android:layout_marginEnd="8dp"
-        app:layout_constraintHorizontal_bias="0.0"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:baselineAligned="false"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/start_reading_button"
         app:layout_constraintBottom_toTopOf="@id/manga_summary_label"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/start_reading_button">
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/favorite_button"
-            style="@style/Widget.Tachiyomi.Button.OutlinedButton.Icon"
-            android:layout_marginEnd="4dp"
-            tools:checked="true"
-            android:text="@string/add_to_library"
-            app:icon="@drawable/ic_heart_outline_24dp" />
+        <LinearLayout
+            android:id="@+id/favorite_action_item"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/favorite_button"
+                style="@style/Widget.Tachiyomi.Button.IconButton.Outlined.Connected"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:minWidth="54dp"
+                android:minHeight="54dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:contentDescription="@string/add_to_library"
+                app:checkable="true"
+                app:cornerRadius="27dp"
+                app:icon="@drawable/ic_book_24dp"
+                app:iconSize="26dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/modern_library_outline" />
+
+            <TextView
+                android:id="@+id/favorite_action_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/in_library"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/download_action_item"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/header_download_button"
+                style="@style/Widget.Tachiyomi.Button.IconButton.Outlined.Connected"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:minWidth="54dp"
+                android:minHeight="54dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:contentDescription="@string/download"
+                app:cornerRadius="27dp"
+                app:icon="@drawable/ic_file_download_24dp"
+                app:iconSize="26dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/modern_library_outline" />
+
+            <TextView
+                android:id="@+id/download_action_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:singleLine="true"
+                android:text="@string/download"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/share_action_item"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/share_button"
+                style="@style/Widget.Tachiyomi.Button.IconButton.Outlined.Connected"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:minWidth="54dp"
+                android:minHeight="54dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:contentDescription="@string/share"
+                app:cornerRadius="27dp"
+                app:icon="@drawable/ic_share_24dp"
+                app:iconSize="26dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/modern_library_outline" />
+
+            <TextView
+                android:id="@+id/share_action_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:singleLine="true"
+                android:text="@string/share"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/more_action_item"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/header_more_button"
+                style="@style/Widget.Tachiyomi.Button.IconButton.Outlined.Connected"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:minWidth="54dp"
+                android:minHeight="54dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:contentDescription="@string/more"
+                app:cornerRadius="27dp"
+                app:icon="@drawable/ic_more_horiz_24dp"
+                app:iconSize="26dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/modern_library_outline" />
+
+            <TextView
+                android:id="@+id/more_action_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:singleLine="true"
+                android:text="@string/more"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Keep the legacy controls bound for existing tracking/theming code.
+             Their actions are now available in the labelled More menu. -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/track_button"
             style="@style/Widget.Tachiyomi.Button.OutlinedButton.Icon"
-            android:text="@string/tracking"
-            android:layout_marginEnd="8dp"
-            app:icon="@drawable/ic_sync_24dp" />
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/webview_button"
             style="@style/Widget.Tachiyomi.Button.IconButton.Outlined.Connected"
-            android:layout_width="wrap_content"
-            app:iconGravity="textStart"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:minHeight="48dp"
-            android:minWidth="48dp"
-            android:contentDescription="@string/open_in_webview"
-            app:icon="@drawable/ic_open_in_webview_24dp"
-            android:tooltipText="@string/open_in_webview" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/share_button"
-            style="@style/Widget.Tachiyomi.Button.IconButton.Outlined.Connected"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:minHeight="48dp"
-            android:minWidth="48dp"
-            android:contentDescription="@string/share"
-            app:icon="@drawable/ic_share_24dp"
-            android:tooltipText="@string/share" />
-    </com.google.android.material.button.MaterialButtonGroup>
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/manga_summary_label"
