@@ -200,7 +200,7 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
             val knownIndies = listOf(
                 "saga", "spawn", "invincible", "monstress", "radiant black",
                 "something is killing the children", "the walking dead",
-                "descender", "east of west", "paper girls", "hellboy",
+                "descender", "east of west", "paper girls", "hellboy", "the foundry",
                 "umbrella academy", "locke & key", "usagi yojimbo",
             )
             return when {
