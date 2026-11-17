@@ -2,14 +2,14 @@ package eu.kanade.tachiyomi.ui.manga
 
 import android.annotation.SuppressLint
 import android.content.res.ColorStateList
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.graphics.Typeface
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.util.TypedValue
 import android.text.method.LinkMovementMethod
 import android.text.style.StyleSpan
 import android.view.LayoutInflater
@@ -20,7 +20,6 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
-import androidx.core.graphics.drawable.toDrawable
 import androidx.core.text.HtmlCompat
 import androidx.core.text.buildSpannedString
 import androidx.core.text.color
@@ -423,6 +422,19 @@ class MangaHeaderHolder(
             return
         }
         binding.title.text = manga.title
+        // Full names should be readable, even when a long comic title sits beside the cover.
+        // Short names retain the larger, premium type from the original mock-up.
+        binding.title.setTextSize(
+            TypedValue.COMPLEX_UNIT_SP,
+            when {
+                manga.title.length > 75 -> 17f
+                manga.title.length > 50 -> 19f
+                manga.title.length > 32 -> 21f
+                else -> 24f
+            },
+        )
+        // A soft shadow protects the lettering on pale or high-contrast cover artwork.
+        binding.title.setShadowLayer(7f, 0f, 2f, Color.BLACK)
 
         setGenreTags(binding, manga)
 
@@ -748,7 +760,19 @@ class MangaHeaderHolder(
         val bgColor =
             adapter.delegate.themeColors().background
                 ?: itemView.context.getResourceColor(R.attr.background)
-        binding.backdropGradient.backgroundTintList = ColorStateList.valueOf(bgColor)
+        // The previous backgroundTintList flattened the drawable and obscured the art.
+        // Use a true transparent-to-theme gradient across the whole extended hero.
+        binding.backdropGradient.backgroundTintList = null
+        binding.backdropGradient.background =
+            GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(
+                    ColorUtils.setAlphaComponent(bgColor, 0),
+                    ColorUtils.setAlphaComponent(bgColor, 48),
+                    ColorUtils.setAlphaComponent(bgColor, 156),
+                    ColorUtils.setAlphaComponent(bgColor, 255),
+                ),
+            )
         binding.backdropFill.setBackgroundColor(bgColor)
         binding.moreBgGradient.backgroundTintList = ColorStateList.valueOf(bgColor)
         binding.moreBgSolid.setBackgroundColor(bgColor)
@@ -1020,17 +1044,10 @@ class MangaHeaderHolder(
     }
 
     private fun setBackdrop(drawable: Drawable) {
-        val bitmap = (drawable as? BitmapDrawable)?.bitmap
-        if (bitmap == null) {
-            binding?.backdrop?.setImageDrawable(drawable)
-            return
-        }
-        val yOffset = (bitmap.height / 2 * 0.33).toInt()
-        binding?.backdrop?.setImageDrawable(
-            Bitmap
-                .createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height - yOffset)
-                .toDrawable(itemView.resources),
-        )
+        // Don't crop the lower portion of the source cover before displaying it.
+        // CenterCrop will still fill the hero while keeping the entire decoded image
+        // available to the view, avoiding the old hard cut through cover typography.
+        binding?.backdrop?.setImageDrawable(drawable)
         applyBlur()
     }
 
