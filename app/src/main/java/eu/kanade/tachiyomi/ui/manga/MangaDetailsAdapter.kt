@@ -203,6 +203,10 @@ class MangaDetailsAdapter(
 
         fun openInWebView()
 
+        fun showHeaderDownloadMenu(anchor: View)
+
+        fun showHeaderMoreMenu(anchor: View)
+
         fun startDownloadRange(position: Int)
 
         fun readNextChapter(readingButton: View)
