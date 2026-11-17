@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.core.view.isVisible
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.database.DatabaseHelper
@@ -62,16 +63,13 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         val header = view.resources.getDimensionPixelSize(R.dimen.inkshelf_header_art_height)
         binding.homeScroll.setPadding(0, header + dp(18), 0, 0)
         dayTheme = themeForToday()
-        binding.homeThemeTitle.text = dayTheme.title
-        binding.homeThemeSubtitle.text = "Three comics to explore today"
+        bindThemeTitle()
+        binding.homeThemeSubtitle.text = "Three real comics to explore today"
 
-        binding.homeBrowseButton.setOnClickListener { openTab(R.id.nav_browse) }
+        binding.homeBrowseButton.setOnClickListener { saveFeaturedPick() }
         binding.homePicksLink.setOnClickListener { openTab(R.id.nav_browse) }
         binding.homeLibraryLink.setOnClickListener { openTab(R.id.nav_library) }
-        binding.homeOpenPick.setOnClickListener {
-            featured.getOrNull(heroIndex)?.let { openDetails(it.manga) }
-                ?: openTab(R.id.nav_browse)
-        }
+        binding.homeOpenPick.setOnClickListener { startFeaturedPick() }
 
         var gestureStart = 0f
         binding.homeHeroCover.setOnTouchListener { _, event ->
@@ -198,8 +196,14 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         card.homeCoverImage.loadManga(manga)
         card.homeCoverTitle.text = manga.title
         card.homeCoverDetail.text = description
-        card.homeCoverProgress.isVisible = progress != null
-        if (progress != null) card.homeCoverProgress.progress = progress
+        card.homeCoverProgressOverlay.isVisible = progress != null
+        card.homeCoverTitle.isVisible = progress == null
+        card.homeCoverDetail.isVisible = progress == null
+        if (progress != null) {
+            card.homeCoverProgress.progress = progress
+            card.homeCoverPercent.text = "$progress%"
+        }
+        card.root.contentDescription = "${manga.title}${if (progress != null) ", $progress% read" else ", $description"}"
         card.root.setOnClickListener { onClick() }
         row.addView(card.root)
     }
@@ -210,15 +214,25 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         if (pick != null) {
             binding.homeHeroCover.loadManga(pick.manga)
             binding.homeThemeKicker.text = "DAILY COMICS  •  ${pick.label.uppercase(Locale.ROOT)}"
-            binding.homeThemeSubtitle.text = pick.manga.title
-            binding.homeOpenPick.text = "View comic"
+            binding.homeThemeSubtitle.text =
+                "${featured.size} PICKS   •   " +
+                    featured.joinToString("   •   ") { daily ->
+                        when (daily.label) {
+                            "New this week" -> "New"
+                            "Trending" -> "Trending"
+                            "Suggested for you" -> "For You"
+                            else -> "From Library"
+                        }
+                    }
+            binding.homeOpenPick.text = "▶  Read Now"
         } else {
             binding.homeHeroCover.setImageDrawable(null)
             binding.homeThemeKicker.text = "DAILY COMICS"
             binding.homeThemeSubtitle.text = "Explore real comics from your sources"
-            binding.homeOpenPick.text = "Explore comics"
+            binding.homeOpenPick.text = "Discover"
         }
 
+        updateSaveButton()
         binding.homeHeroDots.removeAllViews()
         featured.forEachIndexed { index, _ ->
             val dot = View(itemViewContext())
@@ -239,6 +253,86 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
             }
             binding.homeHeroDots.addView(dot, params)
             dot.setOnClickListener { showHero(index) }
+        }
+    }
+
+
+    /** Split the featured day's name into the white/yellow two-line comic-book masthead. */
+    private fun bindThemeTitle() {
+        val words = dayTheme.title.trim().split(" ")
+        binding.homeThemeTitle.text = words.dropLast(1).joinToString(" ")
+        binding.homeThemeAccent.text = words.lastOrNull().orEmpty()
+    }
+
+    private fun updateSaveButton() {
+        val pick = featured.getOrNull(heroIndex)
+        binding.homeBrowseButton.text = when {
+            pick == null -> "Discover"
+            pick.manga.favorite -> "✓  In Library"
+            else -> "+  Save"
+        }
+    }
+
+    private fun startFeaturedPick() {
+        val manga = featured.getOrNull(heroIndex)?.manga ?: run {
+            openTab(R.id.nav_browse)
+            return
+        }
+        viewScope.launch {
+            val chapter = withContext(Dispatchers.IO) {
+                runCatching {
+                    val list = db.getChapters(manga).executeAsBlocking()
+                    list.filterNot { it.read }
+                        .minByOrNull { if (it.chapter_number >= 0f) it.chapter_number else Float.MAX_VALUE }
+                        ?: list.firstOrNull()
+                }.getOrNull()
+            }
+            if (!isBindingInitialized) return@launch
+            if (chapter?.id != null) {
+                startActivity(ReaderActivity.newIntent(itemViewContext(), manga, chapter))
+            } else {
+                // A freshly discovered series might not have fetched its chapters yet.
+                openDetails(manga)
+            }
+        }
+    }
+
+    private fun saveFeaturedPick() {
+        val manga = featured.getOrNull(heroIndex)?.manga ?: run {
+            openTab(R.id.nav_browse)
+            return
+        }
+        if (manga.favorite) {
+            openTab(R.id.nav_library)
+            return
+        }
+        binding.homeBrowseButton.isEnabled = false
+        viewScope.launch {
+            val added = withContext(Dispatchers.IO) {
+                runCatching {
+                    val savedManga = db.getManga(manga.url, manga.source).executeAsBlocking() ?: manga
+                    if (savedManga.favorite) return@runCatching true
+                    savedManga.favorite = true
+                    savedManga.date_added = System.currentTimeMillis()
+                    if (savedManga.id == null) {
+                        val result = db.insertManga(savedManga).executeAsBlocking()
+                        savedManga.id = result.insertedId()
+                    } else {
+                        db.updateMangaFavorite(savedManga).executeAsBlocking()
+                        db.updateMangaAdded(savedManga).executeAsBlocking()
+                    }
+                    manga.favorite = true
+                    true
+                }.getOrDefault(false)
+            }
+            if (!isBindingInitialized) return@launch
+            binding.homeBrowseButton.isEnabled = true
+            updateSaveButton()
+            Toast.makeText(
+                itemViewContext(),
+                if (added) "Saved to your library" else "Couldn't save comic. Try again.",
+                Toast.LENGTH_SHORT,
+            ).show()
         }
     }
 
