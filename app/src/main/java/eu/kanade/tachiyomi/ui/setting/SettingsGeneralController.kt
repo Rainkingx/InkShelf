@@ -35,6 +35,7 @@ class SettingsGeneralController : SettingsController() {
                 titleRes = R.string.starting_screen
                 summaryRes =
                     when (preferences.startingTab().get()) {
+                        -4 -> R.string.inkshelf_home_title
                         -1 -> R.string.library
                         -2 -> R.string.recents
                         -3 -> R.string.browse
@@ -43,15 +44,16 @@ class SettingsGeneralController : SettingsController() {
                 entriesRes =
                     arrayOf(
                         R.string.last_used_library_recents,
+                        R.string.inkshelf_home_title,
                         R.string.library,
                         R.string.recents,
                         R.string.browse,
                     )
-                entryValues = (0 downTo -3).toList()
+                entryValues = listOf(0, -4, -1, -2, -3)
                 defaultValue = 0
                 customSelectedValue =
                     when (val value = preferences.startingTab().get()) {
-                        in -3..-1 -> value
+                        in -4..-1 -> value
                         else -> 0
                     }
 
@@ -59,6 +61,7 @@ class SettingsGeneralController : SettingsController() {
                     summaryRes =
                         when (newValue) {
                             0, 1 -> R.string.last_used_library_recents
+                            -4 -> R.string.inkshelf_home_title
                             -1 -> R.string.library
                             -2 -> R.string.recents
                             -3 -> R.string.browse
@@ -66,7 +69,7 @@ class SettingsGeneralController : SettingsController() {
                         }
                     customSelectedValue =
                         when (newValue) {
-                            in -3..-1 -> newValue as Int
+                            in -4..-1 -> newValue as Int
                             else -> 0
                         }
                     true
