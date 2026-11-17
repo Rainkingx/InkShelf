@@ -29,10 +29,13 @@ import java.util.concurrent.TimeUnit
  * asking Metron for every visible RecyclerView row.
  */
 internal object InkShelfMetronCovers {
-    private const val CACHE_PREFS = "inkshelf_metron_covers_v1"
+    // Bump version so old failed title matches cannot keep masking correct covers.
+    private const val CACHE_PREFS = "inkshelf_metron_covers_v2"
     private const val CACHE_OK_MS = 24L * 60L * 60L * 1000L
     private const val CACHE_MISS_MS = 60L * 60L * 1000L
     private const val MIN_CALL_INTERVAL_MS = 3_500L
+
+    private class MetronApiException(val status: Int) : Exception("Metron returned HTTP $status")
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val client = OkHttpClient.Builder()
@@ -90,20 +93,26 @@ internal object InkShelfMetronCovers {
 
         scope.launch {
             val token = InkShelfMetronCredentials.get(appContext)
-            val found = if (token.isNullOrBlank()) emptyMap() else runCatching {
-                lookupSeriesIssues(cleanTitle, year, token)
-            }.getOrDefault(emptyMap())
-            val expiresAt = System.currentTimeMillis() +
-                if (found.isEmpty()) CACHE_MISS_MS else CACHE_OK_MS
-            val entry = Entry(expiresAt, found)
-            saveCache(appContext, key, entry)
+            // A bad token, outage, or rate limit must not become a long-lived
+            // "no matching covers" result in the cache.
+            val result = if (token.isNullOrBlank()) null else
+                runCatching { lookupSeriesIssues(cleanTitle, year, token) }.getOrNull()
+            val entry = result?.let { covers ->
+                Entry(
+                    System.currentTimeMillis() + if (covers.isEmpty()) CACHE_MISS_MS else CACHE_OK_MS,
+                    covers,
+                )
+            }
+            if (entry != null) saveCache(appContext, key, entry)
             val listeners = synchronized(lock) {
-                cache[key] = entry
+                if (entry != null) cache[key] = entry
                 pending.remove(key).orEmpty()
             }
-            withContext(Dispatchers.Main) {
-                listeners.forEach { (number, callback) ->
-                    entry.covers[number]?.let { cover -> callback(cover) }
+            if (entry != null) {
+                withContext(Dispatchers.Main) {
+                    listeners.forEach { (number, callback) ->
+                        entry.covers[number]?.let { cover -> callback(cover) }
+                    }
                 }
             }
         }
@@ -114,13 +123,16 @@ internal object InkShelfMetronCovers {
         val searchUrl = endpoint("series")
             .newBuilder()
             .addQueryParameter("name", title)
+            .apply { if (year != null) addQueryParameter("year_began", year.toString()) }
             .build()
         val result = getJson(searchUrl, token) ?: return emptyMap()
         val candidates = result.optJSONArray("results") ?: return emptyMap()
         val matches = buildList {
             for (i in 0 until candidates.length()) {
                 val candidate = candidates.optJSONObject(i) ?: continue
-                val name = candidate.optString("name").ifBlank { candidate.optString("series") }
+                // Metron's series list calls the title "series", while some
+                // other endpoints call it "name".
+                val name = candidate.optString("series").ifBlank { candidate.optString("name") }
                 if (normalized(seriesTitle(name)) != normalized(title)) continue
                 if (year != null && candidate.optInt("year_began") != year) continue
                 val id = candidate.optInt("id", 0)
@@ -169,7 +181,9 @@ internal object InkShelfMetronCovers {
                 .header("User-Agent", "InkShelf/2.0 (comic metadata)")
                 .build()
             return client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
+                if (!response.isSuccessful) {
+                    throw MetronApiException(response.code)
+                }
                 val text = response.body?.string() ?: return@use null
                 JSONObject(text)
             }
@@ -185,14 +199,20 @@ internal object InkShelfMetronCovers {
         return builder.addPathSegment("").build()
     }
 
+    // Supports (2024), (2024-), (2024–), and (2024–Ongoing), as
+    // commonly returned by Western comic reading extensions.
+    private val seriesYearTag = Regex(
+        """\s*[\(\[]((?:19|20)\d{2})(?:\s*[-–—]\s*(?:(?:19|20)\d{2}|ongoing|present)?)?\s*[\)\]]""",
+        RegexOption.IGNORE_CASE,
+    )
+
     private fun seriesTitle(raw: String): String = raw
-        .replace(Regex("""\s*[\(\[]((?:19|20)\d{2})[\)\]]\s*"""), " ")
+        .replace(seriesYearTag, " ")
         .replace(Regex("""\s+Vol(?:ume)?\.?\s*\d+\s*$""", RegexOption.IGNORE_CASE), "")
         .trim()
 
     private fun publicationYear(raw: String): Int? =
-        Regex("""[\(\[]((?:19|20)\d{2})[\)\]]""")
-            .find(raw)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        seriesYearTag.find(raw)?.groupValues?.getOrNull(1)?.toIntOrNull()
 
     private fun normalized(value: String): String = value.lowercase(Locale.ROOT)
         .replace(Regex("""[^\p{L}\p{N}]+"""), " ")
