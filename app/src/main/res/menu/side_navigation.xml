@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Keep Library as the selected destination. -->
+    <!-- Home is a new root screen; Library and Discover remain separate. -->
     <item
         android:checked="true"
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_inkshelf_home_24dp"
+        android:title="@string/inkshelf_home_title" />
+
+    <item
         android:id="@+id/nav_library"
         android:icon="@drawable/ic_library_selector_24dp"
         android:title="@string/library" />
