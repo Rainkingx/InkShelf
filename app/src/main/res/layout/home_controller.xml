@@ -267,7 +267,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:padding="8dp"
-            android:text="Open Discover to load recommendations from your comic sources."
+            android:text="No reliable matches for today’s theme yet. Explore more comics in Discover."
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
 
