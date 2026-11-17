@@ -1197,8 +1197,10 @@ class MangaDetailsController :
         menu ?: return
         val editItem = menu.findItem(R.id.action_edit)
         editItem?.isVisible = presenter.manga.favorite && !presenter.isLockedFromSearch
-        menu.findItem(R.id.action_download)?.isVisible = !presenter.isLockedFromSearch &&
-            !presenter.manga.isLocal()
+        // Phone readers have a dedicated Download action in the new details row.
+        // Keep the existing toolbar action for tablet layouts.
+        menu.findItem(R.id.action_download)?.isVisible = isTablet &&
+            !presenter.isLockedFromSearch && !presenter.manga.isLocal()
         menu.findItem(R.id.action_mark_all_as_read)?.isVisible =
             presenter.getNextUnreadChapter() != null &&
             !presenter.isLockedFromSearch
@@ -1449,6 +1451,54 @@ class MangaDetailsController :
                         .coerceIn(0, 255) / 255f
             }
         toolbarTextView.setTextColorAlpha((tbAlpha * 255).roundToInt())
+    }
+
+    override fun showHeaderDownloadMenu(anchor: View) {
+        if (presenter.isLockedFromSearch || presenter.manga.isLocal()) return
+        val popup = PopupMenu(anchor.context, anchor)
+        val resources = anchor.resources
+        val unreadAvailable = presenter.getUnreadChaptersSorted().isNotEmpty()
+        popup.menu.add(
+            0, R.id.download_next, 0,
+            resources.getQuantityString(R.plurals.next_unread_chapters, 1, 1),
+        ).isEnabled = unreadAvailable
+        popup.menu.add(
+            0, R.id.download_next_5, 1,
+            resources.getQuantityString(R.plurals.next_unread_chapters, 5, 5),
+        ).isEnabled = unreadAvailable
+        popup.menu.add(0, R.id.download_unread, 2, R.string.all_unread_chapters)
+            .isEnabled = unreadAvailable
+        popup.menu.add(0, R.id.download_all, 3, R.string.all_chapters)
+        popup.menu.add(0, R.id.download_custom, 4, R.string.custom_range)
+        popup.setOnMenuItemClickListener { selection ->
+            downloadChapters(selection.itemId)
+            true
+        }
+        popup.show()
+    }
+
+    override fun showHeaderMoreMenu(anchor: View) {
+        val popup = PopupMenu(anchor.context, anchor)
+        // Keep existing tracking and source tools accessible after the UI redesign.
+        val trackingItemId = 1
+        val webItemId = 2
+        val filterItemId = 3
+        if (presenter.hasTrackers()) {
+            popup.menu.add(0, trackingItemId, 0, R.string.tracking)
+        }
+        if (!presenter.manga.isLocal()) {
+            popup.menu.add(0, webItemId, 1, R.string.open_in_webview)
+        }
+        popup.menu.add(0, filterItemId, 2, R.string.sort_and_filter)
+        popup.setOnMenuItemClickListener { selection ->
+            when (selection.itemId) {
+                trackingItemId -> showTrackingSheet()
+                webItemId -> openInWebView()
+                filterItemId -> showChapterFilter()
+            }
+            true
+        }
+        popup.show()
     }
 
     private fun downloadChapters(choice: Int) {
