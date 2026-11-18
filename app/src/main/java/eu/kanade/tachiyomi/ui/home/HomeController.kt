@@ -47,13 +47,21 @@ import kotlin.math.roundToInt
  */
 class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderInterface {
     private val db: DatabaseHelper = Injekt.get()
-    private var featured: List<DailyPick> = emptyList()
+    private val weekdays = listOf(
+        Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY,
+        Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY, Calendar.SUNDAY,
+    )
+    private var featured: List<DailyPick> = emptyList() // Today's shelf, not the other days' slides
+    private var weeklySlides: List<DailySlide> = weekdays.map { day ->
+        DailySlide(day, themeForDay(day), emptyList())
+    }
     private var heroIndex = 0
     private var themeArtworkFailed = false
     private var dayTheme: Theme = themeForToday()
 
     private data class DailyPick(val manga: Manga, val label: String)
     private data class Theme(val title: String, val keywords: List<String>)
+    private data class DailySlide(val day: Int, val theme: Theme, val picks: List<DailyPick>)
 
     override fun createBinding(inflater: LayoutInflater) = HomeControllerBinding.inflate(inflater)
 
@@ -67,11 +75,18 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         val header = view.resources.getDimensionPixelSize(R.dimen.inkshelf_home_header_height)
         // Home scrolls behind the fixed bottom navigation. Reserve a real
         // bottom scroll inset so the last shelf can be brought fully into view.
-        binding.homeScroll.setPadding(0, header, 0, dp(88))
+        binding.homeScroll.setPadding(0, header, 0, dp(124))
+        binding.homeScroll.post {
+            if (!isBindingInitialized) return@post
+            // Content sits behind the activity's fixed bottom nav; measuring it
+            // avoids clipping the final row on different Android screen sizes.
+            val navHeight = (activity as? MainActivity)
+                ?.findViewById<View>(R.id.bottom_nav)?.height?.takeIf { it > 0 } ?: dp(88)
+            binding.homeScroll.setPadding(0, header, 0, navHeight + dp(32))
+        }
         dayTheme = themeForToday()
-        bindThemeTitle()
-        bindThemeArtwork()
-        binding.homeThemeSubtitle.text = "Three real comics to explore today"
+        heroIndex = weekdays.indexOf(Calendar.getInstance().get(Calendar.DAY_OF_WEEK)).coerceAtLeast(0)
+        showHero(heroIndex)
 
         binding.homeBrowseButton.setOnClickListener { saveFeaturedPick() }
         binding.homePicksLink.setOnClickListener { openTab(R.id.nav_browse) }
@@ -87,10 +102,14 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
                 }
                 MotionEvent.ACTION_UP -> {
                     val distance = event.x - gestureStart
-                    if (abs(distance) > dp(52) && featured.size > 1) {
-                        showHero((heroIndex + if (distance < 0) 1 else featured.size - 1) % featured.size)
+                    if (abs(distance) > dp(52) && weeklySlides.size > 1) {
+                        showHero(
+                            (heroIndex + if (distance < 0) 1 else weeklySlides.size - 1) %
+                                weeklySlides.size,
+                        )
                     } else if (abs(distance) < dp(12)) {
-                        featured.getOrNull(heroIndex)?.let { openDetails(it.manga) }
+                        currentHeroPick()?.let { openDetails(it.manga) }
+                            ?: openTab(R.id.nav_browse)
                     }
                     true
                 }
@@ -113,14 +132,20 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
                 val trending = InkShelfDiscoverCache.load(context, InkShelfDiscoverCache.Section.TRENDING, db)
                 val suggested = InkShelfDiscoverCache.load(context, InkShelfDiscoverCache.Section.PICKED_FOR_YOU, db)
                 val library = runCatching { db.getLibraryMangas().executeAsBlocking() }.getOrDefault(emptyList())
-                val picks = pickToday(new, trending, suggested, library, dayTheme)
-                history to picks
+                val slides = weekdays.map { day ->
+                    val theme = themeForDay(day)
+                    DailySlide(day, theme, pickToday(new, trending, suggested, library, theme))
+                }
+                history to slides
             }
             if (!isBindingInitialized || view !== this@HomeController.view) return@launch
             bindHistory(loaded.first)
-            featured = loaded.second
+            weeklySlides = loaded.second
+            featured = weeklySlides.firstOrNull {
+                it.day == Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
+            }?.picks.orEmpty()
             bindPicks(featured)
-            showHero(0)
+            showHero(heroIndex)
         }
     }
 
