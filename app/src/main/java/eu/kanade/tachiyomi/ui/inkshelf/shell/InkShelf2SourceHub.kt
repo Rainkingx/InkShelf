@@ -55,6 +55,7 @@ import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.LocalSource
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
