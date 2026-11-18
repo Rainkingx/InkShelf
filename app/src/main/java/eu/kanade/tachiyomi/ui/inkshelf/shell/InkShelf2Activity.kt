@@ -69,6 +69,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
+            var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
             fun openTab(destination: InkShelf2Tab) {
                 if (tab != destination) {
                     tabTrail = (tabTrail.split('|').takeLast(20) + destination.name)
@@ -77,6 +78,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 }
                 sourceHubOpen = false
                 activeSourceId = null
+                selectedDay = null
             }
             var openingComic by remember { mutableStateOf(false) }
             val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
@@ -130,6 +132,7 @@ class InkShelf2Activity : AppCompatActivity() {
             BackHandler(enabled = true) {
                 when {
                     selected != null -> selected = null
+                    selectedDay != null -> selectedDay = null
                     activeSourceId != null -> activeSourceId = null
                     sourceHubOpen -> sourceHubOpen = false
                     tabTrail.contains('|') -> {
@@ -185,6 +188,12 @@ class InkShelf2Activity : AppCompatActivity() {
                         onChapter = { openChapter(comic, it) },
                         onSave = { saveComic(comic) },
                     )
+                    selectedDay != null -> InkShelf2DailyPicksScreen(
+                        day = selectedDay!!,
+                        padding = padding,
+                        onBack = { selectedDay = null },
+                        onOpen = { selected = it },
+                    )
                     tab == InkShelf2Tab.HOME -> InkShelf2HomeScreen(
                         home = home,
                         padding = padding,
@@ -193,6 +202,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         onSave = { saveComic(it) },
                         onDiscover = { openTab(InkShelf2Tab.DISCOVER) },
                         onLibrary = { openTab(InkShelf2Tab.LIBRARY) },
+                        onDayPicks = { selectedDay = it },
                     )
                     tab == InkShelf2Tab.DISCOVER && openingComic -> {
                         androidx.compose.foundation.layout.Box(
