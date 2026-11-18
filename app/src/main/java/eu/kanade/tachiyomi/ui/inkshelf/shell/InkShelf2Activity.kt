@@ -29,6 +29,7 @@ import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverRefreshWorker
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -47,6 +48,7 @@ class InkShelf2Activity : AppCompatActivity() {
     private val preferences: PreferencesHelper by lazy { Injekt.get() }
     private var refreshEpoch by mutableIntStateOf(0)
     private var lastBackAtMillis = 0L
+    private var readerOpenInProgress by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,6 +100,8 @@ class InkShelf2Activity : AppCompatActivity() {
             var library by remember { mutableStateOf<List<InkShelf2LibraryItem>>(emptyList()) }
             var discover by remember { mutableStateOf<InkShelf2Engine.Discover?>(null) }
             var chapters by remember { mutableStateOf<List<Chapter>>(emptyList()) }
+            var loadingIssues by remember { mutableStateOf(false) }
+            var issuesError by remember { mutableStateOf<String?>(null) }
 
             LaunchedEffect(refreshEpoch) {
                 // Read existing data; never reset or migrate the library.
@@ -105,8 +109,32 @@ class InkShelf2Activity : AppCompatActivity() {
                 library = engine.loadLibrary()
                 discover = engine.loadDiscover()
             }
-            LaunchedEffect(selected?.id, selected?.url) {
-                chapters = selected?.let { engine.chapters(it) }.orEmpty()
+            // Cached recommendations have no issue list until their source
+            // is queried. Populate Details asynchronously as soon as opened.
+            LaunchedEffect(selected?.source, selected?.url, refreshEpoch) {
+                val comic = selected
+                chapters = emptyList()
+                issuesError = null
+                loadingIssues = false
+                if (comic != null) {
+                    val cached = engine.chapters(comic)
+                    chapters = cached
+                    if (cached.isEmpty()) {
+                        loadingIssues = true
+                        try {
+                            val (_, fetched) = sourcesEngine.ensureIssues(comic)
+                            if (selected?.source == comic.source && selected?.url == comic.url) {
+                                chapters = fetched
+                            }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Exception) {
+                            issuesError = "Could not load issues from this source. Tap Read Now to retry."
+                        } finally {
+                            loadingIssues = false
+                        }
+                    }
+                }
             }
 
             val openSourceComic: (Manga) -> Unit = { manga ->
@@ -188,6 +216,9 @@ class InkShelf2Activity : AppCompatActivity() {
                         padding = padding,
                         onBack = { selected = null },
                         onRead = { openReader(comic) },
+                        isOpeningReader = readerOpenInProgress,
+                        isLoadingIssues = loadingIssues,
+                        issuesError = issuesError,
                         onChapter = { openChapter(comic, it) },
                         onSave = { saveComic(comic) },
                     )
@@ -285,16 +316,40 @@ class InkShelf2Activity : AppCompatActivity() {
     }
 
     private fun openReader(manga: Manga) {
+        if (readerOpenInProgress) return
+        readerOpenInProgress = true
         lifecycleScope.launch {
-            val chapter = engine.nextChapter(manga)
-            if (chapter != null) {
-                openChapter(manga, chapter)
-            } else {
+            try {
+                var local = manga
+                var chapter = engine.nextChapter(local)
+                if (chapter == null) {
+                    // The first read must fetch the series' issue list, not
+                    // require the user to visit the old J2K interface first.
+                    val (resolved, fetched) = sourcesEngine.ensureIssues(manga)
+                    local = resolved
+                    if (fetched.isNotEmpty()) {
+                        chapter = engine.nextChapter(local)
+                    }
+                }
+                if (chapter != null) {
+                    openChapter(local, chapter)
+                } else {
+                    Toast.makeText(
+                        this@InkShelf2Activity,
+                        "No issues available from this comic source",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            } catch (_: CancellationException) {
+                // Activity was left while loading; no user-facing error needed.
+            } catch (_: Exception) {
                 Toast.makeText(
                     this@InkShelf2Activity,
-                    "No cached issue available for this comic yet",
-                    Toast.LENGTH_SHORT,
+                    "Could not load issues. Check the source and try again.",
+                    Toast.LENGTH_LONG,
                 ).show()
+            } finally {
+                readerOpenInProgress = false
             }
         }
     }
