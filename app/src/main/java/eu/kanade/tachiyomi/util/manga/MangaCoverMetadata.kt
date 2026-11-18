@@ -155,9 +155,14 @@ object MangaCoverMetadata {
         coverColorMap[id] = color to textColor
     }
 
-    fun getColors(manga: Manga): Pair<Int, Int>? = coverColorMap[manga.id]
+    // Source browsing can render a Manga before it has been inserted into
+    // the database. ConcurrentHashMap forbids null keys, so never use a
+    // nullable ID as a cache key (including from the cover metadata worker).
+    fun getColors(manga: Manga): Pair<Int, Int>? =
+        manga.id?.let { coverColorMap[it] }
 
-    fun getRatio(manga: Manga): Float? = coverRatioMap[manga.id]
+    fun getRatio(manga: Manga): Float? =
+        manga.id?.let { coverRatioMap[it] }
 
     fun savePrefs() {
         val mapCopy = coverRatioMap.toMap()
