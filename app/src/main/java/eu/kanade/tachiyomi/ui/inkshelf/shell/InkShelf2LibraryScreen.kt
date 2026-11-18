@@ -17,12 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.outlined.AutoStories
@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,7 +86,7 @@ internal fun InkShelf2LibraryScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             InkShelf2PageHeading("My Library", modifier = Modifier.weight(1f))
@@ -121,11 +122,14 @@ internal fun InkShelf2LibraryScreen(
             }
         }
 
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 3.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        // Distribute all four filters across the screen instead of hiding
+        // On Hold off the right edge. Counts and labels stay live.
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            items(ShelfFilter.entries) { filter ->
+            ShelfFilter.entries.forEach { filter ->
                 val count = when (filter) {
                     ShelfFilter.ALL -> library.size
                     ShelfFilter.READING -> readingCount
@@ -135,6 +139,7 @@ internal fun InkShelf2LibraryScreen(
                 ShelfFilterPill(
                     text = "${filter.title} ($count)",
                     active = active == filter,
+                    modifier = Modifier.weight(1f),
                     onClick = { selected = filter.name },
                 )
             }
@@ -152,7 +157,7 @@ internal fun InkShelf2LibraryScreen(
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 22.dp),
+                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 11.dp, bottom = 22.dp),
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -181,10 +186,10 @@ internal fun InkShelf2LibraryScreen(
 }
 
 @Composable
-private fun ShelfFilterPill(text: String, active: Boolean, onClick: () -> Unit) {
+private fun ShelfFilterPill(text: String, active: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(50)
     Box(
-        modifier = Modifier
+        modifier = modifier
             .height(31.dp)
             .clip(shape)
             .background(
@@ -200,15 +205,17 @@ private fun ShelfFilterPill(text: String, active: Boolean, onClick: () -> Unit) 
                 shape,
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 11.dp),
+            .padding(horizontal = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
             color = Color.White,
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+            textAlign = TextAlign.Center,
             maxLines = 1,
+            softWrap = false,
         )
     }
 }
@@ -256,14 +263,28 @@ private fun ShelfStatus(item: InkShelf2LibraryItem, modifier: Modifier = Modifie
     Column(modifier = modifier.fillMaxWidth()) {
         val progress = item.progress
         if (item.state == InkShelf2ReadingState.READING && progress != null) {
-            LinearProgressIndicator(
-                progress = { progress / 100f },
-                color = InkShelf2Colors.AccentLight,
-                trackColor = Color(0xFF6F607E),
-                modifier = Modifier.fillMaxWidth()
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(10.dp)),
-            )
+            // Keep the actual progress percentage. The small violet leading
+            // marker remains visible even at 1–5%, without inflating the bar.
+            Box(
+                modifier = Modifier.fillMaxWidth().height(7.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                LinearProgressIndicator(
+                    progress = { progress / 100f },
+                    color = InkShelf2Colors.AccentLight,
+                    trackColor = Color(0xFF392844),
+                    modifier = Modifier.fillMaxWidth()
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(10.dp)),
+                )
+                if (progress > 0) {
+                    Box(
+                        modifier = Modifier.size(7.dp)
+                            .clip(CircleShape)
+                            .background(InkShelf2Colors.AccentLight),
+                    )
+                }
+            }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Text(
                     "${progress}%",
