@@ -2813,6 +2813,33 @@ class BrowseController :
         internal fun pickedForYouSnapshot(): List<DiscoverRecommendation> = cachedPickedForYouItems.toList()
 
         /**
+         * Reuses J2K's personalised library/recent-reading recommendation engine
+         * in the standalone InkShelf 2.0 Compose UI. No legacy Browse view,
+         * controller binding, or separate extension backend is created.
+         *
+         * This is only invoked on Discover entry when the persisted shelf is
+         * missing/stale, or after an explicit user refresh.
+         */
+        internal suspend fun refreshPickedForYouForInkShelf2(
+            context: Context,
+            force: Boolean = false,
+        ): Boolean {
+            val controller = BrowseController()
+            controller.discoverCacheContext = context.applicationContext
+            return try {
+                if (force) requestPickedForYouRefresh()
+                val result = CompletableDeferred<List<DiscoverRecommendation>>()
+                controller.loadPickedForYou(background = true) { items ->
+                    if (!result.isCompleted) result.complete(items)
+                }
+                withTimeoutOrNull(120_000L) { result.await() }.orEmpty().isNotEmpty()
+            } finally {
+                controller.pickedForYouRefreshScope.cancel()
+            }
+        }
+
+
+        /**
          * Starts the expensive recommendation pass shortly after app launch, while Library/Recents
          * is on screen. The generated batch lands in the same process cache Discover already uses.
          */
