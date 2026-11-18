@@ -19,6 +19,7 @@ import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
+import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverRefreshWorker
 import kotlinx.coroutines.launch
 
 /**
@@ -35,6 +36,9 @@ class InkShelf2Activity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SecureActivityDelegate.setSecure(this)
+        // Keep the same six-hour Discover feed refresh when users launch only
+        // the new Compose shell. KEEP ensures no duplicate workers are created.
+        InkShelfDiscoverRefreshWorker.schedule(applicationContext)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             isAppearanceLightStatusBars = false
