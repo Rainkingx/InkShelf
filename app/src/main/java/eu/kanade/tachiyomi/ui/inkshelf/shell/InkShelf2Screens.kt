@@ -196,10 +196,16 @@ internal fun InkShelf2HomeScreen(
                             Spacer(Modifier.height(10.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                 InkShelf2ActionButton(
-                                    label = if (pick != null) "Read Now" else "Discover",
-                                    leadingIcon = Icons.Filled.PlayArrow,
+                                    // The daily artwork promotes a set of comics.
+                                    // Opening the featured comic must use the
+                                    // same Details page as Trending/New covers,
+                                    // not jump straight into a different reader.
+                                    label = if (pick != null) "Comic Details" else "View Picks",
+                                    leadingIcon = Icons.Outlined.AutoStories,
                                     enabled = true,
-                                    onClick = { if (pick != null) onRead(pick) else onDiscover() },
+                                    onClick = {
+                                        if (pick != null) onOpen(pick) else onDayPicks(day)
+                                    },
                                     modifier = Modifier.weight(1f),
                                 )
                                 InkShelf2ActionButton(
