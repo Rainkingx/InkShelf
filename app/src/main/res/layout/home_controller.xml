@@ -20,7 +20,7 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/home_hero_card"
             android:layout_width="match_parent"
-            android:layout_height="380dp"
+            android:layout_height="360dp"
             app:cardCornerRadius="22dp"
             app:cardElevation="0dp"
             app:strokeColor="?attr/colorOutlineVariant"
@@ -31,13 +31,29 @@
                 android:layout_height="match_parent"
                 android:background="@drawable/inkshelf_home_hero_base">
 
-                <ImageView
-                    android:id="@+id/home_hero_cover"
+                <!-- Keep the left side clear for text. Blend real comic artwork into
+                     the right-hand side instead of stacking a detached cover on top. -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
-                    android:alpha="0.86"
-                    android:contentDescription="@string/cover_of_image" />
+                    android:orientation="horizontal"
+                    android:importantForAccessibility="no">
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="0.38"
+                        android:importantForAccessibility="no" />
+
+                    <ImageView
+                        android:id="@+id/home_hero_cover"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="0.62"
+                        android:scaleType="centerCrop"
+                        android:alpha="1"
+                        android:contentDescription="@string/cover_of_image" />
+                </LinearLayout>
 
                 <View
                     android:layout_width="match_parent"
@@ -68,7 +84,7 @@
                         android:id="@+id/home_theme_title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="6dp"
                         android:maxLines="2"
                         android:fontFamily="sans-serif-condensed"
                         android:text="MUTANT"
@@ -83,10 +99,11 @@
 
                     <TextView
                         android:id="@+id/home_theme_accent"
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="-8dp"
-                        android:layout_marginStart="10dp"
+                        android:maxWidth="290dp"
+                        android:layout_marginTop="-5dp"
+                        android:layout_marginStart="4dp"
                         android:fontFamily="sans-serif-condensed"
                         android:text="MONDAY"
                         android:textColor="#FFD524"
@@ -96,18 +113,18 @@
                         android:shadowRadius="8"
                         android:rotation="-3"
                         android:textStyle="bold|italic"
-                        android:textSize="47sp"
+                        android:textSize="43sp"
                         android:maxLines="1"
                         android:autoSizeTextType="uniform"
                         android:autoSizeMinTextSize="29sp"
-                        android:autoSizeMaxTextSize="47sp"
+                        android:autoSizeMaxTextSize="43sp"
                         android:autoSizeStepGranularity="1sp" />
 
                     <TextView
                         android:id="@+id/home_theme_subtitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="10dp"
                         android:maxLines="2"
                         android:text="3 PICKS  •  New &amp; Trending  •  For You"
                         android:textColor="#F9F4FF"
