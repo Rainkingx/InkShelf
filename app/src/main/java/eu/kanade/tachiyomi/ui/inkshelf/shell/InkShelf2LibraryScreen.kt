@@ -294,7 +294,7 @@ private fun ShelfStatus(item: InkShelf2LibraryItem, modifier: Modifier = Modifie
                         InkShelf2ReadingState.COMPLETED -> "Completed"
                         InkShelf2ReadingState.ON_HOLD -> "On Hold"
                         InkShelf2ReadingState.READING -> "Reading"
-                        else -> "",
+                        else -> ""
                     },
                     color = Color.White,
                     fontSize = 10.sp,
