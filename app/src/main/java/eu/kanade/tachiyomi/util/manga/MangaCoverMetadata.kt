@@ -81,6 +81,9 @@ object MangaCoverMetadata {
         ogFile: File? = null,
         force: Boolean = false,
     ) {
+        // Unsaved source-search results have no stable cache key. Processing
+        // their palettes would waste CPU and cannot persist any metadata.
+        if (manga.id == null) return
         if (!manga.favorite) {
             remove(manga)
         }
