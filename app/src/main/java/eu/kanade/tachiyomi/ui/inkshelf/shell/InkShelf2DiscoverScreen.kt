@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import androidx.compose.foundation.background
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -96,6 +97,20 @@ internal fun InkShelf2DiscoverScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var found by remember { mutableStateOf<InkShelf2SourcesEngine.GlobalSearchResults?>(null) }
     var selectedCollection by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // First Back leaves search or an open collection, not the entire app.
+    BackHandler(enabled = query.isNotBlank() || selectedCollection != null) {
+        when {
+            query.isNotBlank() -> {
+                query = ""
+                activeQuery = ""
+                found = null
+                error = null
+                keyboard?.hide()
+            }
+            selectedCollection != null -> selectedCollection = null
+        }
+    }
 
     val sourceIds = sources.map { it.id }
     LaunchedEffect(searchFocusToken) {
