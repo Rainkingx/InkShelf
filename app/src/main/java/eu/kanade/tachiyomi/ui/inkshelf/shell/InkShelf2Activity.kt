@@ -70,6 +70,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
+            var selectedDiscoverShelf by rememberSaveable { mutableStateOf<String?>(null) }
             fun openTab(destination: InkShelf2Tab) {
                 if (tab != destination) {
                     tabTrail = (tabTrail.split('|').takeLast(20) + destination.name)
@@ -79,6 +80,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 sourceHubOpen = false
                 activeSourceId = null
                 selectedDay = null
+                selectedDiscoverShelf = null
             }
             var openingComic by remember { mutableStateOf(false) }
             val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
@@ -132,6 +134,7 @@ class InkShelf2Activity : AppCompatActivity() {
             BackHandler(enabled = true) {
                 when {
                     selected != null -> selected = null
+                    selectedDiscoverShelf != null -> selectedDiscoverShelf = null
                     selectedDay != null -> selectedDay = null
                     activeSourceId != null -> activeSourceId = null
                     sourceHubOpen -> sourceHubOpen = false
@@ -188,6 +191,16 @@ class InkShelf2Activity : AppCompatActivity() {
                         onChapter = { openChapter(comic, it) },
                         onSave = { saveComic(comic) },
                     )
+                    selectedDiscoverShelf != null -> InkShelf2DiscoverShelfScreen(
+                        title = selectedDiscoverShelf!!,
+                        comics = when (selectedDiscoverShelf) {
+                            "New This Week" -> discover?.newest.orEmpty()
+                            else -> discover?.trending.orEmpty()
+                        },
+                        padding = padding,
+                        onBack = { selectedDiscoverShelf = null },
+                        onOpen = { selected = it },
+                    )
                     selectedDay != null -> InkShelf2DailyPicksScreen(
                         day = selectedDay!!,
                         padding = padding,
@@ -203,6 +216,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         onDiscover = { openTab(InkShelf2Tab.DISCOVER) },
                         onLibrary = { openTab(InkShelf2Tab.LIBRARY) },
                         onDayPicks = { selectedDay = it },
+                        onTrendingSeeAll = { selectedDiscoverShelf = "Trending Right Now" },
                     )
                     tab == InkShelf2Tab.DISCOVER && openingComic -> {
                         androidx.compose.foundation.layout.Box(
@@ -251,6 +265,7 @@ class InkShelf2Activity : AppCompatActivity() {
                             sourceHubOpen = true
                             activeSourceId = null
                         },
+                        onSeeAll = { selectedDiscoverShelf = it },
                     )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
