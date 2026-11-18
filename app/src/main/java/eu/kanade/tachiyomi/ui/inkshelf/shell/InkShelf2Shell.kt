@@ -2,9 +2,7 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,12 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CollectionsBookmark
-import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LibraryBooks
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.LibraryBooks
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.PersonOutline
@@ -69,8 +68,8 @@ object InkShelf2Colors {
 
 enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
-    DISCOVER("Discover", Icons.Outlined.Explore),
-    LIBRARY("Library", Icons.Outlined.CollectionsBookmark),
+    DISCOVER("Discover", Icons.Outlined.Search),
+    LIBRARY("Library", Icons.Outlined.LibraryBooks),
     ACCOUNT("Account", Icons.Outlined.PersonOutline),
 }
 
@@ -149,16 +148,16 @@ private fun InkShelf2Header(
             .fillMaxWidth()
             .background(InkShelf2Colors.Background)
             .statusBarsPadding()
-            .height(70.dp)
-            .padding(start = 18.dp, end = 12.dp),
+            .height(60.dp)
+            .padding(start = 16.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         InkShelf2BookMark()
         Text(
             text = "InkShelf",
-            modifier = Modifier.padding(start = 8.dp).weight(1f),
+            modifier = Modifier.padding(start = 7.dp).weight(1f),
             color = InkShelf2Colors.Text,
-            fontSize = 26.sp,
+            fontSize = 24.sp,
             fontStyle = FontStyle.Italic,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = (-1).sp,
@@ -205,42 +204,54 @@ private fun InkShelf2BookMark() {
     }
 }
 
+/**
+ * Mock-up faithful navigation: dark rounded tray, outlined inactive glyphs,
+ * purple selected glyph and a concentrated soft-glow capsule rather than a
+ * full-strength neon button. One navigation owner for every rebuilt page.
+ */
 @Composable
 private fun InkShelf2BottomNavigation(
     currentTab: InkShelf2Tab,
     onTabSelected: (InkShelf2Tab) -> Unit,
 ) {
+    val barShape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(barShape)
             .background(
                 Brush.verticalGradient(
-                    listOf(InkShelf2Colors.SurfaceRaised, InkShelf2Colors.Background),
+                    listOf(Color(0xFF191120), Color(0xFF08060D)),
                 ),
             ),
     ) {
-        HorizontalDivider(thickness = 1.dp, color = InkShelf2Colors.Border.copy(alpha = 0.6f))
+        HorizontalDivider(thickness = 1.dp, color = InkShelf2Colors.Border.copy(alpha = 0.7f))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .height(76.dp)
-                .padding(horizontal = 8.dp, vertical = 7.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                .height(70.dp)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             InkShelf2Tab.entries.forEach { tab ->
-                val selected = currentTab == tab
+                val selected = tab == currentTab
+                val selectedBrush = Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF4A215F).copy(alpha = 0.95f),
+                        Color(0xFF2E183E).copy(alpha = 0.96f),
+                        Color(0xFF24132C).copy(alpha = 0.92f),
+                    ),
+                )
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .height(62.dp)
+                        .height(60.dp)
                         .background(
-                            brush = if (selected) InkShelf2Colors.AccentGradient
-                            else Brush.horizontalGradient(
-                                listOf(Color.Transparent, Color.Transparent),
-                            ),
-                            shape = RoundedCornerShape(26.dp),
+                            brush = if (selected) selectedBrush
+                            else Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
+                            shape = RoundedCornerShape(25.dp),
                         )
                         .selectable(
                             selected = selected,
@@ -250,16 +261,23 @@ private fun InkShelf2BottomNavigation(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
+                    val image = when (tab) {
+                        InkShelf2Tab.HOME -> if (selected) Icons.Filled.Home else Icons.Outlined.Home
+                        InkShelf2Tab.LIBRARY -> if (selected) Icons.Filled.LibraryBooks else Icons.Outlined.LibraryBooks
+                        InkShelf2Tab.ACCOUNT -> if (selected) Icons.Filled.Person else Icons.Outlined.PersonOutline
+                        InkShelf2Tab.DISCOVER -> Icons.Outlined.Search
+                    }
                     Icon(
-                        imageVector = tab.icon,
+                        imageVector = image,
                         contentDescription = null,
                         modifier = Modifier.size(23.dp),
-                        tint = InkShelf2Colors.Text,
+                        tint = if (selected) InkShelf2Colors.AccentLight else InkShelf2Colors.Text,
                     )
                     Text(
                         text = tab.title,
-                        fontSize = 11.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        modifier = Modifier.padding(top = 3.dp),
+                        fontSize = 10.sp,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                         color = InkShelf2Colors.Text,
                     )
                 }
