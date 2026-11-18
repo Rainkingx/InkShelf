@@ -47,6 +47,11 @@ internal object InkShelfDiscoverCache {
             .apply()
     }
 
+    fun lastUpdatedAt(context: Context, section: Section): Long =
+        context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong(section.timestampKey, 0L)
+
     /**
      * Restores cached cards without touching the network. Manga rows are resolved from J2K's DB;
      * if a row has been pruned, a minimal local row is recreated so covers/details still open.
