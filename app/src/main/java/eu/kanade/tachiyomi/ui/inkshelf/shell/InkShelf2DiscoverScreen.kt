@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.MoreVert
@@ -511,17 +512,50 @@ internal fun InkShelf2DiscoverScreen(
                 DiscoverShelf(recommended.take(20), onOpen)
             }
             item(key = "new") {
-                InkShelf2SectionHeading("New This Week", onClick = { onSeeAll("New This Week") })
+                DiscoverSeeAllHeading("New This Week", onClick = { onSeeAll("New This Week") })
                 Spacer(Modifier.height(7.dp))
                 DiscoverShelf(newest.take(20), onOpen)
             }
             item(key = "trending-shelf") {
-                InkShelf2SectionHeading("Trending Right Now", onClick = { onSeeAll("Trending Right Now") })
+                DiscoverSeeAllHeading("Trending Right Now", onClick = { onSeeAll("Trending Right Now") })
                 Spacer(Modifier.height(7.dp))
                 DiscoverShelf(trending.take(20), onOpen)
             }
         }
         item { Spacer(Modifier.height(6.dp)) }
+    }
+}
+
+/** Visible See all action for Discover shelves, without changing Home's approved arrows. */
+@Composable
+private fun DiscoverSeeAllHeading(title: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            title,
+            color = InkShelf2Colors.Text,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Row(
+            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 6.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("See all", color = InkShelf2Colors.AccentLight, fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(3.dp))
+            Icon(
+                Icons.Outlined.ChevronRight,
+                contentDescription = "See all " + title,
+                tint = InkShelf2Colors.AccentLight,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
