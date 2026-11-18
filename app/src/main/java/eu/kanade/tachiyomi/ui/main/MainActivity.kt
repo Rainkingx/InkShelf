@@ -2065,6 +2065,18 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
         val isHome = controller is HomeController
         binding.inkshelfHeaderArt.isVisible = ownsInkShelfHeader(controller) && !isHome
         binding.inkshelfBrandBlock.isVisible = isHome
+        binding.inkshelfHomeSearch.isVisible = isHome
+        binding.inkshelfHomeNotifications.isVisible = isHome
+        if (isHome) {
+            binding.inkshelfHomeSearch.setOnClickListener {
+                openInkShelfTab(R.id.nav_browse)
+            }
+            binding.inkshelfHomeNotifications.setOnClickListener {
+                router.pushController(
+                    RecentsController(launchWithType = RecentsViewType.Updates).withFadeTransaction(),
+                )
+            }
+        }
         binding.inkshelfHeaderContainer.setBackgroundColor(
             if (isHome) Color.rgb(20, 8, 30) else Color.BLACK,
         )
