@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.drawBehind
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.CheckCircleOutline
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Search
@@ -53,13 +55,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.Shadow
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,7 +92,7 @@ internal fun InkShelf2HomeScreen(
     onRead: (Manga) -> Unit,
     onSave: (Manga) -> Unit,
     onDiscover: () -> Unit,
-    onArtworkSource: (String) -> Unit,
+    onLibrary: () -> Unit,
 ) {
     val slides = home?.days.orEmpty()
     val currentDay = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
@@ -95,9 +105,30 @@ internal fun InkShelf2HomeScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(InkShelf2Colors.Background),
+        modifier = Modifier.fillMaxSize()
+            .background(InkShelf2Colors.Background)
+            .drawBehind {
+                // Two diffuse purple light pools, no legacy-UI overlay.
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0f to Color(0xFF70288C).copy(alpha = 0.22f),
+                        0.48f to Color(0xFF3F165A).copy(alpha = 0.11f),
+                        1f to Color.Transparent,
+                    ),
+                    center = Offset(size.width * 0.85f, size.height * 0.17f),
+                    radius = size.width * 1.2f,
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        0f to Color(0xFF6F239C).copy(alpha = 0.10f),
+                        1f to Color.Transparent,
+                    ),
+                    center = Offset(size.width * 0.06f, size.height * 0.78f),
+                    radius = size.width * 1.15f,
+                )
+            },
         contentPadding = padding,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             if (slides.isNotEmpty()) {
@@ -109,7 +140,7 @@ internal fun InkShelf2HomeScreen(
                     val pick = day.picks.firstOrNull()
                     Box(
                         modifier = Modifier.fillMaxWidth()
-                            .height(340.dp)
+                            .height(295.dp)
                             .padding(horizontal = 14.dp)
                             .clip(RoundedCornerShape(19.dp))
                             .background(InkShelf2Colors.Surface),
@@ -124,9 +155,9 @@ internal fun InkShelf2HomeScreen(
                             modifier = Modifier.fillMaxSize().background(
                                 Brush.verticalGradient(
                                     listOf(
-                                        Color.Black.copy(alpha = 0.08f),
-                                        Color(0xFF0C0714).copy(alpha = 0.40f),
-                                        Color(0xFF08060D).copy(alpha = 0.96f),
+                                        Color.Black.copy(alpha = 0.02f),
+                                        Color(0xFF180622).copy(alpha = 0.17f),
+                                        Color(0xFF09050E).copy(alpha = 0.93f),
                                     ),
                                 ),
                             ),
@@ -136,33 +167,19 @@ internal fun InkShelf2HomeScreen(
                                 .fillMaxWidth()
                                 .padding(16.dp),
                         ) {
+                            InkShelf2ComicTitle(day.title)
+                            Spacer(Modifier.height(8.dp))
                             Text(
-                                "DAILY COMICS  •  " + if (day.calendarDay == currentDay) "TODAY" else "WEEKDAY PREVIEW",
-                                color = InkShelf2Colors.AccentLight,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp,
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                day.title,
-                                color = Color.White,
-                                fontSize = 35.sp,
-                                lineHeight = 37.sp,
-                                fontWeight = FontWeight.Black,
-                                maxLines = 2,
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                if (pick == null) "Explore comics for this theme"
+                                text = if (pick == null) "Explore comics for this theme"
                                 else "${day.picks.size} PICKS  •  ${pick.title}",
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontSize = 12.sp,
-                                maxLines = 2,
+                                color = Color.White.copy(alpha = 0.94f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Spacer(Modifier.height(12.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Spacer(Modifier.height(10.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                 GradientAction(
                                     label = if (pick != null) "Read Now" else "Discover",
                                     leadingIcon = Icons.Filled.PlayArrow,
@@ -179,19 +196,11 @@ internal fun InkShelf2HomeScreen(
                                     modifier = Modifier.weight(1f),
                                 )
                             }
-                            Spacer(Modifier.height(7.dp))
-                            Text(
-                                day.artwork.credit,
-                                color = Color.White.copy(alpha = 0.65f),
-                                fontSize = 9.sp,
-                                maxLines = 1,
-                                modifier = Modifier.clickable { onArtworkSource(day.artwork.sourcePage) },
-                            )
                         }
                     }
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     slides.indices.forEach { index ->
@@ -214,7 +223,7 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item {
-            SectionTitle("Continue Reading", onClick = null)
+            SectionTitle("Continue Reading", onClick = onLibrary)
             Spacer(Modifier.height(9.dp))
             val books = home?.history.orEmpty()
             if (books.isEmpty()) {
@@ -225,7 +234,7 @@ internal fun InkShelf2HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(books) { item ->
-                        ComicCoverCard(item.manga, percent = item.percent, onClick = { onRead(item.manga) })
+                        ComicCoverCard(item.manga, percent = item.percent, width = 100.dp, showTitle = false, onClick = { onRead(item.manga) })
                     }
                 }
             }
@@ -241,11 +250,59 @@ internal fun InkShelf2HomeScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(books) { manga -> ComicCoverCard(manga, onClick = { onOpen(manga) }) }
+                    items(books) { manga -> ComicCoverCard(manga, width = 100.dp, showTitle = false, onClick = { onOpen(manga) }) }
                 }
             }
         }
         item { Spacer(Modifier.height(14.dp)) }
+    }
+}
+
+/** Mock-up inspired comic masthead: angled, heavily inked, with a golden weekday. */
+@Composable
+private fun InkShelf2ComicTitle(title: String) {
+    val words = title.trim().split(" ")
+    val first = words.dropLast(1).joinToString(" ")
+    val second = words.lastOrNull().orEmpty()
+    val size = if (first.length > 14 || second.length > 11) 28.sp else 34.sp
+    Column(verticalArrangement = Arrangement.spacedBy((-6).dp)) {
+        ComicInkLine(first, Color.White, size)
+        ComicInkLine(second, Color(0xFFFFDA25), size)
+    }
+}
+
+@Composable
+private fun ComicInkLine(value: String, ink: Color, fontSize: androidx.compose.ui.unit.TextUnit) {
+    val style = TextStyle(
+        fontSize = fontSize,
+        lineHeight = fontSize * 1.15f,
+        fontWeight = FontWeight.Black,
+        fontStyle = FontStyle.Italic,
+        letterSpacing = (-1.5).sp,
+    )
+    Box(modifier = Modifier.graphicsLayer { rotationZ = -4f }) {
+        Text(
+            text = value,
+            style = style.copy(
+                color = Color(0xFF130617),
+                drawStyle = Stroke(width = 7f, join = StrokeJoin.Round),
+            ),
+            maxLines = 1,
+            softWrap = false,
+        )
+        Text(
+            text = value,
+            style = style.copy(
+                color = ink,
+                shadow = Shadow(
+                    color = Color(0xFF8F16BE).copy(alpha = 0.85f),
+                    offset = Offset(2f, 3f),
+                    blurRadius = 3f,
+                ),
+            ),
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 
@@ -562,6 +619,7 @@ private fun ComicCoverCard(
     onClick: () -> Unit,
     percent: Int? = null,
     width: androidx.compose.ui.unit.Dp? = 106.dp,
+    showTitle: Boolean = true,
 ) {
     Column(
         modifier = (if (width == null) Modifier.fillMaxWidth() else Modifier.width(width))
@@ -569,7 +627,7 @@ private fun ComicCoverCard(
     ) {
         Box(
             modifier = Modifier.fillMaxWidth()
-                .height(if (width == null) 148.dp else 150.dp)
+                .height(if (width == null) 148.dp else 134.dp)
                 .clip(RoundedCornerShape(9.dp))
                 .background(InkShelf2Colors.SurfaceRaised),
         ) {
@@ -602,6 +660,7 @@ private fun ComicCoverCard(
                 }
             }
         }
+        if (showTitle) {
         Text(
             manga.title,
             color = InkShelf2Colors.Text,
@@ -611,6 +670,7 @@ private fun ComicCoverCard(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 5.dp),
         )
+        }
     }
 }
 
@@ -635,15 +695,25 @@ private fun GradientAction(
     }
     Box(
         modifier = modifier
-            .height(41.dp)
+            .height(40.dp)
+            .shadow(
+                elevation = if (enabled && !outlined) 5.dp else 0.dp,
+                shape = shape,
+                ambientColor = InkShelf2Colors.Accent.copy(alpha = 0.35f),
+                spotColor = InkShelf2Colors.AccentLight.copy(alpha = 0.38f),
+            )
             .clip(shape)
             .background(background)
             .then(
-                if (outlined) Modifier.border(
+                Modifier.border(
                     width = 1.dp,
-                    color = if (enabled) InkShelf2Colors.AccentLight else InkShelf2Colors.Border,
+                    color = when {
+                        !enabled -> InkShelf2Colors.Border
+                        outlined -> InkShelf2Colors.AccentLight
+                        else -> Color(0x88FFE5FF)
+                    },
                     shape = shape,
-                ) else Modifier,
+                ),
             )
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -692,7 +762,14 @@ private fun SectionTitle(text: String, onClick: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text, color = InkShelf2Colors.Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-        if (onClick != null) Text("See all ›", color = InkShelf2Colors.AccentLight, fontSize = 12.sp)
+        if (onClick != null) {
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = "See all " + text,
+                tint = InkShelf2Colors.Text,
+                modifier = Modifier.size(24.dp),
+            )
+        }
     }
 }
 
