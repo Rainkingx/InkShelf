@@ -13,10 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -31,6 +34,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -195,6 +199,8 @@ internal fun InkShelf2SearchField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    placeholderText: String = "Filter recommended comics",
+    onSearch: (() -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -202,7 +208,20 @@ internal fun InkShelf2SearchField(
         leadingIcon = {
             Icon(Icons.Outlined.Search, contentDescription = null, tint = InkShelf2Colors.Text)
         },
-        placeholder = { Text("Filter recommended comics", fontSize = 13.sp) },
+        placeholder = { Text(placeholderText, fontSize = 13.sp) },
+        trailingIcon = if (onSearch != null) {
+            {
+                IconButton(onClick = onSearch) {
+                    Icon(
+                        Icons.Outlined.Search,
+                        contentDescription = "Search installed sources",
+                        tint = InkShelf2Colors.AccentLight,
+                    )
+                }
+            }
+        } else null,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearch?.invoke() }),
         singleLine = true,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
