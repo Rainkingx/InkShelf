@@ -174,9 +174,16 @@ internal class InkShelf2SourcesEngine {
             emptyList()
         }
         if (remoteIssues.isEmpty()) return false
-        syncChaptersWithSource(database, remoteIssues, local, source)
-        hydrateDetails(local, source)
-        return database.getChapters(local).executeAsBlocking().isNotEmpty()
+        return try {
+            syncChaptersWithSource(database, remoteIssues, local, source)
+            hydrateDetails(local, source)
+            database.getChapters(local).executeAsBlocking().isNotEmpty()
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // A broken entry must not prevent trying another installed source.
+            false
+        }
     }
 
     /**
@@ -194,20 +201,14 @@ internal class InkShelf2SourcesEngine {
             return@withContext ResolvedComic(local, original.name)
         }
 
-        if (local.favorite) {
-            return@withContext ResolvedComic(
-                local,
-                original?.name,
-                "The library source could not provide issues. Your saved series has not been changed.",
-            )
-        }
-
+        // A favourite from an obsolete extension may also be read through an
+        // alternative source, but we never rewrite the original library row
+        // or its progress: the newly resolved source remains a distinct row.
         val enabledLanguages = prefs.enabledLanguages().get()
         val hidden = prefs.hiddenSources().get()
         val catalogues = sources.getCatalogueSources()
             .filter { it.id != LocalSource.ID }
             .filter { it.lang in enabledLanguages && it.id.toString() !in hidden }
-            .filterNot { it.id == local.source }
             .distinctBy { it.id }
         val query = searchTitle(local.title)
         val limiter = Semaphore(3)
@@ -233,6 +234,8 @@ internal class InkShelf2SourcesEngine {
             }.awaitAll().flatten()
         }.sortedWith(
             compareByDescending<Pair<CatalogueSource, SManga>> {
+                it.first.id == local.source
+            }.thenByDescending {
                 seriesYear(it.second.title) == seriesYear(local.title)
             }.thenBy { it.first.name },
         )
@@ -254,15 +257,27 @@ internal class InkShelf2SourcesEngine {
                     copyFrom(remote)
                     id = database.insertManga(this).executeAsBlocking().insertedId()
                 }
-            syncChaptersWithSource(database, remoteChapters, resolved, source)
-            hydrateDetails(resolved, source)
-            return@withContext ResolvedComic(resolved, source.name)
+            try {
+                syncChaptersWithSource(database, remoteChapters, resolved, source)
+                hydrateDetails(resolved, source)
+                if (database.getChapters(resolved).executeAsBlocking().isNotEmpty()) {
+                    return@withContext ResolvedComic(resolved, source.name)
+                }
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                // Continue to another provider if this one cannot sync.
+            }
         }
 
         ResolvedComic(
             local,
             original?.name,
-            "No installed comic source returned readable issues for this title. Search Sources to choose an edition.",
+            if (local.favorite) {
+                "Your saved source cannot provide issues, and no readable alternative was found. Your library data is unchanged."
+            } else {
+                "No installed comic source returned readable issues for this title. Search Sources to choose an edition."
+            },
         )
     }
 
