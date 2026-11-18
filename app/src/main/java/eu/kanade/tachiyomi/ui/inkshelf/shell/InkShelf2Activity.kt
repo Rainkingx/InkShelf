@@ -60,6 +60,7 @@ class InkShelf2Activity : AppCompatActivity() {
 
         setContent {
             var tab by rememberSaveable { mutableStateOf(InkShelf2Tab.HOME) }
+            var searchFocusEpoch by remember { mutableIntStateOf(0) }
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -90,6 +91,25 @@ class InkShelf2Activity : AppCompatActivity() {
                 chapters = selected?.let { engine.chapters(it) }.orEmpty()
             }
 
+            val openSourceComic: (Manga) -> Unit = { manga ->
+                if (!openingComic) {
+                    openingComic = true
+                    lifecycleScope.launch {
+                        try {
+                            selected = sourcesEngine.prepareComic(manga)
+                        } catch (error: Exception) {
+                            Toast.makeText(
+                                this@InkShelf2Activity,
+                                error.message ?: "Could not open comic from source",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        } finally {
+                            openingComic = false
+                        }
+                    }
+                }
+            }
+
             BackHandler(enabled = selected != null || sourceHubOpen) {
                 when {
                     selected != null -> selected = null
@@ -110,6 +130,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     tab = InkShelf2Tab.DISCOVER
                     sourceHubOpen = false
                     activeSourceId = null
+                    searchFocusEpoch += 1
                 },
                 onNotifications = {
                     Toast.makeText(
@@ -162,44 +183,29 @@ class InkShelf2Activity : AppCompatActivity() {
                             sourceHubOpen = false
                         },
                         initialMode = sourceHubMode,
-                        onOpenComic = { manga ->
-                            if (!openingComic) {
-                                openingComic = true
-                                lifecycleScope.launch {
-                                    try {
-                                        selected = sourcesEngine.prepareComic(manga)
-                                    } catch (error: Exception) {
-                                        Toast.makeText(
-                                            this@InkShelf2Activity,
-                                            error.message ?: "Could not open comic from source",
-                                            Toast.LENGTH_LONG,
-                                        ).show()
-                                    } finally {
-                                        openingComic = false
-                                    }
-                                }
-                            }
-                        },
+                        onOpenComic = openSourceComic,
                     )
                     tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(
                         discover = discover,
                         padding = padding,
                         onOpen = { selected = it },
                         sources = enabledSources,
-                        installedCount = installedExtensions.size,
-                        onBrowseSource = { id ->
-                            tab = InkShelf2Tab.DISCOVER
-                            sourceHubMode = "Sources"
-                            sourceHubOpen = true
-                            activeSourceId = id
-                        },
+                        onOpenSearchResult = openSourceComic,
+                        searchFocusToken = searchFocusEpoch,
                         onManageSources = {
                             sourceHubMode = "Sources"
                             sourceHubOpen = true
+                            activeSourceId = null
                         },
                         onManageExtensions = {
                             sourceHubMode = "Extensions"
                             sourceHubOpen = true
+                            activeSourceId = null
+                        },
+                        onManageRepositories = {
+                            sourceHubMode = "Repos"
+                            sourceHubOpen = true
+                            activeSourceId = null
                         },
                     )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
