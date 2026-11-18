@@ -91,6 +91,7 @@ internal fun InkShelf2HomeScreen(
     onDiscover: () -> Unit,
     onLibrary: () -> Unit,
     onDayPicks: (InkShelf2Engine.Day) -> Unit,
+    onTrendingSeeAll: () -> Unit,
 ) {
     val slides = home?.days.orEmpty()
     val currentDay = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
@@ -264,17 +265,11 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item {
-            InkShelf2SectionHeading(
-                "Today's Picks",
-                onClick = {
-                    slides.firstOrNull { it.calendarDay == currentDay }?.let(onDayPicks)
-                        ?: onDiscover()
-                },
-            )
+            InkShelf2SectionHeading("Trending Now", onClick = onTrendingSeeAll)
             Spacer(Modifier.height(9.dp))
-            val books = home?.todayPicks.orEmpty()
+            val books = home?.trendingNow.orEmpty()
             if (books.isEmpty()) {
-                InkShelf2EmptyShelf("No verified recommendations for today's theme yet.")
+                InkShelf2EmptyShelf("Trending recommendations will appear when Discover refreshes.")
             } else {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                     val libraryCoverWidth = (maxWidth - 28.dp - 18.dp) / 3
