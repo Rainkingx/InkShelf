@@ -443,13 +443,18 @@ internal fun InkShelf2DetailsScreen(
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 InkShelf2ActionButton(
-                    label = if (hasReadingProgress) "Continue Reading" else "Read Now",
+                    label = when {
+                        isLoadingIssues && chapters.isEmpty() -> "Loading Issues…"
+                        hasReadingProgress -> "Continue Reading"
+                        else -> "Read Now"
+                    },
                     leadingIcon = Icons.Filled.PlayArrow,
                     onClick = onRead,
                     modifier = Modifier.fillMaxWidth(),
-                    // Missing cached chapters must not block a first read:
-                    // onRead fetches them from the real installed source.
-                    enabled = !isOpeningReader && sourceLinkError == null,
+                    // As in InkShelf 1, reading becomes available as soon as
+                    // an actual issue exists. Never offer a dead Read Now tap.
+                    enabled = !isOpeningReader && !isLoadingIssues &&
+                        chapters.isNotEmpty() && sourceLinkError == null,
                 )
                 if (sourceLinkError != null) {
                     Spacer(Modifier.height(9.dp))
