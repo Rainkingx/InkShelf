@@ -95,13 +95,8 @@ internal class InkShelf2Engine(private val context: Context) {
         Home(history, days, days.firstOrNull { it.calendarDay == today }?.picks.orEmpty())
     }
 
-    suspend fun loadLibrary(): List<Manga> = withContext(Dispatchers.IO) {
-        runCatching {
-            database.getLibraryMangas().executeAsBlocking()
-                .filter { it.favorite }
-                .sortedBy { it.title.lowercase(Locale.ROOT) }
-        }.getOrDefault(emptyList())
-    }
+    suspend fun loadLibrary(): List<InkShelf2LibraryItem> =
+        loadInkShelf2Library(database)
 
     suspend fun loadDiscover(): Discover = withContext(Dispatchers.IO) { loadDiscoverDirect() }
 
