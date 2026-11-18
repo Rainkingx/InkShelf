@@ -50,6 +50,24 @@
         android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.Tachiyomi"
         android:networkSecurityConfig="@xml/network_security_config">
+        <!-- Rebuilt Compose UI preview: separate Activity, never an overlay.
+             The original app stays available until its essential tools have migrated. -->
+        <activity
+            android:name=".ui.inkshelf.shell.InkShelf2Activity"
+            android:exported="false"
+            android:theme="@style/Theme.Tachiyomi" />
+        <activity-alias
+            android:name=".ui.inkshelf.shell.InkShelf2Preview"
+            android:enabled="true"
+            android:exported="true"
+            android:targetActivity=".ui.inkshelf.shell.InkShelf2Activity"
+            android:icon="@mipmap/ic_launcher"
+            android:label="InkShelf 2.0 Preview">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
         <activity
             android:name=".ui.main.MainActivity"
             android:windowSoftInputMode="adjustNothing"
