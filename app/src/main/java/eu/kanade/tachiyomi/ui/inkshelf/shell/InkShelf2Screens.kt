@@ -1,7 +1,6 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,19 +31,14 @@ import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.CheckCircleOutline
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ViewList
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,8 +52,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -69,7 +61,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -108,28 +99,7 @@ internal fun InkShelf2HomeScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize()
-            .background(InkShelf2Colors.Background)
-            .drawBehind {
-                // Two diffuse purple light pools, no legacy-UI overlay.
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0f to Color(0xFF70288C).copy(alpha = 0.22f),
-                        0.48f to Color(0xFF3F165A).copy(alpha = 0.11f),
-                        1f to Color.Transparent,
-                    ),
-                    center = Offset(size.width * 0.85f, size.height * 0.17f),
-                    radius = size.width * 1.2f,
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0f to Color(0xFF6F239C).copy(alpha = 0.10f),
-                        1f to Color.Transparent,
-                    ),
-                    center = Offset(size.width * 0.06f, size.height * 0.78f),
-                    radius = size.width * 1.15f,
-                )
-            },
+        modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = padding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -196,14 +166,14 @@ internal fun InkShelf2HomeScreen(
                             )
                             Spacer(Modifier.height(10.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                                GradientAction(
+                                InkShelf2ActionButton(
                                     label = if (pick != null) "Read Now" else "Discover",
                                     leadingIcon = Icons.Filled.PlayArrow,
                                     enabled = true,
                                     onClick = { if (pick != null) onRead(pick) else onDiscover() },
                                     modifier = Modifier.weight(1f),
                                 )
-                                GradientAction(
+                                InkShelf2ActionButton(
                                     label = if (pick?.favorite == true) "In Library" else "Save",
                                     leadingIcon = if (pick?.favorite == true) Icons.Outlined.CheckCircleOutline else Icons.Outlined.Add,
                                     enabled = pick != null,
@@ -239,11 +209,11 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item {
-            SectionTitle("Continue Reading", onClick = onLibrary)
+            InkShelf2SectionInkShelf2PageHeading("Continue Reading", onClick = onLibrary)
             Spacer(Modifier.height(9.dp))
             val books = home?.history.orEmpty()
             if (books.isEmpty()) {
-                EmptyShelf("Your reading progress will appear here.")
+                InkShelf2EmptyShelf("Your reading progress will appear here.")
             } else {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
@@ -256,11 +226,11 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item {
-            SectionTitle("Today's Picks", onClick = onDiscover)
+            InkShelf2SectionInkShelf2PageHeading("Today's Picks", onClick = onDiscover)
             Spacer(Modifier.height(9.dp))
             val books = home?.todayPicks.orEmpty()
             if (books.isEmpty()) {
-                EmptyShelf("No verified recommendations for today's theme yet.")
+                InkShelf2EmptyShelf("No verified recommendations for today's theme yet.")
             } else {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
@@ -347,22 +317,17 @@ internal fun InkShelf2DiscoverScreen(
         "Recommended for You" to discover?.recommended.orEmpty(),
     )
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(InkShelf2Colors.Background),
+        modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = padding,
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                Heading("Discover Comics")
+                InkShelf2PageHeading("Discover Comics")
                 Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
+                InkShelf2SearchField(
                     value = query,
                     onValueChange = { query = it },
-                    leadingIcon = { Icon(Icons.Outlined.Search, null) },
-                    label = { Text("Filter loaded recommendations") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
                 )
             }
         }
@@ -371,10 +336,10 @@ internal fun InkShelf2DiscoverScreen(
                 val filtered = if (query.isBlank()) list else list.filter {
                     it.title.contains(query, ignoreCase = true)
                 }
-                SectionTitle(name, onClick = null)
+                InkShelf2SectionInkShelf2PageHeading(name, onClick = null)
                 Spacer(Modifier.height(9.dp))
                 if (filtered.isEmpty()) {
-                    EmptyShelf("No matching comics in the existing Discover cache.")
+                    InkShelf2EmptyShelf("No matching comics in the existing Discover cache.")
                 } else {
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -401,14 +366,14 @@ internal fun InkShelf2LibraryScreen(
     val spacing = 10.dp
     Column(
         modifier = Modifier.fillMaxSize()
-            .background(InkShelf2Colors.Background)
+            .inkShelf2Atmosphere()
             .padding(padding),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Heading("My Library", modifier = Modifier.weight(1f))
+            InkShelf2PageHeading("My Library", modifier = Modifier.weight(1f))
             // The mock-up shows a compact two-segment control, not two
             // unrelated icon buttons. Keep both icons in the same capsule.
             Row(
@@ -438,15 +403,11 @@ internal fun InkShelf2LibraryScreen(
                     }
             }
         }
-        Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-            FilterChip(
-                selected = true,
-                onClick = {},
-                label = { Text("All (${library.size})") },
-            )
+        Row(modifier = Modifier.padding(horizontal = InkShelf2Metrics.PageGutter, vertical = 4.dp)) {
+            InkShelf2StatusPill(label = "All (${library.size})")
         }
         if (library.isEmpty()) {
-            EmptyShelf("Your existing J2K library will appear here.")
+            InkShelf2EmptyShelf("Your existing J2K library will appear here.")
         } else if (grid) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
@@ -502,7 +463,7 @@ internal fun InkShelf2DetailsScreen(
     onSave: () -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(InkShelf2Colors.Background),
+        modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = padding,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -555,7 +516,7 @@ internal fun InkShelf2DetailsScreen(
         }
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                GradientAction(
+                InkShelf2ActionButton(
                     label = "Continue Reading",
                     leadingIcon = Icons.Filled.PlayArrow,
                     onClick = onRead,
@@ -563,7 +524,7 @@ internal fun InkShelf2DetailsScreen(
                     enabled = chapters.isNotEmpty(),
                 )
                 Spacer(Modifier.height(8.dp))
-                GradientAction(
+                InkShelf2ActionButton(
                     label = if (manga.favorite) "In Library" else "Save to Library",
                     leadingIcon = if (manga.favorite) Icons.Outlined.CheckCircleOutline else Icons.Outlined.Add,
                     onClick = onSave,
@@ -572,7 +533,7 @@ internal fun InkShelf2DetailsScreen(
                     enabled = !manga.favorite,
                 )
                 Spacer(Modifier.height(15.dp))
-                Heading("Synopsis")
+                InkShelf2PageHeading("Synopsis")
                 Spacer(Modifier.height(8.dp))
                 Text(
                     manga.description?.takeIf { it.isNotBlank() }
@@ -582,11 +543,11 @@ internal fun InkShelf2DetailsScreen(
                     lineHeight = 21.sp,
                 )
                 Spacer(Modifier.height(16.dp))
-                Heading("Issues (${chapters.size})")
+                InkShelf2PageHeading("Issues (${chapters.size})")
             }
         }
         if (chapters.isEmpty()) {
-            item { EmptyShelf("No issues in the local cache. Refresh from the comic source in the current app.") }
+            item { InkShelf2EmptyShelf("No issues in the local cache. Refresh from the comic source in the current app.") }
         } else {
             items(chapters) { chapter ->
                 Row(
@@ -630,7 +591,7 @@ internal fun InkShelf2AccountScreen(padding: PaddingValues) {
             .padding(padding)
             .padding(20.dp),
     ) {
-        Heading("Account")
+        InkShelf2PageHeading("Account")
         Spacer(Modifier.height(14.dp))
         Text(
             "This is the separate InkShelf 2.0 preview. Settings, backups, source management and downloads " +
@@ -702,111 +663,3 @@ private fun ComicCoverCard(
     }
 }
 
-/**
- * Reusable mock-up buttons: bright violet gradient primary with dark play
- * glyph/text; transparent dark outlined secondary with a plus glyph.
- */
-@Composable
-private fun GradientAction(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    outlined: Boolean = false,
-    enabled: Boolean = true,
-    leadingIcon: ImageVector? = null,
-) {
-    val shape = RoundedCornerShape(50)
-    val background = when {
-        !enabled -> Brush.horizontalGradient(listOf(InkShelf2Colors.Surface, InkShelf2Colors.Surface))
-        outlined -> Brush.horizontalGradient(listOf(Color(0xD010081A), Color(0xD0140B20)))
-        else -> Brush.horizontalGradient(listOf(Color(0xFFB543EE), Color(0xFFE46EF6)))
-    }
-    Box(
-        modifier = modifier
-            .height(40.dp)
-            .shadow(
-                elevation = if (enabled && !outlined) 5.dp else 0.dp,
-                shape = shape,
-                ambientColor = InkShelf2Colors.Accent.copy(alpha = 0.35f),
-                spotColor = InkShelf2Colors.AccentLight.copy(alpha = 0.38f),
-            )
-            .clip(shape)
-            .background(background)
-            .then(
-                Modifier.border(
-                    width = 1.dp,
-                    color = when {
-                        !enabled -> InkShelf2Colors.Border
-                        outlined -> InkShelf2Colors.AccentLight
-                        else -> Color(0x88FFE5FF)
-                    },
-                    shape = shape,
-                ),
-            )
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 8.dp),
-        ) {
-            val fg = when {
-                !enabled -> InkShelf2Colors.Muted
-                outlined -> Color.White
-                else -> Color(0xFF130A1A)
-            }
-            if (leadingIcon != null) {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = fg,
-                )
-                Spacer(Modifier.width(5.dp))
-            }
-            Text(
-                label,
-                color = fg,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-private fun Heading(text: String, modifier: Modifier = Modifier) {
-    Text(text, modifier = modifier, color = InkShelf2Colors.Text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-}
-
-@Composable
-private fun SectionTitle(text: String, onClick: (() -> Unit)?) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text, color = InkShelf2Colors.Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-        if (onClick != null) {
-            Icon(
-                imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = "See all " + text,
-                tint = InkShelf2Colors.Text,
-                modifier = Modifier.size(24.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun EmptyShelf(message: String) {
-    Text(
-        message,
-        color = InkShelf2Colors.Muted,
-        fontSize = 13.sp,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-    )
-}
