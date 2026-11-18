@@ -297,32 +297,40 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         row.addView(card.root)
     }
 
-    private fun showHero(position: Int) {
-        heroIndex = position.coerceIn(0, (featured.size - 1).coerceAtLeast(0))
-        val pick = featured.getOrNull(heroIndex)
-        if (pick != null) {
-            if (themeArtworkFailed) binding.homeHeroCover.loadManga(pick.manga)
-            binding.homeThemeKicker.text = "DAILY COMICS  •  ${dayTheme.title.substringAfterLast(' ')}"
-            binding.homeThemeSubtitle.text =
-                "${featured.size} ${if (featured.size == 1) "PICK" else "PICKS"}   •   " +
-                    featured.joinToString("   •   ") { daily ->
-                        when (daily.label) {
-                            "New this week" -> "New"
-                            "Trending" -> "Trending"
-                            "Suggested for you" -> "For You"
-                            else -> "From Library"
-                        }
-                    }
-            binding.homeOpenPick.text = "▶  Read Now"
-        } else {
-            binding.homeThemeKicker.text = "DAILY COMICS"
-            binding.homeThemeSubtitle.text = "No verified matches yet — explore more in Discover"
-            binding.homeOpenPick.text = "Discover"
-        }
+    private fun currentHeroPick(): DailyPick? =
+        weeklySlides.getOrNull(heroIndex)?.picks?.firstOrNull()
 
+    /**
+     * Seven always-available swipeable promo slides, one per weekday.
+     * Artwork represents the theme; the button opens the explicitly named
+     * featured comic (or Discover when no verified thematic match exists).
+     */
+    private fun showHero(position: Int) {
+        if (!isBindingInitialized || weeklySlides.isEmpty()) return
+        heroIndex = position.coerceIn(0, weeklySlides.lastIndex)
+        val slide = weeklySlides[heroIndex]
+        val pick = currentHeroPick()
+        bindThemeTitle(slide.theme)
+        bindThemeArtwork(slide.day, pick?.manga)
+
+        binding.homeThemeKicker.text = if (slide.day == Calendar.getInstance().get(Calendar.DAY_OF_WEEK)) {
+            "DAILY COMICS  •  TODAY"
+        } else {
+            "DAILY COMICS  •  WEEKDAY PREVIEW"
+        }
+        binding.homeThemeSubtitle.text = if (pick != null) {
+            "${slide.picks.size} ${if (slide.picks.size == 1) "PICK" else "PICKS"}  •  ${pick.manga.title}"
+        } else {
+            "Explore comics for ${slide.theme.title.lowercase(Locale.ROOT)}"
+        }
+        binding.homeOpenPick.text = if (pick == null) "Discover Comics" else "▶  Read Now"
+        binding.homeOpenPick.isEnabled = true
         updateSaveButton()
+        binding.homeHeroCover.contentDescription =
+            "${slide.theme.title}, swipe left or right to change the featured day"
+
         binding.homeHeroDots.removeAllViews()
-        featured.forEachIndexed { index, _ ->
+        weeklySlides.forEachIndexed { index, _ ->
             val dot = View(itemViewContext())
             val selected = index == heroIndex
             val shape = GradientDrawable().apply {
@@ -330,29 +338,28 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
                 cornerRadius = dp(8).toFloat()
                 setColor(
                     if (selected) itemViewContext().getResourceColor(R.attr.colorPrimary)
-                    else Color.argb(110, 155, 145, 170),
+                    else Color.argb(130, 165, 157, 180),
                 )
             }
             dot.background = shape
-            val width = if (selected) dp(17) else dp(7)
+            val width = if (selected) dp(18) else dp(7)
             val params = LinearLayout.LayoutParams(width, dp(7)).apply {
                 marginStart = dp(4)
                 marginEnd = dp(4)
             }
-            binding.homeHeroDots.addView(dot, params)
+            dot.contentDescription = "Show ${weeklySlides[index].theme.title}"
             dot.setOnClickListener { showHero(index) }
+            binding.homeHeroDots.addView(dot, params)
         }
     }
 
-
     /**
-     * Seven curated real publisher/creator images, one per weekday.
-     * Never stretch a portrait issue cover into the hero unless the online
-     * artwork failed to load. Coil caches these URLs between visits.
+     * Each weekday uses a real source-hosted comic illustration with a source
+     * link. Coil cancels earlier image requests if the user swipes quickly.
      */
-    private fun bindThemeArtwork() {
+    private fun bindThemeArtwork(day: Int, fallback: Manga?) {
         themeArtworkFailed = false
-        val art = InkShelfDailyHeroArt.forDay(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))
+        val art = InkShelfDailyHeroArt.forDay(day)
         binding.homeHeroArtCredit.text = art.credit
         binding.homeHeroArtCredit.setOnClickListener {
             runCatching {
@@ -363,33 +370,34 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
             crossfade(true)
             listener(
                 onError = { _, _ ->
-                    themeArtworkFailed = true
-                    if (isBindingInitialized) {
-                        featured.getOrNull(heroIndex)?.let { binding.homeHeroCover.loadManga(it.manga) }
+                    if (isBindingInitialized && weeklySlides.getOrNull(heroIndex)?.day == day) {
+                        themeArtworkFailed = true
+                        fallback?.let { binding.homeHeroCover.loadManga(it) }
                     }
                 },
             )
         }
     }
 
-    /** Split the featured day's name into the white/yellow two-line comic-book masthead. */
-    private fun bindThemeTitle() {
-        val words = dayTheme.title.trim().split(" ")
+    /** Two-line angled masthead remains over the full-bleed artwork. */
+    private fun bindThemeTitle(theme: Theme) {
+        val words = theme.title.trim().split(" ")
         binding.homeThemeTitle.text = words.dropLast(1).joinToString(" ")
         binding.homeThemeAccent.text = words.lastOrNull().orEmpty()
     }
 
     private fun updateSaveButton() {
-        val pick = featured.getOrNull(heroIndex)
+        val pick = currentHeroPick()
+        binding.homeBrowseButton.isEnabled = pick != null
         binding.homeBrowseButton.text = when {
-            pick == null -> "Discover"
+            pick == null -> "No Pick"
             pick.manga.favorite -> "✓  In Library"
             else -> "+  Save"
         }
     }
 
     private fun startFeaturedPick() {
-        val manga = featured.getOrNull(heroIndex)?.manga ?: run {
+        val manga = currentHeroPick()?.manga ?: run {
             openTab(R.id.nav_browse)
             return
         }
@@ -413,7 +421,7 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
     }
 
     private fun saveFeaturedPick() {
-        val manga = featured.getOrNull(heroIndex)?.manga ?: run {
+        val manga = currentHeroPick()?.manga ?: run {
             openTab(R.id.nav_browse)
             return
         }
@@ -470,7 +478,9 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
     private fun dp(value: Int): Int =
         (value * binding.root.resources.displayMetrics.density).roundToInt()
 
-    private fun themeForToday(): Theme = when (Calendar.getInstance().get(Calendar.DAY_OF_WEEK)) {
+    private fun themeForToday(): Theme = themeForDay(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))
+
+    private fun themeForDay(day: Int): Theme = when (day) {
         Calendar.MONDAY -> Theme("MUTANT MONDAY", listOf("x-men", "wolverine", "mutant", "x-force"))
         Calendar.TUESDAY -> Theme("INDIE TUESDAY", listOf("image comics", "dark horse", "boom", "idw", "indie"))
         Calendar.WEDNESDAY -> Theme("WHAT'S NEW WEDNESDAY", listOf("new", "absolute", "2026"))
