@@ -179,7 +179,7 @@
                             android:letterSpacing="0.05"
                             android:maxLines="1"
                             android:singleLine="true"
-                            android:text="Explore Ã¢â‚¬Â¢ Read Ã¢â‚¬Â¢ Collect"
+                            android:text="Explore &#8226; Read &#8226; Collect"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="@dimen/inkshelf_subtitle_text_size" />
                     </LinearLayout>
