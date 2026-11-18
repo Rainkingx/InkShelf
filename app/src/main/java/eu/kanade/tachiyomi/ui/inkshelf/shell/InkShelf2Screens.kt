@@ -369,6 +369,9 @@ internal fun InkShelf2DetailsScreen(
     padding: PaddingValues,
     onBack: () -> Unit,
     onRead: () -> Unit,
+    sourceName: String?,
+    sourceLinkError: String?,
+    onFindSource: () -> Unit,
     isOpeningReader: Boolean,
     isLoadingIssues: Boolean,
     issuesError: String?,
@@ -427,6 +430,12 @@ internal fun InkShelf2DetailsScreen(
                             color = InkShelf2Colors.Muted,
                             fontSize = 11.sp,
                         )
+                        Text(
+                            text = if (sourceName.isNullOrBlank()) "Source not installed"
+                                else "Source: $sourceName",
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 11.sp,
+                        )
                     }
                 }
             }
@@ -440,8 +449,24 @@ internal fun InkShelf2DetailsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     // Missing cached chapters must not block a first read:
                     // onRead fetches them from the real installed source.
-                    enabled = !isOpeningReader,
+                    enabled = !isOpeningReader && sourceLinkError == null,
                 )
+                if (sourceLinkError != null) {
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        sourceLinkError,
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                    )
+                    Spacer(Modifier.height(7.dp))
+                    InkShelf2ActionButton(
+                        label = "Find on Installed Sources",
+                        outlined = true,
+                        onClick = onFindSource,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 if (isLoadingIssues && chapters.isEmpty()) {
                     Spacer(Modifier.height(7.dp))
                     Text(
@@ -478,6 +503,7 @@ internal fun InkShelf2DetailsScreen(
                 InkShelf2EmptyShelf(
                     when {
                         isLoadingIssues -> "Loading issues from the installed comic source…"
+                        sourceLinkError != null -> "This recommendation is not connected to a readable extension entry."
                         issuesError != null -> issuesError
                         else -> "No issues loaded yet. Tap Read Now to fetch them from the source."
                     },
