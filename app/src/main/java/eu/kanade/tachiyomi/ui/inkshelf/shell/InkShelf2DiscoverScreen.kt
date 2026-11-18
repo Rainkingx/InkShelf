@@ -83,6 +83,7 @@ internal fun InkShelf2DiscoverScreen(
     onManageSources: () -> Unit,
     onManageExtensions: () -> Unit,
     onManageRepositories: () -> Unit,
+    onSeeAll: (String) -> Unit,
     searchFocusToken: Int = 0,
 ) {
     val engine = remember { InkShelf2SourcesEngine() }
@@ -151,7 +152,8 @@ internal fun InkShelf2DiscoverScreen(
         }
     }
 
-    val trending = discover?.trending.orEmpty().filter { !it.thumbnail_url.isNullOrBlank() }.take(5)
+    val trending = discover?.trending.orEmpty().filter { !it.thumbnail_url.isNullOrBlank() }
+    val heroTrending = trending.take(5)
     val newest = discover?.newest.orEmpty().filter { !it.thumbnail_url.isNullOrBlank() }
     val recommended = discover?.recommended.orEmpty().filter { !it.thumbnail_url.isNullOrBlank() }
     val picks = (recommended + trending + newest)
@@ -172,7 +174,7 @@ internal fun InkShelf2DiscoverScreen(
             },
         ).filter { it.second.isNotEmpty() }
     }
-    val heroPager = rememberPagerState(pageCount = { trending.size.coerceAtLeast(1) })
+    val heroPager = rememberPagerState(pageCount = { heroTrending.size.coerceAtLeast(1) })
 
     LazyColumn(
         state = scroll,
@@ -334,13 +336,13 @@ internal fun InkShelf2DiscoverScreen(
         } else {
             // Fixed item indices keep mock-up category shortcuts functional.
             item(key = "trending-hero") {
-                if (trending.isNotEmpty()) {
+                if (heroTrending.isNotEmpty()) {
                     HorizontalPager(
                         state = heroPager,
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         pageSpacing = 10.dp,
                     ) { index ->
-                        val comic = trending[index]
+                        val comic = heroTrending[index]
                         Box(
                             modifier = Modifier.fillMaxWidth().height(194.dp)
                                 .clip(RoundedCornerShape(17.dp))
@@ -391,7 +393,7 @@ internal fun InkShelf2DiscoverScreen(
                         modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        repeat(trending.size) { index ->
+                        repeat(heroTrending.size) { index ->
                             Box(
                                 modifier = Modifier.padding(horizontal = 3.dp)
                                     .width(if (index == heroPager.currentPage) 16.dp else 6.dp)
@@ -509,14 +511,14 @@ internal fun InkShelf2DiscoverScreen(
                 DiscoverShelf(recommended.take(20), onOpen)
             }
             item(key = "new") {
-                InkShelf2SectionHeading("New This Week", onClick = null)
+                InkShelf2SectionHeading("New This Week", onClick = { onSeeAll("New This Week") })
                 Spacer(Modifier.height(7.dp))
                 DiscoverShelf(newest.take(20), onOpen)
             }
             item(key = "trending-shelf") {
-                InkShelf2SectionHeading("Trending Right Now", onClick = null)
+                InkShelf2SectionHeading("Trending Right Now", onClick = { onSeeAll("Trending Right Now") })
                 Spacer(Modifier.height(7.dp))
-                DiscoverShelf(trending, onOpen)
+                DiscoverShelf(trending.take(20), onOpen)
             }
         }
         item { Spacer(Modifier.height(6.dp)) }
