@@ -86,6 +86,7 @@ internal fun InkShelf2DiscoverScreen(
     onManageRepositories: () -> Unit,
     onSeeAll: (String) -> Unit,
     searchFocusToken: Int = 0,
+    initialSearchQuery: String = "",
 ) {
     val engine = remember { InkShelf2SourcesEngine() }
     val scroll = rememberLazyListState()
@@ -117,6 +118,9 @@ internal fun InkShelf2DiscoverScreen(
     val sourceIds = sources.map { it.id }
     LaunchedEffect(searchFocusToken) {
         if (searchFocusToken > 0) {
+            if (initialSearchQuery.isNotBlank()) {
+                query = initialSearchQuery
+            }
             focusRequester.requestFocus()
             keyboard?.show()
         }
