@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -90,6 +91,19 @@ internal fun InkShelf2SourceHub(
     }
 
     var tab by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
+    var hubTrail by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
+    fun openHubTab(target: String) {
+        if (target != tab) {
+            hubTrail = (hubTrail.split('|').takeLast(10) + target).joinToString("|")
+            tab = target
+        }
+    }
+    // A user who navigates Sources → Extensions → Repositories expects
+    // Android Back to retrace those inner screens before leaving Discover.
+    BackHandler(enabled = hubTrail.contains('|')) {
+        hubTrail = hubTrail.substringBeforeLast('|')
+        tab = hubTrail.substringAfterLast('|')
+    }
     var search by rememberSaveable { mutableStateOf("") }
     var repoUrl by rememberSaveable { mutableStateOf("") }
     var info by remember { mutableStateOf<String?>(null) }
@@ -215,7 +229,7 @@ internal fun InkShelf2SourceHub(
                         },
                         active = tab == option,
                         modifier = Modifier.weight(1f),
-                        onClick = { tab = option },
+                        onClick = { openHubTab(option) },
                     )
                 }
             }
@@ -239,7 +253,7 @@ internal fun InkShelf2SourceHub(
                     item {
                         InkShelf2EmptyShelf("No installed comic sources found. Open Extensions to install or trust an extension.")
                         InkShelf2ActionButton("Find Extensions",
-                            onClick = { tab = "Extensions" },
+                            onClick = { openHubTab("Extensions") },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
                     }
                 }
@@ -286,7 +300,7 @@ internal fun InkShelf2SourceHub(
                             if (update != null) install(update)
                             else {
                                 val first = ext.sources.filterIsInstance<CatalogueSource>().firstOrNull()
-                                if (first != null) onSourceSelected(first.id) else tab = "Sources"
+                                if (first != null) onSourceSelected(first.id) else openHubTab("Sources")
                             }
                         },
                     )
@@ -312,7 +326,7 @@ internal fun InkShelf2SourceHub(
                         modifier = Modifier.padding(horizontal = 16.dp))
                     if (repos.isEmpty()) {
                         InkShelf2EmptyShelf("No extension repositories configured.")
-                        InkShelf2ActionButton("Add Repository", onClick = { tab = "Repos" },
+                        InkShelf2ActionButton("Add Repository", onClick = { openHubTab("Repos") },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
                     }
                 }
