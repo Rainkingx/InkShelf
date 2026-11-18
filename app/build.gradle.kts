@@ -104,6 +104,12 @@ android {
             buildConfigField("Boolean", "INCLUDE_UPDATER", "true")
         }
         create("dev") {
+            // Give each GitHub Actions preview a strictly increasing versionCode.
+            // This forces Android to recognise the newly installed preview APK
+            // as an update to the same dev/debug application, not an old download.
+            val previewRun = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 0
+            versionCode = AndroidVersions.versionCode + 1000 + previewRun
+            versionNameSuffix = "-ink2-build-${previewRun}"
             // androidResources.localeFilters is shared across all product flavors rather than
             // being scoped to this one, so only mutate it when a Dev-flavor task is actually
             // being run ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â otherwise this strips every locale from Standard builds too.
