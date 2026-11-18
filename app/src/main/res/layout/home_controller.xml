@@ -15,12 +15,12 @@
         android:orientation="vertical"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingBottom="84dp">
+        android:paddingBottom="20dp">
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/home_hero_card"
             android:layout_width="match_parent"
-            android:layout_height="326dp"
+            android:layout_height="380dp"
             app:cardCornerRadius="22dp"
             app:cardElevation="0dp"
             app:strokeColor="?attr/colorOutlineVariant"
@@ -36,7 +36,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
-                    android:alpha="0.42"
+                    android:alpha="0.86"
                     android:contentDescription="@string/cover_of_image" />
 
                 <View
@@ -44,28 +44,6 @@
                     android:layout_height="match_parent"
                     android:background="@drawable/inkshelf_home_hero_fade"
                     android:importantForAccessibility="no" />
-
-                <!-- Show the authentic portrait cover intact rather than stretching it to a landscape poster. -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/home_hero_foreground_card"
-                    android:layout_width="130dp"
-                    android:layout_height="184dp"
-                    android:layout_gravity="top|end"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginEnd="12dp"
-                    android:visibility="gone"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="6dp"
-                    app:strokeWidth="1dp"
-                    app:strokeColor="#926EBC">
-                    <ImageView
-                        android:id="@+id/home_hero_foreground"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:scaleType="fitCenter"
-                        android:background="#170821"
-                        android:contentDescription="@string/cover_of_image" />
-                </com.google.android.material.card.MaterialCardView>
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -238,7 +216,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="18dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
