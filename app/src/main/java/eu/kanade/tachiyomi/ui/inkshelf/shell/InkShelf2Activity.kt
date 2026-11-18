@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.os.Bundle
+import android.os.SystemClock
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -45,6 +46,7 @@ class InkShelf2Activity : AppCompatActivity() {
     private val extensionManager: ExtensionManager by lazy { Injekt.get() }
     private val preferences: PreferencesHelper by lazy { Injekt.get() }
     private var refreshEpoch by mutableIntStateOf(0)
+    private var lastBackAtMillis = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +62,18 @@ class InkShelf2Activity : AppCompatActivity() {
 
         setContent {
             var tab by rememberSaveable { mutableStateOf(InkShelf2Tab.HOME) }
+            // Persist visited main tabs rather than relying on Activity.finish().
+            // Store only enum names, which are safe for Android saved state.
+            var tabTrail by rememberSaveable { mutableStateOf("HOME") }
+            fun openTab(destination: InkShelf2Tab) {
+                if (tab != destination) {
+                    tabTrail = (tabTrail.split('|').takeLast(20) + destination.name)
+                        .joinToString("|")
+                    tab = destination
+                }
+                sourceHubOpen = false
+                activeSourceId = null
+            }
             var searchFocusEpoch by remember { mutableIntStateOf(0) }
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
@@ -110,26 +124,46 @@ class InkShelf2Activity : AppCompatActivity() {
                 }
             }
 
-            BackHandler(enabled = selected != null || sourceHubOpen) {
+            // Register at the shell root, so Back always navigates inside
+            // InkShelf 2.0 (including Library, Account and Discover), rather
+            // than immediately finishing the preview Activity on those tabs.
+            BackHandler(enabled = true) {
                 when {
                     selected != null -> selected = null
                     activeSourceId != null -> activeSourceId = null
-                    else -> sourceHubOpen = false
+                    sourceHubOpen -> sourceHubOpen = false
+                    tabTrail.contains('|') -> {
+                        tabTrail = tabTrail.substringBeforeLast('|')
+                        tab = InkShelf2Tab.valueOf(tabTrail.substringAfterLast('|'))
+                    }
+                    tab != InkShelf2Tab.HOME -> {
+                        tab = InkShelf2Tab.HOME
+                        tabTrail = "HOME"
+                    }
+                    else -> {
+                        // At the root there is no previous page. Require an
+                        // intentional second Back instead of an accidental exit.
+                        val now = SystemClock.elapsedRealtime()
+                        if (now - lastBackAtMillis < 2_000L) {
+                            finish()
+                        } else {
+                            lastBackAtMillis = now
+                            Toast.makeText(
+                                this@InkShelf2Activity,
+                                "Press Back again to exit InkShelf",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    }
                 }
             }
             InkShelf2Shell(
                 currentTab = tab,
                 showHeader = selected == null,
                 showBottomNav = selected == null,
-                onTabSelected = {
-                    tab = it
-                    sourceHubOpen = false
-                    activeSourceId = null
-                },
+                onTabSelected = { openTab(it) },
                 onSearch = {
-                    tab = InkShelf2Tab.DISCOVER
-                    sourceHubOpen = false
-                    activeSourceId = null
+                    openTab(InkShelf2Tab.DISCOVER)
                     searchFocusEpoch += 1
                 },
                 onNotifications = {
@@ -157,8 +191,8 @@ class InkShelf2Activity : AppCompatActivity() {
                         onOpen = { selected = it },
                         onRead = { openReader(it) },
                         onSave = { saveComic(it) },
-                        onDiscover = { tab = InkShelf2Tab.DISCOVER },
-                        onLibrary = { tab = InkShelf2Tab.LIBRARY },
+                        onDiscover = { openTab(InkShelf2Tab.DISCOVER) },
+                        onLibrary = { openTab(InkShelf2Tab.LIBRARY) },
                     )
                     tab == InkShelf2Tab.DISCOVER && openingComic -> {
                         androidx.compose.foundation.layout.Box(
