@@ -1,9 +1,6 @@
 package eu.kanade.tachiyomi.ui.home
 
 import android.graphics.Color
-import android.graphics.RenderEffect
-import android.graphics.Shader
-import android.os.Build
 import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -64,15 +61,10 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         // Reserve the visible, existing InkShelf cosmic header instead of
         // drawing a duplicate masthead above it.
         val header = view.resources.getDimensionPixelSize(R.dimen.inkshelf_home_header_height)
-        binding.homeScroll.setPadding(0, header, 0, 0)
+        // Home scrolls behind the fixed bottom navigation. Reserve a real
+        // bottom scroll inset so the last shelf can be brought fully into view.
+        binding.homeScroll.setPadding(0, header, 0, dp(88))
         dayTheme = themeForToday()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Portrait source covers make poor wide banners. Blur only the
-            // ambient backdrop; keep the genuine cover sharp in the foreground.
-            binding.homeHeroCover.setRenderEffect(
-                RenderEffect.createBlurEffect(3f, 3f, Shader.TileMode.MIRROR),
-            )
-        }
         bindThemeTitle()
         binding.homeThemeSubtitle.text = "Three real comics to explore today"
 
@@ -280,7 +272,7 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         val pick = featured.getOrNull(heroIndex)
         if (pick != null) {
             binding.homeHeroCover.loadManga(pick.manga)
-            binding.homeThemeKicker.text = "DAILY COMICS  •  ${pick.label.uppercase(Locale.ROOT)}"
+            binding.homeThemeKicker.text = "DAILY COMICS  •  ${dayTheme.title.substringAfterLast(' ')}"
             binding.homeThemeSubtitle.text =
                 "${featured.size} ${if (featured.size == 1) "PICK" else "PICKS"}   •   " +
                     featured.joinToString("   •   ") { daily ->
