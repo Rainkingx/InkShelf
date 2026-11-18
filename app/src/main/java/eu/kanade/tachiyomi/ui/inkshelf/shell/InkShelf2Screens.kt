@@ -364,6 +364,10 @@ internal fun InkShelf2DetailsScreen(
     onChapter: (Chapter) -> Unit,
     onSave: () -> Unit,
 ) {
+    // Chapter history, not simply a non-empty chapter list, determines
+    // whether the reader has actually been started. J2K records completed
+    // issues via read and in-progress issues via last_page_read.
+    val hasReadingProgress = chapters.any { it.read || it.last_page_read > 0 }
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = padding,
@@ -419,7 +423,7 @@ internal fun InkShelf2DetailsScreen(
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 InkShelf2ActionButton(
-                    label = "Continue Reading",
+                    label = if (hasReadingProgress) "Continue Reading" else "Read Now",
                     leadingIcon = Icons.Filled.PlayArrow,
                     onClick = onRead,
                     modifier = Modifier.fillMaxWidth(),
