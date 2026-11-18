@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Protect the angled two-tone theme lettering on the left, while keeping cover art visible on the right. -->
+    <!-- Feathered overlay: text remains crisp and art fades into the dark left edge. -->
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="0"
-                android:startColor="#D70B061A"
-                android:centerColor="#700D0720"
-                android:endColor="#120D0720" />
+                android:startColor="#ED0B061A"
+                android:centerColor="#B80B061A"
+                android:endColor="#090B061A" />
         </shape>
     </item>
-    <!-- Deep fade under the reading actions, as in the original InkShelf Home mock-up. -->
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="90"
-                android:startColor="#FC080410"
-                android:centerColor="#97090415"
-                android:endColor="#00000000" />
+                android:startColor="#F6080412"
+                android:centerColor="#7A0B061A"
+                android:endColor="#000B061A" />
         </shape>
     </item>
 </layer-list>
