@@ -1,9 +1,12 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -215,12 +218,24 @@ internal fun InkShelf2HomeScreen(
             if (books.isEmpty()) {
                 InkShelf2EmptyShelf("Your reading progress will appear here.")
             } else {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(books) { item ->
-                        ComicCoverCard(item.manga, percent = item.percent, width = 100.dp, showTitle = false, onClick = { onRead(item.manga) })
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    // Exact three-column Library sizing: 14dp outer gutters,
+                    // 9dp gaps, and a 0.71 comic-cover aspect ratio.
+                    val libraryCoverWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
+                        items(books) { item ->
+                            ComicCoverCard(
+                                item.manga,
+                                percent = item.percent,
+                                width = libraryCoverWidth,
+                                showTitle = false,
+                                libraryShape = true,
+                                onClick = { onRead(item.manga) },
+                            )
+                        }
                     }
                 }
             }
@@ -232,11 +247,22 @@ internal fun InkShelf2HomeScreen(
             if (books.isEmpty()) {
                 InkShelf2EmptyShelf("No verified recommendations for today's theme yet.")
             } else {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(books) { manga -> ComicCoverCard(manga, width = 100.dp, showTitle = false, onClick = { onOpen(manga) }) }
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val libraryCoverWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
+                        items(books) { manga ->
+                            ComicCoverCard(
+                                manga,
+                                width = libraryCoverWidth,
+                                showTitle = false,
+                                libraryShape = true,
+                                onClick = { onOpen(manga) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -513,16 +539,26 @@ private fun ComicCoverCard(
     percent: Int? = null,
     width: androidx.compose.ui.unit.Dp? = 106.dp,
     showTitle: Boolean = true,
+    libraryShape: Boolean = false,
 ) {
     Column(
         modifier = (if (width == null) Modifier.fillMaxWidth() else Modifier.width(width))
             .clickable(onClick = onClick),
     ) {
+        val shape = RoundedCornerShape(9.dp)
         Box(
-            modifier = Modifier.fillMaxWidth()
-                .height(if (width == null) 148.dp else 134.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(InkShelf2Colors.SurfaceRaised),
+            modifier = (if (libraryShape) {
+                Modifier.fillMaxWidth().aspectRatio(0.71f)
+            } else {
+                Modifier.fillMaxWidth().height(if (width == null) 148.dp else 134.dp)
+            })
+                .clip(shape)
+                .background(InkShelf2Colors.SurfaceRaised)
+                .then(
+                    if (libraryShape) {
+                        Modifier.border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.7f), shape)
+                    } else Modifier,
+                ),
         ) {
             AsyncImage(
                 model = manga,
