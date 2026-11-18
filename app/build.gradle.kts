@@ -254,6 +254,7 @@ dependencies {
     // Image library
     val coilVersion = "2.7.0"
     implementation("io.coil-kt:coil:$coilVersion")
+    implementation("io.coil-kt:coil-compose:$coilVersion")
     implementation("io.coil-kt:coil-gif:$coilVersion")
     implementation("io.coil-kt:coil-svg:$coilVersion")
 
