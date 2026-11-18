@@ -324,11 +324,33 @@ internal fun InkShelf2LibraryScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Heading("My Library", modifier = Modifier.weight(1f))
-            IconButton(onClick = { grid = true }) {
-                Icon(Icons.Outlined.GridView, "Grid view", tint = if (grid) InkShelf2Colors.AccentLight else InkShelf2Colors.Muted)
-            }
-            IconButton(onClick = { grid = false }) {
-                Icon(Icons.Outlined.ViewList, "List view", tint = if (!grid) InkShelf2Colors.AccentLight else InkShelf2Colors.Muted)
+            // The mock-up shows a compact two-segment control, not two
+            // unrelated icon buttons. Keep both icons in the same capsule.
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(InkShelf2Colors.SurfaceRaised)
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                listOf(true to Icons.Outlined.GridView, false to Icons.Outlined.ViewList)
+                    .forEach { (isGrid, image) ->
+                        Box(
+                            modifier = Modifier
+                                .size(33.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(if (grid == isGrid) InkShelf2Colors.Accent else Color.Transparent)
+                                .clickable { grid = isGrid },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = image,
+                                contentDescription = if (isGrid) "Grid view" else "List view",
+                                tint = if (grid == isGrid) Color.White else InkShelf2Colors.Muted,
+                                modifier = Modifier.size(19.dp),
+                            )
+                        }
+                    }
             }
         }
         Row(modifier = Modifier.padding(horizontal = 16.dp)) {
