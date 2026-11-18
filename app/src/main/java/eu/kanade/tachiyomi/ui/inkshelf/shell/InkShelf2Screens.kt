@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.source.CatalogueSource
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Locale
@@ -335,6 +336,11 @@ internal fun InkShelf2DiscoverScreen(
     discover: InkShelf2Engine.Discover?,
     padding: PaddingValues,
     onOpen: (Manga) -> Unit,
+    sources: List<CatalogueSource>,
+    installedCount: Int,
+    onManageSources: () -> Unit,
+    onManageExtensions: () -> Unit,
+    onBrowseSource: (Long) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val shelves = listOf(
@@ -357,7 +363,66 @@ internal fun InkShelf2DiscoverScreen(
                 )
             }
         }
+        // Real, installed extension catalogues remain available even when
+        // the network recommendation cache is empty on a new installation.
+        item {
+            InkShelf2SectionHeading("Comic Sources", onClick = onManageSources)
+            Spacer(Modifier.height(6.dp))
+            if (sources.isEmpty()) {
+                InkShelf2EmptyShelf("No enabled comic sources found. Manage Extensions to install, trust or enable them.")
+            } else {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    items(sources.take(16), key = { it.id }) { source ->
+                        Column(
+                            modifier = Modifier.width(155.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.72f))
+                                .border(
+                                    1.dp,
+                                    InkShelf2Colors.Border.copy(alpha = 0.45f),
+                                    RoundedCornerShape(12.dp),
+                                )
+                                .clickable { onBrowseSource(source.id) }
+                                .padding(horizontal = 12.dp, vertical = 11.dp),
+                        ) {
+                            Text(
+                                source.name,
+                                color = InkShelf2Colors.Text,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                                maxLines = 2,
+                                minLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "${source.lang.uppercase()}  •  Browse comics",
+                                color = InkShelf2Colors.AccentLight,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(9.dp))
+            InkShelf2ActionButton(
+                label = "Manage Extensions ($installedCount)",
+                onClick = onManageExtensions,
+                outlined = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            )
+        }
+        if (shelves.all { it.second.isEmpty() }) {
+            item {
+                InkShelf2EmptyShelf("Recommendations are still loading. Browse an installed source above for live comics and search.")
+            }
+        }
         shelves.forEach { (name, list) ->
+            if (list.isEmpty() && query.isBlank()) return@forEach
             item {
                 val filtered = if (query.isBlank()) list else list.filter {
                     it.title.contains(query, ignoreCase = true)
