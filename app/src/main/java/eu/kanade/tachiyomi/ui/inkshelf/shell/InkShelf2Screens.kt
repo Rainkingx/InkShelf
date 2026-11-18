@@ -90,6 +90,7 @@ internal fun InkShelf2HomeScreen(
     onSave: (Manga) -> Unit,
     onDiscover: () -> Unit,
     onLibrary: () -> Unit,
+    onDayPicks: (InkShelf2Engine.Day) -> Unit,
 ) {
     val slides = home?.days.orEmpty()
     val currentDay = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
@@ -119,7 +120,10 @@ internal fun InkShelf2HomeScreen(
                             .height(295.dp)
                             .padding(horizontal = 14.dp)
                             .clip(RoundedCornerShape(19.dp))
-                            .background(InkShelf2Colors.Surface),
+                            .background(InkShelf2Colors.Surface)
+                            // Tapping the hero opens all daily picks; nested
+                            // Read Now and Save actions retain their own clicks.
+                            .clickable { onDayPicks(day) },
                     ) {
                         AsyncImage(
                             model = day.artwork.imageUrl,
@@ -151,6 +155,25 @@ internal fun InkShelf2HomeScreen(
                                 ),
                             ),
                         )
+                        Box(
+                            modifier = Modifier.align(Alignment.TopEnd)
+                                .padding(12.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color(0xC4170B20))
+                                .border(
+                                    1.dp,
+                                    InkShelf2Colors.AccentLight.copy(alpha = 0.7f),
+                                    RoundedCornerShape(50),
+                                )
+                                .padding(horizontal = 11.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                "VIEW ${day.picks.size} PICKS  ›",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                         Column(
                             modifier = Modifier.align(Alignment.BottomStart)
                                 .fillMaxWidth()
@@ -241,7 +264,13 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item {
-            InkShelf2SectionHeading("Today's Picks", onClick = onDiscover)
+            InkShelf2SectionHeading(
+                "Today's Picks",
+                onClick = {
+                    slides.firstOrNull { it.calendarDay == currentDay }?.let(onDayPicks)
+                        ?: onDiscover()
+                },
+            )
             Spacer(Modifier.height(9.dp))
             val books = home?.todayPicks.orEmpty()
             if (books.isEmpty()) {
@@ -272,7 +301,7 @@ internal fun InkShelf2HomeScreen(
 
 /** Mock-up inspired comic masthead: angled, heavily inked, with a golden weekday. */
 @Composable
-private fun InkShelf2ComicTitle(title: String) {
+internal fun InkShelf2ComicTitle(title: String) {
     val words = title.trim().split(" ")
     val first = words.dropLast(1).joinToString(" ")
     val second = words.lastOrNull().orEmpty()
