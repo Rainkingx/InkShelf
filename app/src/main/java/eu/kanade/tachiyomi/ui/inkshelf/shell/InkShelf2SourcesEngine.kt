@@ -129,27 +129,29 @@ internal class InkShelf2SourcesEngine {
             }
         }
 
-    /** Select one comic: register it in the original J2K database and load issues. */
+    /**
+     * The single source of truth for every 2.0 Comic Details route.
+     * Resolve the original J2K database row and hydrate missing metadata.
+     * Issues load independently when Details appears, preventing a slow
+     * chapter request from blocking navigation for a newly found comic.
+     */
     suspend fun prepareComic(comic: Manga): Manga = withContext(Dispatchers.IO) {
         val existing = database.getManga(comic.url, comic.source).executeAsBlocking()
         val local = existing ?: comic.also {
             it.id = database.insertManga(it).executeAsBlocking().insertedId()
         }
         val source = sources.get(local.source) ?: return@withContext local
-        // Prefer source metadata when the locally cached result is incomplete.
         if (!local.initialized || local.description.isNullOrBlank()) {
-            runCatching {
-                val updated = source.getMangaDetails(local.copy())
+            try {
+                val updated = withTimeout(12_000L) { source.getMangaDetails(local.copy()) }
                 local.copyFrom(updated)
                 local.initialized = true
                 database.updateMangaInfo(local).executeAsBlocking()
-            }
-        }
-        // Use J2K's chapter synchronizer, which preserves read/download state.
-        runCatching {
-            val chapters = source.getChapterList(local)
-            if (chapters.isNotEmpty()) {
-                syncChaptersWithSource(database, chapters, local, source)
+            } catch (cancel: CancellationException) {
+                if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+                // Partial cached metadata is still enough to open Details.
+            } catch (_: Exception) {
+                // Offline/missing metadata must not stop Comic Details opening.
             }
         }
         local
