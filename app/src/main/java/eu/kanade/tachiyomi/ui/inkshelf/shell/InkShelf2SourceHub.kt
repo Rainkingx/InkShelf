@@ -89,7 +89,7 @@ internal fun InkShelf2SourceHub(
         return
     }
 
-    var tab by rememberSaveable { mutableStateOf(initialMode) }
+    var tab by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
     var search by rememberSaveable { mutableStateOf("") }
     var repoUrl by rememberSaveable { mutableStateOf("") }
     var info by remember { mutableStateOf<String?>(null) }
