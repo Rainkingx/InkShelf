@@ -49,7 +49,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var tab by rememberSaveable { mutableStateOf(InkShelf2Tab.HOME) }
             var selected by remember { mutableStateOf<Manga?>(null) }
             var home by remember { mutableStateOf<InkShelf2Engine.Home?>(null) }
-            var library by remember { mutableStateOf<List<Manga>>(emptyList()) }
+            var library by remember { mutableStateOf<List<InkShelf2LibraryItem>>(emptyList()) }
             var discover by remember { mutableStateOf<InkShelf2Engine.Discover?>(null) }
             var chapters by remember { mutableStateOf<List<Chapter>>(emptyList()) }
 
