@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,7 +86,6 @@ class InkShelf2Activity : AppCompatActivity() {
                 selectedDay = null
                 selectedDiscoverShelf = null
             }
-            var openingComic by remember { mutableStateOf(false) }
             val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
             val availableExtensions by extensionManager.availableExtensionsFlow.collectAsState()
             val untrustedExtensions by extensionManager.untrustedExtensionsFlow.collectAsState()
@@ -104,6 +104,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var loadingIssues by remember { mutableStateOf(false) }
             var issuesError by remember { mutableStateOf<String?>(null) }
             var sourceLinkError by remember { mutableStateOf<String?>(null) }
+            var detailsRevision by remember { mutableIntStateOf(0) }
 
             LaunchedEffect(refreshEpoch) {
                 // Read existing data; never reset or migrate the library.
@@ -111,59 +112,61 @@ class InkShelf2Activity : AppCompatActivity() {
                 library = engine.loadLibrary()
                 discover = engine.loadDiscover()
             }
-            // Cached recommendations have no issue list until their source
-            // is queried. Populate Details asynchronously as soon as opened.
+            // InkShelf 1's flow: show Comic Details immediately, then fetch
+            // its metadata and issue list asynchronously. Do not block the
+            // navigation with a multi-extension search or a loading page.
             LaunchedEffect(selected?.source, selected?.url, refreshEpoch) {
                 val comic = selected
                 chapters = emptyList()
-                issuesError = sourceLinkError
-                loadingIssues = false
-                if (comic != null) {
-                    val cached = engine.chapters(comic)
-                    chapters = cached
-                    if (cached.isEmpty() && sourceLinkError == null) {
-                        loadingIssues = true
-                        try {
-                            val (_, fetched) = sourcesEngine.ensureIssues(comic)
-                            if (selected?.source == comic.source && selected?.url == comic.url) {
-                                chapters = fetched
-                            }
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (_: Exception) {
-                            issuesError = "Could not load issues from this source. Tap Read Now to retry."
-                        } finally {
-                            loadingIssues = false
-                        }
+                issuesError = null
+                if (comic == null) {
+                    loadingIssues = false
+                    return@LaunchedEffect
+                }
+
+                val cached = engine.chapters(comic)
+                chapters = cached
+                // On return from the reader, refresh progress from J2K
+                // without repeatedly searching the network for a ready comic.
+                if (cached.isNotEmpty() && !comic.description.isNullOrBlank()) {
+                    loadingIssues = false
+                    return@LaunchedEffect
+                }
+
+                loadingIssues = cached.isEmpty()
+                try {
+                    // The existing source is checked first. Only stale or
+                    // missing entries need a search across installed sources.
+                    val match = sourcesEngine.resolveReadableComic(comic)
+                    if (selected?.source != comic.source || selected?.url != comic.url) {
+                        return@LaunchedEffect
                     }
+                    sourceLinkError = match.problem
+                    if (match.manga.source != comic.source || match.manga.url != comic.url) {
+                        // Switch only after verifying that the alternate
+                        // edition genuinely offers readable issues.
+                        selected = match.manga
+                    } else {
+                        chapters = engine.chapters(match.manga)
+                        // Manga fields are mutable J2K properties, not Compose
+                        // state. Refresh the details UI after metadata updates.
+                        detailsRevision += 1
+                    }
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    issuesError = "Could not refresh this comic. Check your source connection."
+                } finally {
+                    loadingIssues = false
                 }
             }
 
-            // Every comic cover, whether from Home, Trending, New This Week,
-            // Daily Picks, Search, Library or Sources, opens the SAME details
-            // destination and resolves full J2K source metadata first.
+            // One immediate route for EVERY comic card, just like InkShelf 1.
             val openComicDetails: (Manga) -> Unit = { manga ->
-                if (!openingComic) {
-                    openingComic = true
-                    lifecycleScope.launch {
-                        try {
-                            // Cached artwork does not guarantee an installed
-                            // extension still supplies this exact series.
-                            // Resolve and verify live issues before Details.
-                            val match = sourcesEngine.resolveReadableComic(manga)
-                            sourceLinkError = match.problem
-                            selected = match.manga
-                        } catch (error: Exception) {
-                            Toast.makeText(
-                                this@InkShelf2Activity,
-                                "Could not connect to a comic source. Try again.",
-                                Toast.LENGTH_LONG,
-                            ).show()
-                        } finally {
-                            openingComic = false
-                        }
-                    }
-                }
+                sourceLinkError = null
+                issuesError = null
+                loadingIssues = true
+                selected = manga
             }
 
             // Register at the shell root, so Back always navigates inside
@@ -221,25 +224,7 @@ class InkShelf2Activity : AppCompatActivity() {
             ) { padding ->
                 val comic = selected
                 when {
-                    openingComic -> {
-                        androidx.compose.foundation.layout.Box(
-                            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-                            contentAlignment = androidx.compose.ui.Alignment.Center,
-                        ) {
-                            androidx.compose.foundation.layout.Column(
-                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                            ) {
-                                androidx.compose.material3.CircularProgressIndicator(
-                                    color = InkShelf2Colors.AccentLight,
-                                )
-                                androidx.compose.material3.Text(
-                                    text = "Finding comic in installed sources…",
-                                    color = InkShelf2Colors.Muted,
-                                )
-                            }
-                        }
-                    }
-                    comic != null -> InkShelf2DetailsScreen(
+                    comic != null -> key(detailsRevision, comic.source, comic.url) { InkShelf2DetailsScreen(
                         manga = comic,
                         chapters = chapters,
                         padding = padding,
@@ -260,7 +245,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         issuesError = issuesError,
                         onChapter = { openChapter(comic, it) },
                         onSave = { saveComic(comic) },
-                    )
+                    ) }
                     selectedDiscoverShelf != null -> InkShelf2DiscoverShelfScreen(
                         title = selectedDiscoverShelf!!,
                         comics = when (selectedDiscoverShelf) {
