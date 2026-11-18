@@ -23,34 +23,34 @@ internal object InkShelfDailyHeroArt {
             credit = "Wolverine artwork © Marvel",
         )
         Calendar.TUESDAY -> Artwork(
-            imageUrl = "https://substack-post-media.s3.amazonaws.com/public/images/8139e61a-5252-4fb2-93f9-7dc3f9120575_1600x1000.jpeg",
-            sourcePage = "https://newsletter.blackmarket.la/p/radiant-black-the-story-so-far",
-            credit = "Radiant Black art © its creators / Image Comics",
+            imageUrl = "https://cdn.imagecomics.com/assets/i/releases/2512/saga-25_0c8177eef2.jpg",
+            sourcePage = "https://imagecomics.com/comics/releases/saga-25",
+            credit = "Saga #25 • Fiona Staples / Image Comics",
         )
         Calendar.WEDNESDAY -> Artwork(
-            imageUrl = "https://static.dc.com/2026-06/LEGION-OF-SUPER-HEROES-1-3000_1000.jpg?w=1200",
-            sourcePage = "https://www.dc.com/blog/2026-06-17/dc-announces-three-new-next-level-comic-book-series",
-            credit = "Legion of Super-Heroes artwork © DC",
+            imageUrl = "https://static.dc.com/2026-02/T2513300015001.jpg?w=1200",
+            sourcePage = "https://www.dc.com/comics",
+            credit = "Absolute Wonder Woman Annual • DC",
         )
         Calendar.THURSDAY -> Artwork(
-            imageUrl = "https://static.dc.com/2025-07/sdcc_newHistory_3x1.png",
-            sourcePage = "https://www.dc.com/blog/2025/07/01/explore-d-cs-golden-age-legacy",
-            credit = "Golden Age illustration © DC / Scott Koblish",
+            imageUrl = "https://images.squarespace-cdn.com/content/v1/5f9f06c44dd1ed19b7080797/3022ce9d-247a-4367-bd58-2bd030bb8541/VszAFo4MyfCCmhNVF6odi9.jpg",
+            sourcePage = "https://www.imaginaryworldspodcast.org/episodes/how-jack-kirby-made-his-mark-on-marvel",
+            credit = "Fantastic Four • art by Jack Kirby",
         )
         Calendar.FRIDAY -> Artwork(
-            imageUrl = "https://cdn.marvel.com/content/1x/sdcc_ffitd_com_mas_dsk_01.jpg",
-            sourcePage = "https://www.marvel.com/ffdepths-sdcc",
-            credit = "Fantastic Four artwork © Marvel",
+            imageUrl = "https://cdn.marvel.com/u/prod/marvel/i/mg/8/a0/614260a6baf4b/clean.jpg",
+            sourcePage = "https://www.marvel.com/comics/issue/89645/fantastic_four_2018_35",
+            credit = "Fantastic Four #35 • Marvel",
         )
         Calendar.SATURDAY -> Artwork(
-            imageUrl = "https://cdn.marvel.com/u/prod/marvel/i/mg/c/c0/5b7f294f1d3fd/clean.jpg",
-            sourcePage = "https://www.marvel.com/comics/guides/1133/dan-slotts-spider-man-part-1",
-            credit = "Spider-Man artwork © Marvel",
+            imageUrl = "https://1.bp.blogspot.com/-1RfnRirQdYQ/Xxlr9jpMHcI/AAAAAAACYNQ/yHpq6O7Ewl4tVzzly2QLwH2tBWkR_v3yACLcBGAsYHQ/s1600/Game%2BInformer%2B-%2BMarvel%2527s%2BSpider-Man%2Bby%2BAlex%2BRoss.jpg",
+            sourcePage = "https://geekynerfherder.blogspot.com/2020/07/artoftheday-spider-man-by-alex-ross.html",
+            credit = "Spider-Man • art by Alex Ross",
         )
         else -> Artwork(
-            imageUrl = "https://static.dc.com/2025-05/2025_06_02_SupermanSummer_Marquee_3x1.jpg",
-            sourcePage = "https://www.dc.com/blog/2025/06/02/how-to-have-a-super-man-summer-vacation",
-            credit = "Superman artwork © DC",
+            imageUrl = "https://static.dc.com/2025-04/2025_04_28_DefiningSupermanMoments_BlogRoll_Mobile_4x3.jpg",
+            sourcePage = "https://www.dc.com/blog/2023/04/13/taking-flight-twelve-moments-that-defined-superman",
+            credit = "Superman • DC",
         )
     }
 }
