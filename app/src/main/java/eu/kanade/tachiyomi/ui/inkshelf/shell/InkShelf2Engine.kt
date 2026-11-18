@@ -68,9 +68,24 @@ internal class InkShelf2Engine(private val context: Context) {
         }.getOrDefault(emptyList())
 
         val days = weekdays.map { day ->
-            val picks = sequenceOf(discover.newest, discover.trending, discover.recommended, saved)
-                .flatten()
-                .filter { !it.thumbnail_url.isNullOrBlank() && matchesTheme(it, day) }
+            // "What's New Wednesday" means freshly surfaced comics, not only
+            // titles whose names happen to contain the current year.
+            // Discover's NEW_THIS_WEEK shelf is sourced from current Latest
+            // feeds. Its provider does not guarantee an exact publication
+            // date, so don't mislabel these as released within seven days.
+            val pools = if (day == Calendar.WEDNESDAY) {
+                sequenceOf(
+                    discover.newest,
+                    discover.trending.filter { matchesTheme(it, day) },
+                    discover.recommended.filter { matchesTheme(it, day) },
+                    saved.filter { matchesTheme(it, day) },
+                )
+            } else {
+                sequenceOf(discover.newest, discover.trending, discover.recommended, saved)
+                    .map { pool -> pool.filter { matchesTheme(it, day) } }
+            }
+            val picks = pools.flatten()
+                .filter { !it.thumbnail_url.isNullOrBlank() }
                 .distinctBy { it.title.lowercase(Locale.ROOT).trim() }
                 .take(3)
                 .toList()
