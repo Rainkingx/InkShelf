@@ -22,12 +22,12 @@ internal class InkShelf2SourcesEngine {
 
     data class Page(val comics: List<Manga>, val hasMore: Boolean)
 
-    suspend fun page(source: CatalogueSource, page: Int, query: String): Page =
+    suspend fun page(source: CatalogueSource, page: Int, query: String, latest: Boolean = false): Page =
         withContext(Dispatchers.IO) {
-            val result = if (query.isBlank()) {
-                source.getPopularManga(page)
-            } else {
-                source.getSearchManga(page, query.trim(), source.getFilterList())
+            val result = when {
+                query.isNotBlank() -> source.getSearchManga(page, query.trim(), source.getFilterList())
+                latest && source.supportsLatest -> source.getLatestUpdates(page)
+                else -> source.getPopularManga(page)
             }
             val comics = result.mangas.map { remote ->
                 // A catalogue result can be viewed without automatically adding
