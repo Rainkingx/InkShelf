@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import eu.kanade.tachiyomi.data.database.DatabaseHelper
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.util.chapter.syncChaptersWithSource
@@ -11,6 +12,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
@@ -26,6 +29,9 @@ import uy.kohesive.injekt.api.get
 internal class InkShelf2SourcesEngine {
     private val database: DatabaseHelper = Injekt.get()
     private val sources: SourceManager = Injekt.get()
+    // Automatic details loading and Read Now can race. Serialize the first
+    // fetch so only one source request / DB chapter sync occurs per attempt.
+    private val issueLoadMutex = Mutex()
 
     data class Page(val comics: List<Manga>, val hasMore: Boolean)
 
@@ -96,6 +102,32 @@ internal class InkShelf2SourcesEngine {
             failedSources = responses.count { it.second },
         )
     }
+
+    /**
+     * On-demand first read for catalogue and recommendation comics. Those
+     * cards commonly have artwork + metadata but no cached issue list yet.
+     * Resolve the original J2K manga row, fetch issues from its installed
+     * extension when needed, and preserve all existing read/download flags.
+     */
+    suspend fun ensureIssues(comic: Manga): Pair<Manga, List<Chapter>> =
+        withContext(Dispatchers.IO) {
+            issueLoadMutex.withLock {
+                val saved = database.getManga(comic.url, comic.source).executeAsBlocking()
+                val local = saved ?: comic.also {
+                    it.id = database.insertManga(it).executeAsBlocking().insertedId()
+                }
+                val cached = database.getChapters(local).executeAsBlocking()
+                if (cached.isNotEmpty()) return@withLock local to cached
+
+                val source = sources.get(local.source)
+                    ?: throw IllegalStateException("Comic source is not installed.")
+                val remote = withTimeout(30_000L) { source.getChapterList(local) }
+                if (remote.isNotEmpty()) {
+                    syncChaptersWithSource(database, remote, local, source)
+                }
+                local to database.getChapters(local).executeAsBlocking()
+            }
+        }
 
     /** Select one comic: register it in the original J2K database and load issues. */
     suspend fun prepareComic(comic: Manga): Manga = withContext(Dispatchers.IO) {
