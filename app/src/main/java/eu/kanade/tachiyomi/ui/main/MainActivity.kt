@@ -1960,7 +1960,7 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
             binding.inkshelfHeaderContainer.alpha = 1f
             binding.inkshelfHeaderContainer.isVisible = true
             binding.inkshelfHeaderArt.alpha = 1f
-            binding.inkshelfHeaderArt.isVisible = true
+            binding.inkshelfHeaderArt.isVisible = controller !is HomeController
             binding.inkshelfHeaderContainer.requestLayout()
             binding.inkshelfHeaderArt.requestLayout()
             binding.inkshelfHeaderContainer.invalidate()
@@ -2058,6 +2058,19 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
     private fun applyInkShelfMainTitleTreatment(controller: Controller?) {
         if (ownsInkShelfHeader(controller)) {
             applyInkShelfHeaderAppearance()
+        }
+
+        // The new Home has a small, clean wordmark bar like the approved mock-up.
+        // Library and Discover retain their existing full comic mastheads.
+        val isHome = controller is HomeController
+        binding.inkshelfHeaderArt.isVisible = ownsInkShelfHeader(controller) && !isHome
+        binding.inkshelfBrandBlock.isVisible = isHome
+        binding.inkshelfHeaderContainer.setBackgroundColor(
+            if (isHome) Color.rgb(20, 8, 30) else Color.BLACK,
+        )
+        binding.inkshelfBrandBlock.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin = if (isHome) 0 else resources.getDimensionPixelSize(R.dimen.inkshelf_brand_top_margin)
+            bottomMargin = if (isHome) 0 else resources.getDimensionPixelSize(R.dimen.inkshelf_brand_bottom_margin)
         }
 
         // The bitmap header and legacy title spacer must agree in height, or
