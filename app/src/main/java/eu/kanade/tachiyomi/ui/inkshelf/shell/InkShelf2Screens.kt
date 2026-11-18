@@ -3,6 +3,8 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -495,15 +497,19 @@ internal fun InkShelf2AccountScreen(padding: PaddingValues) {
         modifier = Modifier.fillMaxSize()
             .background(InkShelf2Colors.Background)
             .padding(padding)
+            .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
         InkShelf2PageHeading("Account")
         Spacer(Modifier.height(14.dp))
+        InkShelf2MetronSettings()
+        Spacer(Modifier.height(22.dp))
         Text(
-            "This is the separate InkShelf 2.0 preview. Settings, backups, source management and downloads " +
-                "remain available in the original InkShelf launcher until those tools have been rebuilt.",
+            "Other settings, backups and downloads remain available in the original InkShelf launcher " +
+                "while the 2.0 Account screen is being rebuilt.",
             color = InkShelf2Colors.Muted,
-            lineHeight = 21.sp,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
         )
     }
 }
