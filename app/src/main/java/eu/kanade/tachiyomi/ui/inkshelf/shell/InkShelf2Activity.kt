@@ -68,6 +68,7 @@ class InkShelf2Activity : AppCompatActivity() {
             // Store only enum names, which are safe for Android saved state.
             var tabTrail by rememberSaveable { mutableStateOf("HOME") }
             var searchFocusEpoch by remember { mutableIntStateOf(0) }
+            var discoverSearchPreset by remember { mutableStateOf("") }
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -102,6 +103,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var chapters by remember { mutableStateOf<List<Chapter>>(emptyList()) }
             var loadingIssues by remember { mutableStateOf(false) }
             var issuesError by remember { mutableStateOf<String?>(null) }
+            var sourceLinkError by remember { mutableStateOf<String?>(null) }
 
             LaunchedEffect(refreshEpoch) {
                 // Read existing data; never reset or migrate the library.
@@ -114,12 +116,12 @@ class InkShelf2Activity : AppCompatActivity() {
             LaunchedEffect(selected?.source, selected?.url, refreshEpoch) {
                 val comic = selected
                 chapters = emptyList()
-                issuesError = null
+                issuesError = sourceLinkError
                 loadingIssues = false
                 if (comic != null) {
                     val cached = engine.chapters(comic)
                     chapters = cached
-                    if (cached.isEmpty()) {
+                    if (cached.isEmpty() && sourceLinkError == null) {
                         loadingIssues = true
                         try {
                             val (_, fetched) = sourcesEngine.ensureIssues(comic)
@@ -145,11 +147,16 @@ class InkShelf2Activity : AppCompatActivity() {
                     openingComic = true
                     lifecycleScope.launch {
                         try {
-                            selected = sourcesEngine.prepareComic(manga)
+                            // Cached artwork does not guarantee an installed
+                            // extension still supplies this exact series.
+                            // Resolve and verify live issues before Details.
+                            val match = sourcesEngine.resolveReadableComic(manga)
+                            sourceLinkError = match.problem
+                            selected = match.manga
                         } catch (error: Exception) {
                             Toast.makeText(
                                 this@InkShelf2Activity,
-                                error.message ?: "Could not open comic from source",
+                                "Could not connect to a comic source. Try again.",
                                 Toast.LENGTH_LONG,
                             ).show()
                         } finally {
@@ -201,6 +208,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 onTabSelected = { openTab(it) },
                 onSearch = {
                     openTab(InkShelf2Tab.DISCOVER)
+                    discoverSearchPreset = ""
                     searchFocusEpoch += 1
                 },
                 onNotifications = {
@@ -225,7 +233,7 @@ class InkShelf2Activity : AppCompatActivity() {
                                     color = InkShelf2Colors.AccentLight,
                                 )
                                 androidx.compose.material3.Text(
-                                    text = "Loading comic details…",
+                                    text = "Finding comic in installed sources…",
                                     color = InkShelf2Colors.Muted,
                                 )
                             }
@@ -237,6 +245,16 @@ class InkShelf2Activity : AppCompatActivity() {
                         padding = padding,
                         onBack = { selected = null },
                         onRead = { openReader(comic) },
+                        sourceName = sourceManager.get(comic.source)?.name,
+                        sourceLinkError = sourceLinkError,
+                        onFindSource = {
+                            val title = comic.title
+                            selected = null
+                            sourceLinkError = null
+                            openTab(InkShelf2Tab.DISCOVER)
+                            discoverSearchPreset = title
+                            searchFocusEpoch += 1
+                        },
                         isOpeningReader = readerOpenInProgress,
                         isLoadingIssues = loadingIssues,
                         issuesError = issuesError,
@@ -292,6 +310,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         sources = enabledSources,
                         onOpenSearchResult = openComicDetails,
                         searchFocusToken = searchFocusEpoch,
+                        initialSearchQuery = discoverSearchPreset,
                         onManageSources = {
                             sourceHubMode = "Sources"
                             sourceHubOpen = true
