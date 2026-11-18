@@ -185,6 +185,40 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- Compact Home-only controls from the approved mock-up.
+                     Their actions are provided by MainActivity; hidden elsewhere. -->
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/inkshelf_home_search"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginEnd="10dp"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_search_24dp"
+                    android:tint="#FFFFFFFF"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="@string/search"
+                    android:visibility="gone"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/inkshelf_home_notifications"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_inkshelf_home_bell"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Reading updates"
+                    android:visibility="gone"
+                    app:layout_constraintEnd_toStartOf="@id/inkshelf_home_search"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
                 <FrameLayout
                     android:id="@+id/inkshelf_moon_frame"
                     android:visibility="gone"
