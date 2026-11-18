@@ -32,7 +32,7 @@ internal class InkShelf2Engine(private val context: Context) {
     data class Home(
         val history: List<Reading>,
         val days: List<Day>,
-        val todayPicks: List<Manga>,
+        val trendingNow: List<Manga>,
     )
     data class Discover(
         val trending: List<Manga>,
@@ -91,8 +91,12 @@ internal class InkShelf2Engine(private val context: Context) {
                 .toList()
             Day(day, dayTitle(day), InkShelfDailyHeroArt.forDay(day), picks)
         }
-        val today = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
-        Home(history, days, days.firstOrNull { it.calendarDay == today }?.picks.orEmpty())
+        // The weekday hero owns its own three themed picks. The Home shelf
+        // instead shows the live cached Trending feed, matching Discover.
+        val trendingNow = discover.trending
+            .filter { !it.thumbnail_url.isNullOrBlank() }
+            .distinctBy { "${it.source}:${it.url}" }
+        Home(history, days, trendingNow)
     }
 
     suspend fun loadLibrary(): List<InkShelf2LibraryItem> =
