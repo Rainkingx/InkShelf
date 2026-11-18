@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.BookmarkAdd
@@ -56,6 +59,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -161,12 +165,14 @@ internal fun InkShelf2HomeScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 GradientAction(
                                     label = if (pick != null) "Read Now" else "Discover",
+                                    leadingIcon = Icons.Filled.PlayArrow,
                                     enabled = true,
                                     onClick = { if (pick != null) onRead(pick) else onDiscover() },
                                     modifier = Modifier.weight(1f),
                                 )
                                 GradientAction(
                                     label = if (pick?.favorite == true) "In Library" else "Save",
+                                    leadingIcon = if (pick?.favorite == true) Icons.Outlined.CheckCircleOutline else Icons.Outlined.Add,
                                     enabled = pick != null,
                                     onClick = { pick?.let(onSave) },
                                     outlined = true,
@@ -444,6 +450,7 @@ internal fun InkShelf2DetailsScreen(
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 GradientAction(
                     label = "Continue Reading",
+                    leadingIcon = Icons.Filled.PlayArrow,
                     onClick = onRead,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = chapters.isNotEmpty(),
@@ -451,6 +458,7 @@ internal fun InkShelf2DetailsScreen(
                 Spacer(Modifier.height(8.dp))
                 GradientAction(
                     label = if (manga.favorite) "In Library" else "Save to Library",
+                    leadingIcon = if (manga.favorite) Icons.Outlined.CheckCircleOutline else Icons.Outlined.Add,
                     onClick = onSave,
                     modifier = Modifier.fillMaxWidth(),
                     outlined = true,
@@ -584,6 +592,10 @@ private fun ComicCoverCard(
     }
 }
 
+/**
+ * Reusable mock-up buttons: bright violet gradient primary with dark play
+ * glyph/text; transparent dark outlined secondary with a plus glyph.
+ */
 @Composable
 private fun GradientAction(
     label: String,
@@ -591,24 +603,56 @@ private fun GradientAction(
     modifier: Modifier = Modifier,
     outlined: Boolean = false,
     enabled: Boolean = true,
+    leadingIcon: ImageVector? = null,
 ) {
+    val shape = RoundedCornerShape(50)
+    val background = when {
+        !enabled -> Brush.horizontalGradient(listOf(InkShelf2Colors.Surface, InkShelf2Colors.Surface))
+        outlined -> Brush.horizontalGradient(listOf(Color(0xD010081A), Color(0xD0140B20)))
+        else -> Brush.horizontalGradient(listOf(Color(0xFFB543EE), Color(0xFFE46EF6)))
+    }
     Box(
         modifier = modifier
-            .height(42.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                if (enabled && !outlined) InkShelf2Colors.AccentGradient
-                else Brush.horizontalGradient(listOf(InkShelf2Colors.SurfaceRaised, InkShelf2Colors.Surface)),
+            .height(41.dp)
+            .clip(shape)
+            .background(background)
+            .then(
+                if (outlined) Modifier.border(
+                    width = 1.dp,
+                    color = if (enabled) InkShelf2Colors.AccentLight else InkShelf2Colors.Border,
+                    shape = shape,
+                ) else Modifier,
             )
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            label,
-            color = if (enabled) Color.White else InkShelf2Colors.Muted,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        ) {
+            val fg = when {
+                !enabled -> InkShelf2Colors.Muted
+                outlined -> Color.White
+                else -> Color(0xFF130A1A)
+            }
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = fg,
+                )
+                Spacer(Modifier.width(5.dp))
+            }
+            Text(
+                label,
+                color = fg,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                maxLines = 1,
+            )
+        }
     }
 }
 
