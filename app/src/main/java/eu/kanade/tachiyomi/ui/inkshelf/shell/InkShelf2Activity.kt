@@ -1,7 +1,5 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -94,11 +92,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         onRead = { openReader(it) },
                         onSave = { saveComic(it) },
                         onDiscover = { tab = InkShelf2Tab.DISCOVER },
-                        onArtworkSource = { url ->
-                            runCatching {
-                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                            }
-                        },
+                        onLibrary = { tab = InkShelf2Tab.LIBRARY },
                     )
                     tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(
                         discover = discover,
