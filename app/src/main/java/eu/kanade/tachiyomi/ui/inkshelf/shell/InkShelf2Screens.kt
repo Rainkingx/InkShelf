@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,6 +61,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -150,14 +153,27 @@ internal fun InkShelf2HomeScreen(
                             contentDescription = day.artwork.credit,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop,
+                            // A gentle lift to contrast, saturation and brightness
+                            // keeps the genuine publisher artwork punchy without
+                            // modifying the image file or overwhelming white text.
+                            colorFilter = ColorFilter.colorMatrix(
+                                ColorMatrix(
+                                    floatArrayOf(
+                                        1.075f, -0.020f, -0.007f, 0f, 8f,
+                                        -0.014f, 1.080f, -0.010f, 0f, 8f,
+                                        -0.012f, -0.020f, 1.110f, 0f, 8f,
+                                        0f, 0f, 0f, 1f, 0f,
+                                    ),
+                                ),
+                            ),
                         )
                         Box(
                             modifier = Modifier.fillMaxSize().background(
                                 Brush.verticalGradient(
                                     listOf(
-                                        Color.Black.copy(alpha = 0.02f),
-                                        Color(0xFF180622).copy(alpha = 0.17f),
-                                        Color(0xFF09050E).copy(alpha = 0.93f),
+                                        Color.Black.copy(alpha = 0.00f),
+                                        Color(0xFF180622).copy(alpha = 0.10f),
+                                        Color(0xFF09050E).copy(alpha = 0.85f),
                                     ),
                                 ),
                             ),
@@ -281,11 +297,23 @@ private fun ComicInkLine(value: String, ink: Color, fontSize: androidx.compose.u
         letterSpacing = (-1.5).sp,
     )
     Box(modifier = Modifier.graphicsLayer { rotationZ = -4f }) {
+        // The offset magenta ink gives the title an illustrated comic-cover
+        // shadow rather than just a generic Android text shadow.
+        Text(
+            text = value,
+            modifier = Modifier.offset(x = 2.dp, y = 3.dp),
+            style = style.copy(
+                color = Color(0xFF9B20D1),
+                drawStyle = Stroke(width = 12f, join = StrokeJoin.Round),
+            ),
+            maxLines = 1,
+            softWrap = false,
+        )
         Text(
             text = value,
             style = style.copy(
                 color = Color(0xFF130617),
-                drawStyle = Stroke(width = 7f, join = StrokeJoin.Round),
+                drawStyle = Stroke(width = 8f, join = StrokeJoin.Round),
             ),
             maxLines = 1,
             softWrap = false,
@@ -295,9 +323,9 @@ private fun ComicInkLine(value: String, ink: Color, fontSize: androidx.compose.u
             style = style.copy(
                 color = ink,
                 shadow = Shadow(
-                    color = Color(0xFF8F16BE).copy(alpha = 0.85f),
+                    color = Color(0xFF18031E).copy(alpha = 0.9f),
                     offset = Offset(2f, 3f),
-                    blurRadius = 3f,
+                    blurRadius = 2f,
                 ),
             ),
             maxLines = 1,
