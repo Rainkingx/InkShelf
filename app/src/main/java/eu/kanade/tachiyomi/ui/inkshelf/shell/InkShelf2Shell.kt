@@ -149,7 +149,7 @@ private fun InkShelf2Header(
             .fillMaxWidth()
             .background(InkShelf2Colors.Background)
             .statusBarsPadding()
-            .height(60.dp)
+            .height(56.dp)
             .padding(start = 16.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -231,8 +231,8 @@ private fun InkShelf2BottomNavigation(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .height(70.dp)
-                .padding(horizontal = 10.dp, vertical = 5.dp),
+                .height(62.dp)
+                .padding(horizontal = 9.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -248,7 +248,7 @@ private fun InkShelf2BottomNavigation(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .height(60.dp)
+                        .height(52.dp)
                         .background(
                             brush = if (selected) selectedBrush
                             else Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
@@ -271,12 +271,12 @@ private fun InkShelf2BottomNavigation(
                     Icon(
                         imageVector = image,
                         contentDescription = null,
-                        modifier = Modifier.size(23.dp),
+                        modifier = Modifier.size(21.dp),
                         tint = if (selected) InkShelf2Colors.AccentLight else InkShelf2Colors.Text,
                     )
                     Text(
                         text = tab.title,
-                        modifier = Modifier.padding(top = 3.dp),
+                        modifier = Modifier.padding(top = 2.dp),
                         fontSize = 10.sp,
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                         color = InkShelf2Colors.Text,
