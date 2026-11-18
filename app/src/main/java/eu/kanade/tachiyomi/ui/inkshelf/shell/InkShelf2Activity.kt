@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -17,10 +18,17 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.data.preference.PreferencesHelper
+import eu.kanade.tachiyomi.extension.ExtensionManager
+import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.source.LocalSource
+import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverRefreshWorker
 import kotlinx.coroutines.launch
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 /**
  * A genuinely separate Compose activity: no MainActivity XML, toolbar,
@@ -31,6 +39,10 @@ import kotlinx.coroutines.launch
  */
 class InkShelf2Activity : AppCompatActivity() {
     private val engine by lazy { InkShelf2Engine(applicationContext) }
+    private val sourcesEngine by lazy { InkShelf2SourcesEngine() }
+    private val sourceManager: SourceManager by lazy { Injekt.get() }
+    private val extensionManager: ExtensionManager by lazy { Injekt.get() }
+    private val preferences: PreferencesHelper by lazy { Injekt.get() }
     private var refreshEpoch by mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +59,20 @@ class InkShelf2Activity : AppCompatActivity() {
 
         setContent {
             var tab by rememberSaveable { mutableStateOf(InkShelf2Tab.HOME) }
+            var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
+            var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
+            var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
+            var openingComic by remember { mutableStateOf(false) }
+            val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
+            val availableExtensions by extensionManager.availableExtensionsFlow.collectAsState()
+            val untrustedExtensions by extensionManager.untrustedExtensionsFlow.collectAsState()
+            val catalogueSources by sourceManager.catalogueSources.collectAsState(initial = emptyList())
+            val enabledLanguages = preferences.enabledLanguages().get()
+            val hiddenSources = preferences.hiddenSources().get()
+            val enabledSources = catalogueSources.filter {
+                it.id != LocalSource.ID && it.lang in enabledLanguages &&
+                    it.id.toString() !in hiddenSources
+            }
             var selected by remember { mutableStateOf<Manga?>(null) }
             var home by remember { mutableStateOf<InkShelf2Engine.Home?>(null) }
             var library by remember { mutableStateOf<List<InkShelf2LibraryItem>>(emptyList()) }
@@ -63,13 +89,27 @@ class InkShelf2Activity : AppCompatActivity() {
                 chapters = selected?.let { engine.chapters(it) }.orEmpty()
             }
 
-            BackHandler(enabled = selected != null) { selected = null }
+            BackHandler(enabled = selected != null || sourceHubOpen) {
+                when {
+                    selected != null -> selected = null
+                    activeSourceId != null -> activeSourceId = null
+                    else -> sourceHubOpen = false
+                }
+            }
             InkShelf2Shell(
                 currentTab = tab,
                 showHeader = selected == null,
                 showBottomNav = selected == null,
-                onTabSelected = { tab = it },
-                onSearch = { tab = InkShelf2Tab.DISCOVER },
+                onTabSelected = {
+                    tab = it
+                    sourceHubOpen = false
+                    activeSourceId = null
+                },
+                onSearch = {
+                    tab = InkShelf2Tab.DISCOVER
+                    sourceHubOpen = false
+                    activeSourceId = null
+                },
                 onNotifications = {
                     Toast.makeText(
                         this@InkShelf2Activity,
@@ -98,10 +138,68 @@ class InkShelf2Activity : AppCompatActivity() {
                         onDiscover = { tab = InkShelf2Tab.DISCOVER },
                         onLibrary = { tab = InkShelf2Tab.LIBRARY },
                     )
+                    tab == InkShelf2Tab.DISCOVER && openingComic -> {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                            contentAlignment = androidx.compose.ui.Alignment.Center,
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                color = InkShelf2Colors.AccentLight,
+                            )
+                        }
+                    }
+                    tab == InkShelf2Tab.DISCOVER && sourceHubOpen -> InkShelf2SourceHub(
+                        padding = padding,
+                        sources = catalogueSources,
+                        installed = installedExtensions,
+                        available = availableExtensions,
+                        untrusted = untrustedExtensions,
+                        selectedSourceId = activeSourceId,
+                        onSourceSelected = { activeSourceId = it },
+                        onClose = {
+                            activeSourceId = null
+                            sourceHubOpen = false
+                        },
+                        initialMode = sourceHubMode,
+                        onOpenComic = { manga ->
+                            if (!openingComic) {
+                                openingComic = true
+                                lifecycleScope.launch {
+                                    try {
+                                        selected = sourcesEngine.prepareComic(manga)
+                                    } catch (error: Exception) {
+                                        Toast.makeText(
+                                            this@InkShelf2Activity,
+                                            error.message ?: "Could not open comic from source",
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    } finally {
+                                        openingComic = false
+                                    }
+                                }
+                            }
+                        },
+                    )
                     tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(
                         discover = discover,
                         padding = padding,
                         onOpen = { selected = it },
+                        sources = enabledSources,
+                        installedCount = installedExtensions.size,
+                        onBrowseSource = { id ->
+                            tab = InkShelf2Tab.DISCOVER
+                            sourceHubMode = "Sources"
+                            sourceHubOpen = true
+                            activeSourceId = id
+                        },
+                        onManageSources = {
+                            sourceHubMode = "Sources"
+                            sourceHubOpen = true
+                        },
+                        onManageExtensions = {
+                            sourceHubMode = "Extensions"
+                            sourceHubOpen = true
+                        },
                     )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
