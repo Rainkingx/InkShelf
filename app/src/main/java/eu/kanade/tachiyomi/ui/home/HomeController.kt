@@ -1,5 +1,7 @@
 package eu.kanade.tachiyomi.ui.home
 
+import android.content.Intent
+import android.net.Uri
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
@@ -8,6 +10,7 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.core.view.isVisible
+import coil.load
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.database.DatabaseHelper
 import eu.kanade.tachiyomi.data.database.models.Manga
@@ -46,6 +49,7 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
     private val db: DatabaseHelper = Injekt.get()
     private var featured: List<DailyPick> = emptyList()
     private var heroIndex = 0
+    private var themeArtworkFailed = false
     private var dayTheme: Theme = themeForToday()
 
     private data class DailyPick(val manga: Manga, val label: String)
@@ -66,6 +70,7 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         binding.homeScroll.setPadding(0, header, 0, dp(88))
         dayTheme = themeForToday()
         bindThemeTitle()
+        bindThemeArtwork()
         binding.homeThemeSubtitle.text = "Three real comics to explore today"
 
         binding.homeBrowseButton.setOnClickListener { saveFeaturedPick() }
@@ -271,7 +276,7 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         heroIndex = position.coerceIn(0, (featured.size - 1).coerceAtLeast(0))
         val pick = featured.getOrNull(heroIndex)
         if (pick != null) {
-            binding.homeHeroCover.loadManga(pick.manga)
+            if (themeArtworkFailed) binding.homeHeroCover.loadManga(pick.manga)
             binding.homeThemeKicker.text = "DAILY COMICS  •  ${dayTheme.title.substringAfterLast(' ')}"
             binding.homeThemeSubtitle.text =
                 "${featured.size} ${if (featured.size == 1) "PICK" else "PICKS"}   •   " +
@@ -285,7 +290,6 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
                     }
             binding.homeOpenPick.text = "▶  Read Now"
         } else {
-            binding.homeHeroCover.setImageDrawable(null)
             binding.homeThemeKicker.text = "DAILY COMICS"
             binding.homeThemeSubtitle.text = "No verified matches yet — explore more in Discover"
             binding.homeOpenPick.text = "Discover"
@@ -315,6 +319,33 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         }
     }
 
+
+    /**
+     * Seven curated real publisher/creator images, one per weekday.
+     * Never stretch a portrait issue cover into the hero unless the online
+     * artwork failed to load. Coil caches these URLs between visits.
+     */
+    private fun bindThemeArtwork() {
+        themeArtworkFailed = false
+        val art = InkShelfDailyHeroArt.forDay(Calendar.getInstance().get(Calendar.DAY_OF_WEEK))
+        binding.homeHeroArtCredit.text = art.credit
+        binding.homeHeroArtCredit.setOnClickListener {
+            runCatching {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(art.sourcePage)))
+            }
+        }
+        binding.homeHeroCover.load(art.imageUrl) {
+            crossfade(true)
+            listener(
+                onError = { _, _ ->
+                    themeArtworkFailed = true
+                    if (isBindingInitialized) {
+                        featured.getOrNull(heroIndex)?.let { binding.homeHeroCover.loadManga(it.manga) }
+                    }
+                },
+            )
+        }
+    }
 
     /** Split the featured day's name into the white/yellow two-line comic-book masthead. */
     private fun bindThemeTitle() {
