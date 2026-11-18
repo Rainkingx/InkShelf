@@ -65,6 +65,10 @@ class InkShelf2Activity : AppCompatActivity() {
             // Persist visited main tabs rather than relying on Activity.finish().
             // Store only enum names, which are safe for Android saved state.
             var tabTrail by rememberSaveable { mutableStateOf("HOME") }
+            var searchFocusEpoch by remember { mutableIntStateOf(0) }
+            var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
+            var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
+            var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             fun openTab(destination: InkShelf2Tab) {
                 if (tab != destination) {
                     tabTrail = (tabTrail.split('|').takeLast(20) + destination.name)
@@ -74,10 +78,6 @@ class InkShelf2Activity : AppCompatActivity() {
                 sourceHubOpen = false
                 activeSourceId = null
             }
-            var searchFocusEpoch by remember { mutableIntStateOf(0) }
-            var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
-            var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
-            var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var openingComic by remember { mutableStateOf(false) }
             val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
             val availableExtensions by extensionManager.availableExtensionsFlow.collectAsState()
