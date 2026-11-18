@@ -64,13 +64,13 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         // Reserve the visible, existing InkShelf cosmic header instead of
         // drawing a duplicate masthead above it.
         val header = view.resources.getDimensionPixelSize(R.dimen.inkshelf_home_header_height)
-        binding.homeScroll.setPadding(0, header + dp(5), 0, 0)
+        binding.homeScroll.setPadding(0, header, 0, 0)
         dayTheme = themeForToday()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // Portrait source covers make poor wide banners. Blur only the
             // ambient backdrop; keep the genuine cover sharp in the foreground.
             binding.homeHeroCover.setRenderEffect(
-                RenderEffect.createBlurEffect(9f, 9f, Shader.TileMode.MIRROR),
+                RenderEffect.createBlurEffect(3f, 3f, Shader.TileMode.MIRROR),
             )
         }
         bindThemeTitle()
@@ -280,8 +280,6 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
         val pick = featured.getOrNull(heroIndex)
         if (pick != null) {
             binding.homeHeroCover.loadManga(pick.manga)
-            binding.homeHeroForegroundCard.isVisible = true
-            binding.homeHeroForeground.loadManga(pick.manga)
             binding.homeThemeKicker.text = "DAILY COMICS  •  ${pick.label.uppercase(Locale.ROOT)}"
             binding.homeThemeSubtitle.text =
                 "${featured.size} ${if (featured.size == 1) "PICK" else "PICKS"}   •   " +
@@ -296,8 +294,6 @@ class HomeController : BaseController<HomeControllerBinding>(), InkShelfHeaderIn
             binding.homeOpenPick.text = "▶  Read Now"
         } else {
             binding.homeHeroCover.setImageDrawable(null)
-            binding.homeHeroForeground.setImageDrawable(null)
-            binding.homeHeroForegroundCard.isVisible = false
             binding.homeThemeKicker.text = "DAILY COMICS"
             binding.homeThemeSubtitle.text = "No verified matches yet — explore more in Discover"
             binding.homeOpenPick.text = "Discover"
