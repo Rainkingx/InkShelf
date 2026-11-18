@@ -209,7 +209,7 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item {
-            InkShelf2SectionInkShelf2PageHeading("Continue Reading", onClick = onLibrary)
+            InkShelf2SectionHeading("Continue Reading", onClick = onLibrary)
             Spacer(Modifier.height(9.dp))
             val books = home?.history.orEmpty()
             if (books.isEmpty()) {
@@ -226,7 +226,7 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item {
-            InkShelf2SectionInkShelf2PageHeading("Today's Picks", onClick = onDiscover)
+            InkShelf2SectionHeading("Today's Picks", onClick = onDiscover)
             Spacer(Modifier.height(9.dp))
             val books = home?.todayPicks.orEmpty()
             if (books.isEmpty()) {
@@ -336,7 +336,7 @@ internal fun InkShelf2DiscoverScreen(
                 val filtered = if (query.isBlank()) list else list.filter {
                     it.title.contains(query, ignoreCase = true)
                 }
-                InkShelf2SectionInkShelf2PageHeading(name, onClick = null)
+                InkShelf2SectionHeading(name, onClick = null)
                 Spacer(Modifier.height(9.dp))
                 if (filtered.isEmpty()) {
                     InkShelf2EmptyShelf("No matching comics in the existing Discover cache.")
