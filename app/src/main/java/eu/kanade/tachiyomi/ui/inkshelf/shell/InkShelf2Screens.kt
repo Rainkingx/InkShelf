@@ -42,6 +42,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +85,10 @@ internal fun InkShelf2HomeScreen(
     val initial = slides.indexOfFirst { it.calendarDay == currentDay }.coerceAtLeast(0)
     val pager = rememberPagerState(initialPage = initial, pageCount = { slides.size.coerceAtLeast(1) })
     val scope = rememberCoroutineScope()
+    // The data arrives after the first composition; restore today's actual page.
+    LaunchedEffect(slides.size, initial) {
+        if (slides.isNotEmpty()) pager.scrollToPage(initial)
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(InkShelf2Colors.Background),
