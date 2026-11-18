@@ -6,6 +6,13 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.util.chapter.syncChaptersWithSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -39,6 +46,56 @@ internal class InkShelf2SourcesEngine {
             }.distinctBy { it.url }
             Page(comics, result.hasNextPage)
         }
+
+    /** First-page results from the enabled J2K extension catalogues. */
+    data class SourceResult(
+        val manga: Manga,
+        val sourceName: String,
+    )
+
+    data class GlobalSearchResults(
+        val results: List<SourceResult>,
+        val searchedSources: Int,
+        val failedSources: Int,
+    )
+
+    /**
+     * Search genuine installed catalogue extensions, not the recommendation
+     * cache. Search operations are individually time-bounded and supervised:
+     * one broken extension cannot prevent other sources returning results.
+     * Never writes search results to the library or database.
+     */
+    suspend fun searchAcross(
+        catalogues: List<CatalogueSource>,
+        query: String,
+    ): GlobalSearchResults = supervisorScope {
+        if (query.isBlank() || catalogues.isEmpty()) {
+            return@supervisorScope GlobalSearchResults(emptyList(), 0, 0)
+        }
+        val limiter = Semaphore(4)
+        val responses = catalogues.distinctBy { it.id }.map { source ->
+            async {
+                limiter.withPermit {
+                    try {
+                        val found = withTimeout(12_000L) {
+                            page(source, 1, query).comics
+                        }
+                        found.take(35).map { SourceResult(it, source.name) } to false
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        emptyList<SourceResult>() to true
+                    }
+                }
+            }
+        }.awaitAll()
+        GlobalSearchResults(
+            results = responses.flatMap { it.first }
+                .distinctBy { "${it.manga.source}:${it.manga.url}" },
+            searchedSources = responses.size,
+            failedSources = responses.count { it.second },
+        )
+    }
 
     /** Select one comic: register it in the original J2K database and load issues. */
     suspend fun prepareComic(comic: Manga): Manga = withContext(Dispatchers.IO) {
