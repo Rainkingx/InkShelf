@@ -3,6 +3,11 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 import eu.kanade.tachiyomi.data.database.DatabaseHelper
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.data.database.models.Chapter
+import eu.kanade.tachiyomi.data.preference.PreferencesHelper
+import eu.kanade.tachiyomi.source.Source
+import eu.kanade.tachiyomi.source.LocalSource
+import eu.kanade.tachiyomi.source.model.SManga
+import java.util.Locale
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.util.chapter.syncChaptersWithSource
@@ -29,6 +34,7 @@ import uy.kohesive.injekt.api.get
 internal class InkShelf2SourcesEngine {
     private val database: DatabaseHelper = Injekt.get()
     private val sources: SourceManager = Injekt.get()
+    private val prefs: PreferencesHelper = Injekt.get()
     // Automatic details loading and Read Now can race. Serialize the first
     // fetch so only one source request / DB chapter sync occurs per attempt.
     private val issueLoadMutex = Mutex()
@@ -100,6 +106,163 @@ internal class InkShelf2SourcesEngine {
                 .distinctBy { "${it.manga.source}:${it.manga.url}" },
             searchedSources = responses.size,
             failedSources = responses.count { it.second },
+        )
+    }
+
+    /**
+     * Recommendation cards can outlive the extension that first supplied
+     * them. A cached cover is not proof that its source is still installed or
+     * provides readable issues. Resolve a real source+series+issues pair
+     * before presenting the card as a readable comic.
+     *
+     * Never silently migrate an existing library favourite; the original
+     * J2K library and its read/download history are preserved.
+     */
+    data class ResolvedComic(
+        val manga: Manga,
+        val sourceName: String?,
+        val problem: String? = null,
+    )
+
+    private fun seriesYear(title: String): String? =
+        Regex("""\(((?:19|20)\d{2})(?:[-–]\d{0,4})?\)\s*$""")
+            .find(title.trim())?.groupValues?.get(1)
+
+    private fun searchTitle(title: String): String =
+        title.trim().replace(
+            Regex("""\s*\((?:19|20)\d{2}(?:[-–]\d{0,4})?\)\s*$"""), "",
+        ).trim()
+
+    private fun titleKey(title: String): String =
+        searchTitle(title).lowercase(Locale.ROOT)
+            .replace(Regex("""[^a-z0-9]+"""), " ").trim()
+
+    private fun matchesRequestedEdition(requested: String, candidate: String): Boolean {
+        if (titleKey(requested) != titleKey(candidate)) return false
+        val desiredYear = seriesYear(requested)
+        val candidateYear = seriesYear(candidate)
+        // A known different year could be an entirely different comic series.
+        return desiredYear == null || candidateYear == null || desiredYear == candidateYear
+    }
+
+    private suspend fun hydrateDetails(local: Manga, source: Source) {
+        if (local.initialized && !local.description.isNullOrBlank()) return
+        try {
+            val details = withTimeout(9_000L) { source.getMangaDetails(local.copy()) }
+            local.copyFrom(details)
+            local.initialized = true
+            database.updateMangaInfo(local).executeAsBlocking()
+        } catch (cancel: CancellationException) {
+            if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+        } catch (_: Exception) {
+            // A source without synopsis can still supply readable issues.
+        }
+    }
+
+    private suspend fun verifyAndSync(local: Manga, source: Source): Boolean {
+        val existingIssues = database.getChapters(local).executeAsBlocking()
+        if (existingIssues.isNotEmpty()) {
+            hydrateDetails(local, source)
+            return true
+        }
+        val remoteIssues = try {
+            withTimeout(12_000L) { source.getChapterList(local) }
+        } catch (cancel: CancellationException) {
+            if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+            emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+        if (remoteIssues.isEmpty()) return false
+        syncChaptersWithSource(database, remoteIssues, local, source)
+        hydrateDetails(local, source)
+        return database.getChapters(local).executeAsBlocking().isNotEmpty()
+    }
+
+    /**
+     * A source-backed comic search is deliberately strict about the series
+     * title and year, so e.g. Daredevil (2026) is not silently swapped for
+     * Daredevil (2019) just because their names partially match.
+     */
+    suspend fun resolveReadableComic(comic: Manga): ResolvedComic = withContext(Dispatchers.IO) {
+        val local = database.getManga(comic.url, comic.source).executeAsBlocking()
+            ?: comic.also {
+                it.id = database.insertManga(it).executeAsBlocking().insertedId()
+            }
+        val original = sources.get(local.source)
+        if (original != null && verifyAndSync(local, original)) {
+            return@withContext ResolvedComic(local, original.name)
+        }
+
+        if (local.favorite) {
+            return@withContext ResolvedComic(
+                local,
+                original?.name,
+                "The library source could not provide issues. Your saved series has not been changed.",
+            )
+        }
+
+        val enabledLanguages = prefs.enabledLanguages().get()
+        val hidden = prefs.hiddenSources().get()
+        val catalogues = sources.getCatalogueSources()
+            .filter { it.id != LocalSource.ID }
+            .filter { it.lang in enabledLanguages && it.id.toString() !in hidden }
+            .filterNot { it.id == local.source }
+            .distinctBy { it.id }
+        val query = searchTitle(local.title)
+        val limiter = Semaphore(3)
+        val matches = supervisorScope {
+            catalogues.map { source ->
+                async {
+                    limiter.withPermit {
+                        try {
+                            withTimeout(10_000L) {
+                                source.getSearchManga(1, query, source.getFilterList()).mangas
+                                    .filter { matchesRequestedEdition(local.title, it.title) }
+                                    .take(4)
+                                    .map { source to it }
+                            }
+                        } catch (cancel: CancellationException) {
+                            if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+                            emptyList<Pair<CatalogueSource, SManga>>()
+                        } catch (_: Exception) {
+                            emptyList<Pair<CatalogueSource, SManga>>()
+                        }
+                    }
+                }
+            }.awaitAll().flatten()
+        }.sortedWith(
+            compareByDescending<Pair<CatalogueSource, SManga>> {
+                seriesYear(it.second.title) == seriesYear(local.title)
+            }.thenBy { it.first.name },
+        )
+
+        for ((source, remote) in matches.take(9)) {
+            // Probe chapters before inserting a candidate into the database.
+            val remoteChapters = try {
+                withTimeout(12_000L) { source.getChapterList(remote) }
+            } catch (cancel: CancellationException) {
+                if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+                emptyList()
+            } catch (_: Exception) {
+                emptyList()
+            }
+            if (remoteChapters.isEmpty()) continue
+
+            val resolved = database.getManga(remote.url, source.id).executeAsBlocking()
+                ?: Manga.create(remote.url, remote.title, source.id).apply {
+                    copyFrom(remote)
+                    id = database.insertManga(this).executeAsBlocking().insertedId()
+                }
+            syncChaptersWithSource(database, remoteChapters, resolved, source)
+            hydrateDetails(resolved, source)
+            return@withContext ResolvedComic(resolved, source.name)
+        }
+
+        ResolvedComic(
+            local,
+            original?.name,
+            "No installed comic source returned readable issues for this title. Search Sources to choose an edition.",
         )
     }
 
