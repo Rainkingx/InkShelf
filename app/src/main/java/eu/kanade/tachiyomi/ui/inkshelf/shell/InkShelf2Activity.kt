@@ -137,7 +137,10 @@ class InkShelf2Activity : AppCompatActivity() {
                 }
             }
 
-            val openSourceComic: (Manga) -> Unit = { manga ->
+            // Every comic cover, whether from Home, Trending, New This Week,
+            // Daily Picks, Search, Library or Sources, opens the SAME details
+            // destination and resolves full J2K source metadata first.
+            val openComicDetails: (Manga) -> Unit = { manga ->
                 if (!openingComic) {
                     openingComic = true
                     lifecycleScope.launch {
@@ -210,6 +213,24 @@ class InkShelf2Activity : AppCompatActivity() {
             ) { padding ->
                 val comic = selected
                 when {
+                    openingComic -> {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                            contentAlignment = androidx.compose.ui.Alignment.Center,
+                        ) {
+                            androidx.compose.foundation.layout.Column(
+                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                            ) {
+                                androidx.compose.material3.CircularProgressIndicator(
+                                    color = InkShelf2Colors.AccentLight,
+                                )
+                                androidx.compose.material3.Text(
+                                    text = "Loading comic details…",
+                                    color = InkShelf2Colors.Muted,
+                                )
+                            }
+                        }
+                    }
                     comic != null -> InkShelf2DetailsScreen(
                         manga = comic,
                         chapters = chapters,
@@ -230,18 +251,18 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         padding = padding,
                         onBack = { selectedDiscoverShelf = null },
-                        onOpen = { selected = it },
+                        onOpen = openComicDetails,
                     )
                     selectedDay != null -> InkShelf2DailyPicksScreen(
                         day = selectedDay!!,
                         padding = padding,
                         onBack = { selectedDay = null },
-                        onOpen = { selected = it },
+                        onOpen = openComicDetails,
                     )
                     tab == InkShelf2Tab.HOME -> InkShelf2HomeScreen(
                         home = home,
                         padding = padding,
-                        onOpen = { selected = it },
+                        onOpen = openComicDetails,
                         onRead = { openReader(it) },
                         onSave = { saveComic(it) },
                         onDiscover = { openTab(InkShelf2Tab.DISCOVER) },
@@ -249,16 +270,6 @@ class InkShelf2Activity : AppCompatActivity() {
                         onDayPicks = { selectedDay = it },
                         onTrendingSeeAll = { selectedDiscoverShelf = "Trending Right Now" },
                     )
-                    tab == InkShelf2Tab.DISCOVER && openingComic -> {
-                        androidx.compose.foundation.layout.Box(
-                            modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-                            contentAlignment = androidx.compose.ui.Alignment.Center,
-                        ) {
-                            androidx.compose.material3.CircularProgressIndicator(
-                                color = InkShelf2Colors.AccentLight,
-                            )
-                        }
-                    }
                     tab == InkShelf2Tab.DISCOVER && sourceHubOpen -> InkShelf2SourceHub(
                         padding = padding,
                         sources = catalogueSources,
@@ -272,14 +283,14 @@ class InkShelf2Activity : AppCompatActivity() {
                             sourceHubOpen = false
                         },
                         initialMode = sourceHubMode,
-                        onOpenComic = openSourceComic,
+                        onOpenComic = openComicDetails,
                     )
                     tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(
                         discover = discover,
                         padding = padding,
-                        onOpen = { selected = it },
+                        onOpen = openComicDetails,
                         sources = enabledSources,
-                        onOpenSearchResult = openSourceComic,
+                        onOpenSearchResult = openComicDetails,
                         searchFocusToken = searchFocusEpoch,
                         onManageSources = {
                             sourceHubMode = "Sources"
@@ -301,7 +312,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
                         padding = padding,
-                        onOpen = { selected = it },
+                        onOpen = openComicDetails,
                     )
                     else -> InkShelf2AccountScreen(padding)
                 }
