@@ -363,6 +363,9 @@ internal fun InkShelf2DetailsScreen(
     padding: PaddingValues,
     onBack: () -> Unit,
     onRead: () -> Unit,
+    isOpeningReader: Boolean,
+    isLoadingIssues: Boolean,
+    issuesError: String?,
     onChapter: (Chapter) -> Unit,
     onSave: () -> Unit,
 ) {
@@ -429,8 +432,18 @@ internal fun InkShelf2DetailsScreen(
                     leadingIcon = Icons.Filled.PlayArrow,
                     onClick = onRead,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = chapters.isNotEmpty(),
+                    // Missing cached chapters must not block a first read:
+                    // onRead fetches them from the real installed source.
+                    enabled = !isOpeningReader,
                 )
+                if (isLoadingIssues && chapters.isEmpty()) {
+                    Spacer(Modifier.height(7.dp))
+                    Text(
+                        "Fetching available issues from the comic source…",
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 12.sp,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 InkShelf2ActionButton(
                     label = if (manga.favorite) "In Library" else "Save to Library",
@@ -455,7 +468,15 @@ internal fun InkShelf2DetailsScreen(
             }
         }
         if (chapters.isEmpty()) {
-            item { InkShelf2EmptyShelf("No issues in the local cache. Refresh from the comic source in the current app.") }
+            item {
+                InkShelf2EmptyShelf(
+                    when {
+                        isLoadingIssues -> "Loading issues from the installed comic source…"
+                        issuesError != null -> issuesError
+                        else -> "No issues loaded yet. Tap Read Now to fetch them from the source."
+                    },
+                )
+            }
         } else {
             items(chapters) { chapter ->
                 Row(
