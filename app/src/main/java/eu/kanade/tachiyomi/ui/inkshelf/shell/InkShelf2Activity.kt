@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,7 +97,12 @@ class InkShelf2Activity : AppCompatActivity() {
                 it.id != LocalSource.ID && it.lang in enabledLanguages &&
                     it.id.toString() !in hiddenSources
             }
-            var selected by remember { mutableStateOf<Manga?>(null) }
+            // MangaImpl.equals compares only URL and source, so an updated
+            // database row may be 'equal' despite having new synopsis/cover
+            // metadata. Use identity changes to refresh the Compose details.
+            var selected by remember {
+                mutableStateOf<Manga?>(null, referentialEqualityPolicy())
+            }
             var home by remember { mutableStateOf<InkShelf2Engine.Home?>(null) }
             var library by remember { mutableStateOf<List<InkShelf2LibraryItem>>(emptyList()) }
             var discover by remember { mutableStateOf<InkShelf2Engine.Discover?>(null) }
@@ -142,16 +148,13 @@ class InkShelf2Activity : AppCompatActivity() {
                         return@LaunchedEffect
                     }
                     sourceLinkError = match.problem
-                    if (match.manga.source != comic.source || match.manga.url != comic.url) {
-                        // Switch only after verifying that the alternate
-                        // edition genuinely offers readable issues.
-                        selected = match.manga
-                    } else {
-                        chapters = engine.chapters(match.manga)
-                        // Manga fields are mutable J2K properties, not Compose
-                        // state. Refresh the details UI after metadata updates.
-                        detailsRevision += 1
-                    }
+                    // Keep the exact 2.0 design while replacing the card's
+                    // potentially partial cache row with J2K's fully updated
+                    // database row. The identity policy above makes this
+                    // recompose even when source+URL are unchanged.
+                    chapters = engine.chapters(match.manga)
+                    selected = match.manga
+                    detailsRevision += 1
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
