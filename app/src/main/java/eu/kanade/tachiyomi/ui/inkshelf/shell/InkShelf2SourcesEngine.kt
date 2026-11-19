@@ -145,46 +145,96 @@ internal class InkShelf2SourcesEngine {
         return desiredYear == null || candidateYear == null || desiredYear == candidateYear
     }
 
-    private suspend fun hydrateDetails(local: Manga, source: Source) {
-        if (local.initialized && !local.description.isNullOrBlank()) return
+    /**
+     * Reuse InkShelf 1's MangaDetailsPresenter.refreshAll contract.
+     * It requests source metadata and chapter list as a single J2K manga
+     * update, persists metadata, then syncs chapters using the ORIGINAL
+     * chapter synchronizer. The Compose screen only observes the result.
+     *
+     * If one half fails (some third-party extensions do this), the other
+     * half is tried separately instead of discarding otherwise usable
+     * chapters or metadata.
+     */
+    private suspend fun refreshFromOriginalSource(local: Manga, source: Source): Boolean {
+        val cached = database.getChapters(local).executeAsBlocking()
+        val metadataMissing = !local.initialized || local.description.isNullOrBlank()
+        val needChapters = cached.isEmpty()
+        if (!metadataMissing && !needChapters) return true
+
+        var fetchedChapters = emptyList<eu.kanade.tachiyomi.source.model.SChapter>()
+        var metadataLoaded = false
         try {
-            val details = withTimeout(9_000L) { source.getMangaDetails(local.copy()) }
-            local.copyFrom(details)
-            local.initialized = true
-            database.updateMangaInfo(local).executeAsBlocking()
+            val update = withTimeout(25_000L) {
+                source.getMangaUpdate(
+                    local.copy(),
+                    emptyList(),
+                    fetchDetails = metadataMissing,
+                    fetchChapters = needChapters,
+                )
+            }
+            if (metadataMissing) {
+                local.copyFrom(update.manga)
+                local.initialized = true
+                database.insertManga(local).executeAsBlocking()
+                metadataLoaded = true
+            }
+            fetchedChapters = update.chapters
         } catch (cancel: CancellationException) {
             if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
         } catch (_: Exception) {
-            // A source without synopsis can still supply readable issues.
+            // Unlike the old presenter, tolerate partial extension responses.
+        }
+
+        if (metadataMissing && !metadataLoaded) {
+            try {
+                val details = withTimeout(12_000L) { source.getMangaDetails(local.copy()) }
+                local.copyFrom(details)
+                local.initialized = true
+                database.insertManga(local).executeAsBlocking()
+            } catch (cancel: CancellationException) {
+                if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+            } catch (_: Exception) {
+                // Lack of synopsis does not make a comic unreadable.
+            }
+        }
+        if (needChapters && fetchedChapters.isEmpty()) {
+            try {
+                fetchedChapters = withTimeout(20_000L) { source.getChapterList(local.copy()) }
+            } catch (cancel: CancellationException) {
+                if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+            } catch (_: Exception) {
+                // The alternate-source resolver is the final fallback.
+            }
+        }
+        if (fetchedChapters.isNotEmpty()) {
+            syncChaptersWithSource(database, fetchedChapters, local, source)
+        }
+        return database.getChapters(local).executeAsBlocking().isNotEmpty()
+    }
+
+    private suspend fun hydrateDetails(local: Manga, source: Source) {
+        if (local.initialized && !local.description.isNullOrBlank()) return
+        // Once issues exist, metadata refresh does not re-request them.
+        try {
+            val details = withTimeout(12_000L) { source.getMangaDetails(local.copy()) }
+            local.copyFrom(details)
+            local.initialized = true
+            database.insertManga(local).executeAsBlocking()
+        } catch (cancel: CancellationException) {
+            if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+        } catch (_: Exception) {
+            // Source may return readable issues without a synopsis.
         }
     }
 
-    private suspend fun verifyAndSync(local: Manga, source: Source): Boolean {
-        val existingIssues = database.getChapters(local).executeAsBlocking()
-        if (existingIssues.isNotEmpty()) {
-            hydrateDetails(local, source)
-            return true
-        }
-        val remoteIssues = try {
-            withTimeout(12_000L) { source.getChapterList(local) }
-        } catch (cancel: CancellationException) {
-            if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
-            emptyList()
-        } catch (_: Exception) {
-            emptyList()
-        }
-        if (remoteIssues.isEmpty()) return false
-        return try {
-            syncChaptersWithSource(database, remoteIssues, local, source)
-            hydrateDetails(local, source)
-            database.getChapters(local).executeAsBlocking().isNotEmpty()
+    private suspend fun verifyAndSync(local: Manga, source: Source): Boolean =
+        try {
+            refreshFromOriginalSource(local, source)
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: Exception) {
-            // A broken entry must not prevent trying another installed source.
             false
         }
-    }
 
     /**
      * A source-backed comic search is deliberately strict about the series
@@ -299,10 +349,9 @@ internal class InkShelf2SourcesEngine {
 
                 val source = sources.get(local.source)
                     ?: throw IllegalStateException("Comic source is not installed.")
-                val remote = withTimeout(30_000L) { source.getChapterList(local) }
-                if (remote.isNotEmpty()) {
-                    syncChaptersWithSource(database, remote, local, source)
-                }
+                // Exactly the same data-fetching path used by the Details
+                // screen and the original InkShelf 1 presenter.
+                refreshFromOriginalSource(local, source)
                 local to database.getChapters(local).executeAsBlocking()
             }
         }
