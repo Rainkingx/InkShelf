@@ -12,6 +12,8 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.util.chapter.syncChaptersWithSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -227,14 +229,107 @@ internal class InkShelf2SourcesEngine {
         }
     }
 
-    private suspend fun verifyAndSync(local: Manga, source: Source): Boolean =
-        try {
-            refreshFromOriginalSource(local, source)
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            false
+    /**
+     * Refresh as InkShelf 1's MangaDetailsPresenter.refreshAll() does:
+     * request metadata and chapter list together via getMangaUpdate, copy
+     * metadata to the original J2K row, then synchronize its chapters.
+     * The legacy reader and existing reading/download flags are preserved.
+     */
+    private suspend fun refreshUsingJ2K(local: Manga, source: Source): ResolvedComic {
+        val existingChapters = database.getChapters(local).executeAsBlocking()
+        if (existingChapters.isNotEmpty() && !local.description.isNullOrBlank()) {
+            return ResolvedComic(local, source.name)
         }
+        var failure: Throwable? = null
+        val update = try {
+            withTimeout(24_000L) {
+                source.getMangaUpdate(
+                    manga = local.copy(),
+                    chapters = emptyList(),
+                    fetchDetails = true,
+                    fetchChapters = true,
+                )
+            }
+        } catch (cancel: CancellationException) {
+            if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+            failure = cancel
+            null
+        } catch (error: Exception) {
+            failure = error
+            null
+        }
+        if (update != null) {
+            try {
+                // Same model update and persistence as the InkShelf 1 presenter.
+                local.copyFrom(update.manga)
+                local.initialized = true
+                database.updateMangaInfo(local).executeAsBlocking()
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (error: Exception) {
+                failure = error
+            }
+            if (update.chapters.isNotEmpty()) {
+                try {
+                    syncChaptersWithSource(database, update.chapters, local, source)
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    failure = error
+                }
+            }
+        }
+
+        // Some extensions can fetch chapter lists even when their metadata
+        // endpoint fails. Use that original J2K API as a fallback.
+        if (database.getChapters(local).executeAsBlocking().isEmpty()) {
+            val chapterList = try {
+                withTimeout(15_000L) { source.getChapterList(local) }
+            } catch (cancel: CancellationException) {
+                if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+                failure = cancel
+                emptyList()
+            } catch (error: Exception) {
+                failure = error
+                emptyList()
+            }
+            if (chapterList.isNotEmpty()) {
+                try {
+                    syncChaptersWithSource(database, chapterList, local, source)
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    failure = error
+                }
+            }
+        }
+        if (database.getChapters(local).executeAsBlocking().isNotEmpty()) {
+            return ResolvedComic(local, source.name)
+        }
+        // Do not mislabel a responsive installed extension as "no source".
+        val code = Regex("""\b(401|403|404|408|429|500|502|503|504)\b""")
+            .find(failure?.message.orEmpty())?.value
+        val detail = code?.let { " (HTTP $it)" }
+            ?: failure?.let { " (${it.javaClass.simpleName})" }.orEmpty()
+        return ResolvedComic(
+            local,
+            source.name,
+            if (failure != null) {
+                "${source.name} failed to load this comic's issues$detail. Check the source or try its catalogue."
+            } else {
+                "${source.name} has no issues available for this edition yet."
+            },
+        )
+    }
+
+    /** Wait briefly for J2K's asynchronous extension registration. */
+    private suspend fun installedSource(id: Long): Source? {
+        sources.get(id)?.let { return it }
+        withTimeoutOrNull(8_000L) {
+            sources.catalogueSources.first { items -> items.any { it.id == id } }
+        }
+        return sources.get(id)
+    }
 
     /**
      * A source-backed comic search is deliberately strict about the series
@@ -246,9 +341,11 @@ internal class InkShelf2SourcesEngine {
             ?: comic.also {
                 it.id = database.insertManga(it).executeAsBlocking().insertedId()
             }
-        val original = sources.get(local.source)
-        if (original != null && verifyAndSync(local, original)) {
-            return@withContext ResolvedComic(local, original.name)
+        val original = installedSource(local.source)
+        if (original != null) {
+            // Exactly as in InkShelf 1, trust the installed source attached to
+            // this series. Don't silently search and switch to other editions.
+            return@withContext refreshUsingJ2K(local, original)
         }
 
         // A favourite from an obsolete extension may also be read through an
