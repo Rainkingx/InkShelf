@@ -34,10 +34,12 @@ internal class InkShelf2Engine(private val context: Context) {
         val days: List<Day>,
         val trendingNow: List<Manga>,
     )
+    data class PersonalPick(val manga: Manga, val reason: String)
     data class Discover(
         val trending: List<Manga>,
         val newest: List<Manga>,
         val recommended: List<Manga>,
+        val recommendationDetails: List<PersonalPick>,
     )
 
     private val weekdays = listOf(
@@ -109,10 +111,16 @@ internal class InkShelf2Engine(private val context: Context) {
             runCatching { InkShelfDiscoverCache.load(context, section, database).map { it.manga } }
                 .getOrDefault(emptyList())
                 .distinctBy { it.source.toString() + ":" + it.url }
+        val personal = runCatching {
+            InkShelfDiscoverCache.load(context, Section.PICKED_FOR_YOU, database)
+        }.getOrDefault(emptyList())
+        val personalPicks = personal.distinctBy { it.manga.source.toString() + ":" + it.manga.url }
+            .map { PersonalPick(it.manga, it.reason) }
         return Discover(
             trending = cached(Section.TRENDING),
             newest = cached(Section.NEW_THIS_WEEK),
-            recommended = cached(Section.PICKED_FOR_YOU),
+            recommended = personalPicks.map { it.manga },
+            recommendationDetails = personalPicks,
         )
     }
 
