@@ -168,6 +168,22 @@ internal fun InkShelf2ThemesScreen(
                 },
             )
         }
+        if (InkShelf2Themes.hasSavedCustom(context)) {
+            item(key = "saved-custom") {
+                val saved = InkShelf2Themes.savedCustom(context)
+                InkShelfPresetRow(
+                    InkShelf2Preset("custom", "My Custom Theme", "Your saved colours", saved),
+                    selected = !editingCustom && savedThemeId == "custom",
+                    onClick = {
+                        InkShelf2Themes.select(context, "custom")
+                        primary = saved.accent
+                        secondary = saved.highlight
+                        background = saved.background
+                        editingCustom = false
+                    },
+                )
+            }
+        }
         item {
             Text(
                 "CREATE YOUR OWN",
