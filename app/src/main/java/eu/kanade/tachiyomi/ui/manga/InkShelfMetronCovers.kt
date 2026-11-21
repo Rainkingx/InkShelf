@@ -65,8 +65,8 @@ internal object InkShelfMetronCovers {
         context: Context,
         manga: Manga,
         issueNumber: Int,
-        onFound: (String) -> Unit,
         anchorIssueNumber: Int? = null,
+        onFound: (String) -> Unit,
     ) {
         if (issueNumber !in 1..999) return
         if (configuredToken(context) == null) return
