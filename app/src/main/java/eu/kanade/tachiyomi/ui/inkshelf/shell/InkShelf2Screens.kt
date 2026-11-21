@@ -152,8 +152,8 @@ internal fun InkShelf2HomeScreen(
                                 Brush.verticalGradient(
                                     listOf(
                                         Color.Black.copy(alpha = 0.00f),
-                                        Color(0xFF180622).copy(alpha = 0.10f),
-                                        Color(0xFF09050E).copy(alpha = 0.85f),
+                                        InkShelf2Colors.SurfaceRaised.copy(alpha = 0.10f),
+                                        InkShelf2Colors.Background.copy(alpha = 0.85f),
                                     ),
                                 ),
                             ),
@@ -162,7 +162,7 @@ internal fun InkShelf2HomeScreen(
                             modifier = Modifier.align(Alignment.TopEnd)
                                 .padding(12.dp)
                                 .clip(RoundedCornerShape(50))
-                                .background(Color(0xC4170B20))
+                                .background(InkShelf2Colors.Background.copy(alpha = 0.78f))
                                 .border(
                                     1.dp,
                                     InkShelf2Colors.AccentLight.copy(alpha = 0.7f),
@@ -311,7 +311,7 @@ internal fun InkShelf2ComicTitle(title: String) {
     val size = if (first.length > 14 || second.length > 11) 28.sp else 34.sp
     Column(verticalArrangement = Arrangement.spacedBy((-6).dp)) {
         ComicInkLine(first, Color.White, size)
-        ComicInkLine(second, Color(0xFFFFDA25), size)
+        ComicInkLine(second, InkShelf2Colors.AccentLight, size)
     }
 }
 
@@ -331,7 +331,7 @@ private fun ComicInkLine(value: String, ink: Color, fontSize: androidx.compose.u
             text = value,
             modifier = Modifier.offset(x = 2.dp, y = 3.dp),
             style = style.copy(
-                color = Color(0xFF9B20D1),
+                color = InkShelf2Colors.Accent,
                 drawStyle = Stroke(width = 12f, join = StrokeJoin.Round),
             ),
             maxLines = 1,
@@ -340,7 +340,7 @@ private fun ComicInkLine(value: String, ink: Color, fontSize: androidx.compose.u
         Text(
             text = value,
             style = style.copy(
-                color = Color(0xFF130617),
+                color = InkShelf2Colors.Background,
                 drawStyle = Stroke(width = 8f, join = StrokeJoin.Round),
             ),
             maxLines = 1,
@@ -351,7 +351,7 @@ private fun ComicInkLine(value: String, ink: Color, fontSize: androidx.compose.u
             style = style.copy(
                 color = ink,
                 shadow = Shadow(
-                    color = Color(0xFF18031E).copy(alpha = 0.9f),
+                    color = InkShelf2Colors.Background.copy(alpha = 0.9f),
                     offset = Offset(2f, 3f),
                     blurRadius = 2f,
                 ),
