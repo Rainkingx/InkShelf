@@ -398,6 +398,13 @@ internal fun InkShelf2DetailsScreen(
     var showIssueGrid by rememberSaveable {
         mutableStateOf(viewPrefs.getBoolean("grid", true))
     }
+    // Keep initial artwork light: show just four rows of two covers.
+    // Reveal subsequent issues only when requested, independently per comic.
+    var visibleIssueCount by rememberSaveable(manga.source, manga.url) {
+        mutableStateOf(8)
+    }
+    val visibleChapters = chapters.take(visibleIssueCount)
+    val moreIssuesRemaining = (chapters.size - visibleChapters.size).coerceAtLeast(0)
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = padding,
@@ -556,6 +563,14 @@ internal fun InkShelf2DetailsScreen(
                     color = InkShelf2Colors.Muted,
                     fontSize = 11.sp,
                 )
+                if (chapters.size > 8) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Showing ${visibleChapters.size} of ${chapters.size} issues",
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                    )
+                }
             }
         }
         if (chapters.isEmpty()) {
@@ -571,7 +586,7 @@ internal fun InkShelf2DetailsScreen(
             }
 
         } else if (showIssueGrid) {
-            items(chapters.chunked(2)) { pair ->
+            items(visibleChapters.chunked(2)) { pair ->
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -590,7 +605,7 @@ internal fun InkShelf2DetailsScreen(
                 }
             }
         } else {
-            items(chapters) { chapter ->
+            items(visibleChapters) { chapter ->
                 InkShelf2IssueListRow(
                     manga = manga,
                     chapter = chapter,
@@ -599,6 +614,20 @@ internal fun InkShelf2DetailsScreen(
                 )
                 HorizontalDivider(
                     color = InkShelf2Colors.Border.copy(alpha = 0.3f),
+                )
+            }
+        }
+        if (moreIssuesRemaining > 0) {
+            item(key = "load-more-issues") {
+                InkShelf2ActionButton(
+                    label = "Show ${minOf(8, moreIssuesRemaining)} More Issues",
+                    outlined = true,
+                    onClick = {
+                        visibleIssueCount = (visibleIssueCount + 8).coerceAtMost(chapters.size)
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(
+                        horizontal = 16.dp, vertical = 12.dp,
+                    ),
                 )
             }
         }
