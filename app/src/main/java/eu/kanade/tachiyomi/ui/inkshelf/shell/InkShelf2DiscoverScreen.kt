@@ -717,7 +717,7 @@ private fun DiscoverPersonalShelf(
     explanation?.let { pick ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { explanation = null },
-            title = { Text("Why \${pick.manga.title}?", color = InkShelf2Colors.Text) },
+            title = { Text("Why ${pick.manga.title}?", color = InkShelf2Colors.Text) },
             text = {
                 Text(
                     pick.reason.substringAfter(" • ", pick.reason)
@@ -736,11 +736,11 @@ private fun DiscoverPersonalShelf(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(picks, key = { "\${it.manga.source}:\${it.manga.url}" }) { pick ->
+        items(picks, key = { "${it.manga.source}:${it.manga.url}" }) { pick ->
             Column(modifier = Modifier.width(118.dp)) {
                 AsyncImage(
                     model = pick.manga,
-                    contentDescription = "Open \${pick.manga.title}",
+                    contentDescription = "Open ${pick.manga.title}",
                     modifier = Modifier.fillMaxWidth().aspectRatio(0.71f)
                         .clip(RoundedCornerShape(9.dp))
                         .clickable { onOpen(pick.manga) },
