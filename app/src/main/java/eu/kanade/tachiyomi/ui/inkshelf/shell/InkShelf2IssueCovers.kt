@@ -42,33 +42,31 @@ import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
-import java.util.Locale
 
 /** Artwork belongs to Metron; tapping always opens the original source chapter. */
 @Composable
-private fun IssueArtwork(manga: Manga, chapter: Chapter, modifier: Modifier = Modifier) {
+private fun IssueArtwork(
+    manga: Manga,
+    chapter: Chapter,
+    anchorIssueNumber: Int?,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val issue = remember(chapter.name, chapter.chapter_number) {
-        val name = chapter.name.lowercase(Locale.ROOT)
-        if (listOf("annual", "special", "one-shot", "one shot", "free comic book day").any { it in name }) {
-            null
-        } else {
-            val n = chapter.chapter_number
-            if (n >= 1f && n <= 999f && n % 1f == 0f) n.toInt()
-            else Regex("""^\s*#?\s*(\d{1,3})(?:\b|$)""").find(chapter.name)
-                ?.groupValues?.getOrNull(1)?.toIntOrNull()?.takeIf { it in 1..999 }
-        }
+        InkShelf2IssueNumbers.fromChapter(chapter)
     }
     var cover by remember(manga.source, manga.url, chapter.name, issue) {
         mutableStateOf<String?>(null)
     }
     var failed by remember(cover) { mutableStateOf(false) }
-    DisposableEffect(context, manga.source, manga.url, chapter.name, issue) {
+    DisposableEffect(context, manga.source, manga.url, chapter.name, issue, anchorIssueNumber) {
         var active = true
         if (issue != null) {
-            InkShelfMetronCovers.requestIssueCover(context, manga, issue) { url ->
-                if (active) cover = url
-            }
+            InkShelfMetronCovers.requestIssueCover(
+                context, manga, issue,
+                onFound = { url -> if (active) cover = url },
+                anchorIssueNumber = anchorIssueNumber,
+            )
         }
         onDispose { active = false }
     }
@@ -139,6 +137,7 @@ internal fun InkShelf2IssueGridCard(
     manga: Manga,
     chapter: Chapter,
     modifier: Modifier = Modifier,
+    anchorIssueNumber: Int?,
     onClick: () -> Unit,
 ) {
     Column(
@@ -147,7 +146,7 @@ internal fun InkShelf2IssueGridCard(
             .clickable(onClick = onClick)
             .padding(bottom = 4.dp),
     ) {
-        IssueArtwork(manga, chapter, Modifier.fillMaxWidth().aspectRatio(0.71f))
+        IssueArtwork(manga, chapter, anchorIssueNumber, Modifier.fillMaxWidth().aspectRatio(0.71f))
         Text(
             chapter.name,
             modifier = Modifier.padding(start = 3.dp, end = 3.dp, top = 7.dp),
@@ -168,14 +167,19 @@ internal fun InkShelf2IssueGridCard(
 }
 
 @Composable
-internal fun InkShelf2IssueListRow(manga: Manga, chapter: Chapter, onClick: () -> Unit) {
+internal fun InkShelf2IssueListRow(
+    manga: Manga,
+    chapter: Chapter,
+    anchorIssueNumber: Int?,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IssueArtwork(manga, chapter, Modifier.width(56.dp).aspectRatio(0.71f))
+        IssueArtwork(manga, chapter, anchorIssueNumber, Modifier.width(56.dp).aspectRatio(0.71f))
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(
                 chapter.name,
