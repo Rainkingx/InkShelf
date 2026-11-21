@@ -334,15 +334,19 @@ internal fun InkShelf2DiscoverScreen(
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop,
-                                alpha = 0.8f,
+                                // Show the cover at full opacity; the text-safe gradient
+                                // below provides the shading without muddying the art.
+                                alpha = 1f,
                             )
                             Box(
                                 modifier = Modifier.fillMaxSize().background(
                                     Brush.horizontalGradient(
                                         listOf(
-                                            InkShelf2Colors.Background.copy(alpha = 0.93f),
-                                            InkShelf2Colors.Background.copy(alpha = 0.71f),
-                                            InkShelf2Colors.SurfaceRaised.copy(alpha = 0.13f),
+                                            // Keep the left-hand title readable while allowing
+                                            // much more of the comic artwork to show through.
+                                            InkShelf2Colors.Background.copy(alpha = 0.64f),
+                                            InkShelf2Colors.Background.copy(alpha = 0.32f),
+                                            InkShelf2Colors.SurfaceRaised.copy(alpha = 0.06f),
                                         ),
                                     ),
                                 ),
