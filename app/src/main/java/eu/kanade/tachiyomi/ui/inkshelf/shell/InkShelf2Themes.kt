@@ -40,12 +40,12 @@ internal object InkShelf2Themes {
         id: String,
         title: String,
         description: String,
-        bg: Long,
-        surface: Long,
-        raised: Long,
-        primary: Long,
-        highlight: Long,
-        border: Long,
+        bg: Int,
+        surface: Int,
+        raised: Int,
+        primary: Int,
+        highlight: Int,
+        border: Int,
     ) = InkShelf2Preset(
         id, title, description,
         InkShelf2Palette(
@@ -57,31 +57,31 @@ internal object InkShelf2Themes {
     val presets = listOf(
         preset(
             "original", "InkShelf Original", "Signature purple & black",
-            0xFF08060DL, 0xFF150E21L, 0xFF21132DL, 0xFFB72AF2L, 0xFFE169F7L, 0xFF744686L,
+            0xFF08060D, 0xFF150E21, 0xFF21132D, 0xFFB72AF2, 0xFFE169F7, 0xFF744686,
         ),
         preset(
             "iron_man", "Iron Man", "Armour red & gold",
-            0xFF140A0CL, 0xFF231114L, 0xFF35191BL, 0xFFE24A43L, 0xFFF8C642L, 0xFF87512DL,
+            0xFF140A0C, 0xFF231114, 0xFF35191B, 0xFFE24A43, 0xFFF8C642, 0xFF87512D,
         ),
         preset(
             "x_men", "X-Men", "Mutant yellow & blue",
-            0xFF080F20L, 0xFF111D36L, 0xFF192B4DL, 0xFF377CF4L, 0xFFFFCF31L, 0xFF566D9EL,
+            0xFF080F20, 0xFF111D36, 0xFF192B4D, 0xFF377CF4, 0xFFFFCF31, 0xFF566D9E,
         ),
         preset(
             "hulk", "Hulk", "Gamma green & purple",
-            0xFF100A19L, 0xFF1B1026L, 0xFF28153AL, 0xFF6BCD47L, 0xFFBE83EDL, 0xFF5D4580L,
+            0xFF100A19, 0xFF1B1026, 0xFF28153A, 0xFF6BCD47, 0xFFBE83ED, 0xFF5D4580,
         ),
         preset(
             "batman", "Batman", "Gotham black & gold",
-            0xFF08090DL, 0xFF15171DL, 0xFF23252EL, 0xFFE2B93FL, 0xFFFFDC61L, 0xFF6D6450L,
+            0xFF08090D, 0xFF15171D, 0xFF23252E, 0xFFE2B93F, 0xFFFFDC61, 0xFF6D6450,
         ),
         preset(
             "spider_man", "Spider-Man", "Web-slinger red & blue",
-            0xFF090F20L, 0xFF151B32L, 0xFF1D2B49L, 0xFFE84B51L, 0xFF5394FFL, 0xFF6B527FL,
+            0xFF090F20, 0xFF151B32, 0xFF1D2B49, 0xFFE84B51, 0xFF5394FF, 0xFF6B527F,
         ),
         preset(
             "amoled", "AMOLED Black", "Pure black & electric violet",
-            0xFF000000L, 0xFF0D0A12L, 0xFF17101EL, 0xFFAE48F4L, 0xFFE68AFFL, 0xFF513762L,
+            0xFF000000, 0xFF0D0A12, 0xFF17101E, 0xFFAE48F4, 0xFFE68AFF, 0xFF513762,
         ),
     )
 
