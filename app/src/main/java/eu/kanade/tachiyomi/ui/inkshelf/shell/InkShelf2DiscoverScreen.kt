@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -65,8 +66,12 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.ui.source.BrowseController
+import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverCache
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 /**
  * New Discover destination built from the approved mock-up.
@@ -82,6 +87,7 @@ internal fun InkShelf2DiscoverScreen(
     onOpenSearchResult: (Manga) -> Unit,
     onManageSources: () -> Unit,
     onSeeAll: (String) -> Unit,
+    onRecommendationsUpdated: suspend () -> Unit,
     searchFocusToken: Int = 0,
     initialSearchQuery: String = "",
 ) {
@@ -96,6 +102,10 @@ internal fun InkShelf2DiscoverScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var found by remember { mutableStateOf<InkShelf2SourcesEngine.GlobalSearchResults?>(null) }
     var selectedCollection by rememberSaveable { mutableStateOf<String?>(null) }
+    var refreshingPicks by remember { mutableStateOf(false) }
+    var picksMessage by remember { mutableStateOf<String?>(null) }
+    var autoAttempted by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     // First Back leaves search or an open collection, not the entire app.
     BackHandler(enabled = query.isNotBlank() || selectedCollection != null) {
@@ -156,7 +166,13 @@ internal fun InkShelf2DiscoverScreen(
     val trending = discover?.trending.orEmpty().filter { !it.thumbnail_url.isNullOrBlank() }
     val heroTrending = trending.take(5)
     val newest = discover?.newest.orEmpty().filter { !it.thumbnail_url.isNullOrBlank() }
-    val recommended = discover?.recommended.orEmpty().filter { !it.thumbnail_url.isNullOrBlank() }
+    // Exclude recommendations from extensions that are not installed/enabled.
+    // Historical cache rows can survive an extension uninstall.
+    val enabledSourceIds = sources.map { it.id }.toSet()
+    val personalPicks = discover?.recommendationDetails.orEmpty()
+        .filter { it.manga.source in enabledSourceIds && !it.manga.thumbnail_url.isNullOrBlank() }
+        .distinctBy { "${it.manga.source}:${it.manga.url}" }
+    val recommended = personalPicks.map { it.manga }
     val picks = (recommended + trending + newest)
         .distinctBy { "${it.source}:${it.url}" }
     val curated: List<Pair<String, List<Manga>>> = remember(picks) {
@@ -176,7 +192,6 @@ internal fun InkShelf2DiscoverScreen(
         ).filter { it.second.isNotEmpty() }
     }
     val heroPager = rememberPagerState(pageCount = { heroTrending.size.coerceAtLeast(1) })
-    val context = LocalContext.current
     val highQualityHeroArt = remember { mutableStateMapOf<String, String>() }
     val heroKeys = heroTrending.map { comic ->
         comic.source.toString() + ":" + comic.url + ":" + comic.title
@@ -190,6 +205,46 @@ internal fun InkShelf2DiscoverScreen(
             val key = comic.source.toString() + ":" + comic.url + ":" + comic.title
             val betterCover = InkShelf2HeroArtwork.findCover(context, comic)
             if (betterCover != null) highQualityHeroArt[key] = betterCover
+        }
+    }
+
+    suspend fun loadPersonalPicks(force: Boolean) {
+        if (refreshingPicks) return
+        refreshingPicks = true
+        picksMessage = null
+        try {
+            val success = BrowseController.refreshPickedForYouForInkShelf2(context, force)
+            if (success) {
+                onRecommendationsUpdated()
+            } else {
+                picksMessage = if (force) {
+                    "No new matches from your enabled sources. Your previous picks are still available."
+                } else {
+                    "Personal picks are unavailable right now. Check your extensions or try Refresh Picks."
+                }
+            }
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            picksMessage = "Could not update your picks. Your saved recommendations are unchanged."
+        } finally {
+            refreshingPicks = false
+        }
+    }
+
+    // No network work at launch. Only generate on Discover entry when the
+    // persisted shelf is empty or older than a week, and only with real sources.
+    val readyForPicks = discover != null && enabledSourceIds.isNotEmpty()
+    LaunchedEffect(readyForPicks) {
+        if (!readyForPicks || autoAttempted) return@LaunchedEffect
+        autoAttempted = true
+        val lastUpdated = InkShelfDiscoverCache.lastUpdatedAt(
+            context, InkShelfDiscoverCache.Section.PICKED_FOR_YOU,
+        )
+        val stale = lastUpdated <= 0L ||
+            System.currentTimeMillis() - lastUpdated > TimeUnit.DAYS.toMillis(7)
+        if (stale || discover?.recommendationDetails.isNullOrEmpty()) {
+            loadPersonalPicks(force = stale && lastUpdated > 0L)
         }
     }
 
@@ -523,9 +578,50 @@ internal fun InkShelf2DiscoverScreen(
                 }
             }
             item(key = "recommended") {
-                InkShelf2SectionHeading("Recommended for You", onClick = null)
-                Spacer(Modifier.height(7.dp))
-                DiscoverShelf(recommended.take(20), onOpen)
+                DiscoverSeeAllHeading("Recommended for You", onClick = { onSeeAll("Recommended for You") })
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Based on your library and recent reading",
+                        modifier = Modifier.weight(1f),
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                    )
+                    TextButton(
+                        enabled = !refreshingPicks && enabledSourceIds.isNotEmpty(),
+                        onClick = { scope.launch { loadPersonalPicks(force = true) } },
+                    ) {
+                        Icon(Icons.Outlined.Refresh, null,
+                            modifier = Modifier.size(16.dp),
+                            tint = InkShelf2Colors.AccentLight)
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            if (refreshingPicks) "Finding picks…" else "Refresh Picks",
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+                picksMessage?.let { message ->
+                    Text(
+                        message,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 12.sp,
+                    )
+                }
+                if (personalPicks.isEmpty()) {
+                    InkShelf2EmptyShelf(
+                        if (refreshingPicks) "Finding comics based on your reading…"
+                        else if (enabledSourceIds.isEmpty()) "Enable a comic extension to get personal recommendations."
+                        else "No personal picks yet. Tap Refresh Picks to find some.",
+                    )
+                } else {
+                    DiscoverPersonalShelf(personalPicks.take(9), onOpen)
+                }
             }
             item(key = "new") {
                 DiscoverSeeAllHeading("New This Week", onClick = { onSeeAll("New This Week") })
@@ -604,6 +700,79 @@ private fun DiscoverShelf(comics: List<Manga>, onOpen: (Manga) -> Unit) {
                     lineHeight = 13.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+
+/** Personal picks preserve the existing horizontal shelf, with transparent reasons. */
+@Composable
+private fun DiscoverPersonalShelf(
+    picks: List<InkShelf2Engine.PersonalPick>,
+    onOpen: (Manga) -> Unit,
+) {
+    var explanation by remember { mutableStateOf<InkShelf2Engine.PersonalPick?>(null) }
+    explanation?.let { pick ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { explanation = null },
+            title = { Text("Why \${pick.manga.title}?", color = InkShelf2Colors.Text) },
+            text = {
+                Text(
+                    pick.reason.substringAfter(" • ", pick.reason)
+                        .ifBlank { "Suggested from your library and recent reading." },
+                    color = InkShelf2Colors.Text,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { explanation = null }) {
+                    Text("Close", color = InkShelf2Colors.AccentLight)
+                }
+            },
+        )
+    }
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(picks, key = { "\${it.manga.source}:\${it.manga.url}" }) { pick ->
+            Column(modifier = Modifier.width(118.dp)) {
+                AsyncImage(
+                    model = pick.manga,
+                    contentDescription = "Open \${pick.manga.title}",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(0.71f)
+                        .clip(RoundedCornerShape(9.dp))
+                        .clickable { onOpen(pick.manga) },
+                    contentScale = ContentScale.Crop,
+                )
+                Text(
+                    pick.manga.title,
+                    modifier = Modifier.padding(top = 5.dp).clickable { onOpen(pick.manga) },
+                    color = InkShelf2Colors.Text,
+                    fontSize = 11.sp,
+                    lineHeight = 13.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val kind = pick.reason.substringBefore(" • ").trim()
+                    .ifBlank { "Personal pick" }
+                Text(
+                    kind,
+                    modifier = Modifier.padding(top = 3.dp),
+                    color = InkShelf2Colors.AccentLight,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "Why this?",
+                    modifier = Modifier.clip(RoundedCornerShape(5.dp))
+                        .clickable { explanation = pick }
+                        .padding(vertical = 5.dp),
+                    color = InkShelf2Colors.Muted,
+                    fontSize = 10.sp,
                 )
             }
         }
