@@ -1118,17 +1118,25 @@ class BrowseController :
                     sourceWeights[manga.source] = (sourceWeights[manga.source] ?: 0) + baseWeight + recentBonus
                 }
 
+                // Recommend only from the user's currently enabled/installed
+                // catalogue sources. A cached cover from a removed extension is
+                // not proof the comic can still be opened.
+                val enabledLanguages = preferences.enabledLanguages().get()
+                val hiddenSourceIds = preferences.hiddenSources().get()
+                val eligibleSources = presenter.sources.filter { source ->
+                    source.id != LocalSource.ID &&
+                        source.lang in enabledLanguages &&
+                        source.id.toString() !in hiddenSourceIds
+                }
                 val preferredSources =
                     sourceWeights
                         .entries
                         .sortedByDescending { it.value }
-                        .mapNotNull { (id, _) -> presenter.sources.firstOrNull { it.id == id } }
-                        .filterNot { it.id == LocalSource.ID }
+                        .mapNotNull { (id, _) -> eligibleSources.firstOrNull { it.id == id } }
 
                 val recommendationSources =
-                    (preferredSources + presenter.sources)
+                    (preferredSources + eligibleSources)
                         .distinctBy { it.id }
-                        .filterNot { it.id == LocalSource.ID }
                         .take(4)
 
                 val candidates =
@@ -1201,57 +1209,19 @@ class BrowseController :
                         title !in libraryTitles && seenTitles.add(title)
                     }
 
-                // A manual refresh creates a fresh recommendation session. Prefer titles that
-                // were not present in the previous nine, but keep the old batch as a fallback
-                // pool so a small source/candidate set never leaves the shelf empty.
-                val previousPickKeys = pendingPickedForYouExclusions
-                val refreshSeed = pendingPickedForYouRefreshSeed
-
-                val freshCandidates =
-                    if (previousPickKeys.isEmpty()) {
-                        uniqueCandidates
-                    } else {
-                        uniqueCandidates.filterNot { candidate ->
-                            normalizePickedForYouTitle(candidate.manga.title) in previousPickKeys
-                        }
-                    }
-
-                val freshPicks =
-                    selectRecommendationMix(
-                        candidates = freshCandidates,
-                        refreshSeed = refreshSeed,
-                    )
-
-                val targetSize = minOf(9, uniqueCandidates.size)
-                val freshKeys =
-                    freshPicks
-                        .map { candidate ->
-                            normalizePickedForYouTitle(candidate.manga.title)
-                        }.toSet()
-
-                val repeatCandidates =
-                    if (freshPicks.size >= targetSize || previousPickKeys.isEmpty()) {
-                        emptyList()
-                    } else {
-                        uniqueCandidates.filter { candidate ->
-                            val key = normalizePickedForYouTitle(candidate.manga.title)
-                            key in previousPickKeys && key !in freshKeys
-                        }
-                    }
-
-                val fallbackPicks =
-                    if (repeatCandidates.isEmpty()) {
-                        emptyList()
-                    } else {
-                        selectRecommendationMix(
-                            candidates = repeatCandidates,
-                            refreshSeed = refreshSeed xor 0x5A5A5A5AL,
-                        ).take(targetSize - freshPicks.size)
-                    }
-
-                val selectedCandidates =
-                    (freshPicks + fallbackPicks)
-                        .take(targetSize)
+                // Persistent 90-day no-repeat window, across app restarts and
+                // extension mirrors. Manual refresh may return fewer than nine
+                // rather than repeating the same comics when sources are sparse.
+                val priorTitles =
+                    discoverCacheContext?.let(InkShelfRecommendationHistory::recentTitles).orEmpty() +
+                        pendingPickedForYouExclusions
+                val freshCandidates = uniqueCandidates.filterNot { candidate ->
+                    InkShelfRecommendationHistory.titleKey(candidate.manga.title) in priorTitles
+                }
+                val selectedCandidates = selectRecommendationMix(
+                    candidates = freshCandidates,
+                    refreshSeed = pendingPickedForYouRefreshSeed,
+                ).take(9)
 
                 val picks =
                     selectedCandidates
@@ -1262,11 +1232,14 @@ class BrowseController :
                             }.getOrNull()
                         }
 
-                cachedPickedForYouFingerprint = tasteFingerprint
-                cachedPickedForYouItems = picks
+                if (picks.isNotEmpty()) {
+                    cachedPickedForYouFingerprint = tasteFingerprint
+                    cachedPickedForYouItems = picks
 
-                discoverCacheContext?.let { appContext ->
-                    InkShelfDiscoverCache.save(appContext, InkShelfDiscoverCache.Section.PICKED_FOR_YOU, picks)
+                    discoverCacheContext?.let { appContext ->
+                        InkShelfDiscoverCache.save(appContext, InkShelfDiscoverCache.Section.PICKED_FOR_YOU, picks)
+                        InkShelfRecommendationHistory.record(appContext, picks)
+                    }
                 }
 
                 // The exclusion list and seed apply to one manual refresh only.
@@ -2827,7 +2800,18 @@ class BrowseController :
             val controller = BrowseController()
             controller.discoverCacheContext = context.applicationContext
             return try {
-                if (force) requestPickedForYouRefresh()
+                if (force) {
+                    // Old builds persisted a recommendation batch but not its
+                    // rotation history. Remember that visible batch before
+                    // generating replacements, including on a fresh process.
+                    val previous = InkShelfDiscoverCache.load(
+                        context,
+                        InkShelfDiscoverCache.Section.PICKED_FOR_YOU,
+                        Injekt.get<DatabaseHelper>(),
+                    )
+                    InkShelfRecommendationHistory.record(context, previous)
+                    requestPickedForYouRefresh()
+                }
                 val result = CompletableDeferred<List<DiscoverRecommendation>>()
                 controller.loadPickedForYou(background = true) { items ->
                     if (!result.isCompleted) result.complete(items)
