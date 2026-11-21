@@ -1544,6 +1544,10 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
                 if (router.backstack.isEmpty()) nav.selectedItemId = R.id.nav_library
                 router.pushController(BrowseSourceController(extras).withFadeTransaction())
             }
+            SHORTCUT_MENU_SETTINGS -> {
+                if (!router.hasRootController()) goToStartingTab()
+                showSettings()
+            }
             SHORTCUT_DOWNLOADS -> {
                 nav.selectedItemId = R.id.nav_recents
                 router.popToRoot()
@@ -2529,6 +2533,7 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
         const val SHORTCUT_RECENTLY_READ = "eu.kanade.tachiyomi.SHOW_RECENTLY_READ"
         const val SHORTCUT_BROWSE = "eu.kanade.tachiyomi.SHOW_BROWSE"
         const val SHORTCUT_DOWNLOADS = "eu.kanade.tachiyomi.SHOW_DOWNLOADS"
+        const val SHORTCUT_MENU_SETTINGS = "eu.kanade.tachiyomi.SHOW_MENU_SETTINGS"
         const val SHORTCUT_MANGA = "eu.kanade.tachiyomi.SHOW_MANGA"
         const val SHORTCUT_MANGA_BACK = "eu.kanade.tachiyomi.SHOW_MANGA_BACK"
         const val SHORTCUT_UPDATE_NOTES = "eu.kanade.tachiyomi.SHOW_UPDATE_NOTES"
