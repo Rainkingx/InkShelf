@@ -65,6 +65,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
@@ -382,6 +383,16 @@ internal fun InkShelf2DetailsScreen(
     // whether the reader has actually been started. J2K records completed
     // issues via read and in-progress issues via last_page_read.
     val hasReadingProgress = chapters.any { it.read || it.last_page_read > 0 }
+    val context = LocalContext.current
+    val viewPrefs = remember(context) {
+        context.applicationContext.getSharedPreferences(
+            "inkshelf_2_issues_layout_v1",
+            android.content.Context.MODE_PRIVATE,
+        )
+    }
+    var showIssueGrid by rememberSaveable {
+        mutableStateOf(viewPrefs.getBoolean("grid", true))
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = padding,
@@ -500,7 +511,46 @@ internal fun InkShelf2DetailsScreen(
                     lineHeight = 21.sp,
                 )
                 Spacer(Modifier.height(16.dp))
-                InkShelf2PageHeading("Issues (${chapters.size})")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f)) {
+                        InkShelf2PageHeading("Issues (${chapters.size})")
+                    }
+                    IconButton(
+                        onClick = {
+                            showIssueGrid = true
+                            viewPrefs.edit().putBoolean("grid", true).apply()
+                        },
+                    ) {
+                        Icon(
+                            Icons.Outlined.GridView,
+                            contentDescription = "Grid view of issue covers",
+                            tint = if (showIssueGrid) InkShelf2Colors.AccentLight
+                                else InkShelf2Colors.Muted,
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            showIssueGrid = false
+                            viewPrefs.edit().putBoolean("grid", false).apply()
+                        },
+                    ) {
+                        Icon(
+                            Icons.Outlined.ViewList,
+                            contentDescription = "Compact list of issues",
+                            tint = if (!showIssueGrid) InkShelf2Colors.AccentLight
+                                else InkShelf2Colors.Muted,
+                        )
+                    }
+                }
+                Text(
+                    if (showIssueGrid) "Tap a cover to read that issue"
+                    else "Tap an issue to read",
+                    color = InkShelf2Colors.Muted,
+                    fontSize = 11.sp,
+                )
             }
         }
         if (chapters.isEmpty()) {
@@ -514,36 +564,35 @@ internal fun InkShelf2DetailsScreen(
                     },
                 )
             }
-        } else {
-            items(chapters) { chapter ->
+
+        } else if (showIssueGrid) {
+            items(chapters.chunked(2)) { pair ->
                 Row(
-                    modifier = Modifier.fillMaxWidth()
-                        .clickable { onChapter(chapter) }
-                        .padding(horizontal = 16.dp, vertical = 13.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    Icon(
-                        if (chapter.read) Icons.Outlined.CheckCircleOutline else Icons.Outlined.AutoStories,
-                        contentDescription = null,
-                        tint = InkShelf2Colors.AccentLight,
-                    )
-                    Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(
-                            chapter.name,
-                            color = InkShelf2Colors.Text,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            if (chapter.read) "Read" else "Tap to read",
-                            color = InkShelf2Colors.Muted,
-                            fontSize = 11.sp,
+                    pair.forEach { chapter ->
+                        InkShelf2IssueGridCard(
+                            manga = manga,
+                            chapter = chapter,
+                            modifier = Modifier.weight(1f),
+                            onClick = { onChapter(chapter) },
                         )
                     }
-                    Icon(Icons.Outlined.PlayArrow, "Open reader", tint = InkShelf2Colors.AccentLight)
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
-                HorizontalDivider(color = InkShelf2Colors.Border.copy(alpha = 0.3f))
+            }
+        } else {
+            items(chapters) { chapter ->
+                InkShelf2IssueListRow(
+                    manga = manga,
+                    chapter = chapter,
+                    onClick = { onChapter(chapter) },
+                )
+                HorizontalDivider(
+                    color = InkShelf2Colors.Border.copy(alpha = 0.3f),
+                )
             }
         }
     }
