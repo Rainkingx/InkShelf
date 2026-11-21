@@ -55,16 +55,18 @@ import androidx.compose.ui.unit.sp
  * Do not mount this above the old activity chrome as an overlay.
  */
 object InkShelf2Colors {
-    val Background = Color(0xFF08060D)
-    val Surface = Color(0xFF150E21)
-    val SurfaceRaised = Color(0xFF21132D)
-    val Accent = Color(0xFFB72AF2)
-    val AccentLight = Color(0xFFE169F7)
+    // Snapshot-backed getters mean every existing 2.0 Compose screen responds
+    // to a theme change without a separate toolbar or duplicated old UI.
+    val Background: Color get() = InkShelf2Themes.current.background
+    val Surface: Color get() = InkShelf2Themes.current.surface
+    val SurfaceRaised: Color get() = InkShelf2Themes.current.surfaceRaised
+    val Accent: Color get() = InkShelf2Themes.current.accent
+    val AccentLight: Color get() = InkShelf2Themes.current.highlight
     val Text = Color(0xFFFBF8FF)
     val Muted = Color(0xFFBCB1C7)
-    val Border = Color(0xFF744686)
+    val Border: Color get() = InkShelf2Themes.current.border
     val AccentGradient: Brush
-        get() = Brush.horizontalGradient(listOf(Color(0xFF8734D8), Color(0xFFE24AF3)))
+        get() = Brush.horizontalGradient(listOf(Accent, AccentLight))
 }
 
 enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
@@ -74,22 +76,26 @@ enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
     ACCOUNT("Menu", Icons.Outlined.Menu),
 }
 
-private val inkShelf2Scheme = darkColorScheme(
-    primary = InkShelf2Colors.Accent,
-    onPrimary = InkShelf2Colors.Text,
-    secondary = InkShelf2Colors.AccentLight,
-    background = InkShelf2Colors.Background,
-    onBackground = InkShelf2Colors.Text,
-    surface = InkShelf2Colors.Surface,
-    onSurface = InkShelf2Colors.Text,
-    surfaceVariant = InkShelf2Colors.SurfaceRaised,
-    onSurfaceVariant = InkShelf2Colors.Muted,
-    outline = InkShelf2Colors.Border,
-)
-
 @Composable
 fun InkShelf2Theme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = inkShelf2Scheme, content = content)
+    // Rebuild Material 3's scheme from the active appearance on every change.
+    // Reading InkShelf2Themes.current registers a Compose state dependency.
+    val palette = InkShelf2Themes.current
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            primary = palette.accent,
+            onPrimary = InkShelf2Colors.Text,
+            secondary = palette.highlight,
+            background = palette.background,
+            onBackground = InkShelf2Colors.Text,
+            surface = palette.surface,
+            onSurface = InkShelf2Colors.Text,
+            surfaceVariant = palette.surfaceRaised,
+            onSurfaceVariant = InkShelf2Colors.Muted,
+            outline = palette.border,
+        ),
+        content = content,
+    )
 }
 
 /**
@@ -222,7 +228,7 @@ private fun InkShelf2BottomNavigation(
             .clip(barShape)
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF191120), Color(0xFF08060D)),
+                    listOf(InkShelf2Colors.SurfaceRaised, InkShelf2Colors.Background),
                 ),
             ),
     ) {
@@ -240,9 +246,9 @@ private fun InkShelf2BottomNavigation(
                 val selected = tab == currentTab
                 val selectedBrush = Brush.verticalGradient(
                     listOf(
-                        Color(0xFF4A215F).copy(alpha = 0.95f),
-                        Color(0xFF2E183E).copy(alpha = 0.96f),
-                        Color(0xFF24132C).copy(alpha = 0.92f),
+                        InkShelf2Colors.Accent.copy(alpha = 0.36f),
+                        InkShelf2Colors.SurfaceRaised.copy(alpha = 0.95f),
+                        InkShelf2Colors.Surface.copy(alpha = 0.92f),
                     ),
                 )
                 Column(
