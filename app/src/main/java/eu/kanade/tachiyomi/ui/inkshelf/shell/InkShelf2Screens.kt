@@ -383,6 +383,11 @@ internal fun InkShelf2DetailsScreen(
     // whether the reader has actually been started. J2K records completed
     // issues via read and in-progress issues via last_page_read.
     val hasReadingProgress = chapters.any { it.read || it.last_page_read > 0 }
+    // Use the highest actual issue number shown by this source to identify
+    // the correct Metron volume when multiple series share the same title.
+    val seriesAnchorIssue = remember(manga.source, manga.url, chapters) {
+        InkShelf2IssueNumbers.anchor(chapters)
+    }
     val context = LocalContext.current
     val viewPrefs = remember(context) {
         context.applicationContext.getSharedPreferences(
@@ -576,6 +581,7 @@ internal fun InkShelf2DetailsScreen(
                         InkShelf2IssueGridCard(
                             manga = manga,
                             chapter = chapter,
+                            anchorIssueNumber = seriesAnchorIssue,
                             modifier = Modifier.weight(1f),
                             onClick = { onChapter(chapter) },
                         )
@@ -588,6 +594,7 @@ internal fun InkShelf2DetailsScreen(
                 InkShelf2IssueListRow(
                     manga = manga,
                     chapter = chapter,
+                    anchorIssueNumber = seriesAnchorIssue,
                     onClick = { onChapter(chapter) },
                 )
                 HorizontalDivider(
