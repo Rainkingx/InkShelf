@@ -92,7 +92,7 @@ internal fun InkShelf2DailyPicksScreen(
                 Box(
                     modifier = Modifier.fillMaxSize().background(
                         Brush.verticalGradient(
-                            listOf(Color(0x120A0611), Color(0xE30A0611)),
+                            listOf(InkShelf2Colors.Background.copy(alpha = 0.07f), InkShelf2Colors.Background.copy(alpha = 0.89f)),
                         ),
                     ),
                 )
