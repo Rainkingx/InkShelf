@@ -31,13 +31,10 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.LocalFireDepartment
-import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -82,8 +79,6 @@ internal fun InkShelf2DiscoverScreen(
     sources: List<CatalogueSource>,
     onOpenSearchResult: (Manga) -> Unit,
     onManageSources: () -> Unit,
-    onManageExtensions: () -> Unit,
-    onManageRepositories: () -> Unit,
     onSeeAll: (String) -> Unit,
     searchFocusToken: Int = 0,
     initialSearchQuery: String = "",
@@ -93,7 +88,6 @@ internal fun InkShelf2DiscoverScreen(
     val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    var menuOpen by remember { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var activeQuery by rememberSaveable { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
@@ -194,32 +188,13 @@ internal fun InkShelf2DiscoverScreen(
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     InkShelf2PageHeading("Discover Comics", modifier = Modifier.weight(1f))
-                    Box {
-                        IconButton(onClick = { menuOpen = true }) {
-                            Icon(
-                                Icons.Outlined.MoreVert,
-                                contentDescription = "Sources and extension menu",
-                                tint = InkShelf2Colors.Text,
-                                modifier = Modifier.size(25.dp),
-                            )
-                        }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(
-                                text = { Text("Browse Sources") },
-                                leadingIcon = { Icon(Icons.Outlined.AutoStories, null) },
-                                onClick = { menuOpen = false; onManageSources() },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Manage Extensions") },
-                                leadingIcon = { Icon(Icons.Outlined.Extension, null) },
-                                onClick = { menuOpen = false; onManageExtensions() },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Extension Repositories") },
-                                leadingIcon = { Icon(Icons.Outlined.Settings, null) },
-                                onClick = { menuOpen = false; onManageRepositories() },
-                            )
-                        }
+                    IconButton(onClick = onManageSources) {
+                        Icon(
+                            Icons.Outlined.AutoStories,
+                            contentDescription = "Browse comic sources in Menu",
+                            tint = InkShelf2Colors.Text,
+                            modifier = Modifier.size(25.dp),
+                        )
                     }
                 }
                 Spacer(Modifier.height(9.dp))
@@ -251,7 +226,7 @@ internal fun InkShelf2DiscoverScreen(
                     Spacer(Modifier.height(5.dp))
                     when {
                         sources.isEmpty() -> Text(
-                            "No enabled sources. Open the ⋮ menu to install or enable comic extensions.",
+                            "No enabled sources. Go to Menu → Manage Extensions to enable or install sources.",
                             color = InkShelf2Colors.Muted, fontSize = 13.sp,
                         )
                         query.trim().length < 2 -> Text(
