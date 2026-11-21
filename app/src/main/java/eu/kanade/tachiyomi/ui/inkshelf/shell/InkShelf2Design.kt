@@ -64,8 +64,8 @@ internal fun Modifier.inkShelf2Atmosphere(): Modifier = this
     .drawBehind {
         drawCircle(
             brush = Brush.radialGradient(
-                0f to Color(0xFF70288C).copy(alpha = 0.22f),
-                0.48f to Color(0xFF3F165A).copy(alpha = 0.11f),
+                0f to InkShelf2Colors.Accent.copy(alpha = 0.22f),
+                0.48f to InkShelf2Colors.AccentLight.copy(alpha = 0.11f),
                 1f to Color.Transparent,
             ),
             center = Offset(size.width * 0.85f, size.height * 0.17f),
@@ -73,7 +73,7 @@ internal fun Modifier.inkShelf2Atmosphere(): Modifier = this
         )
         drawCircle(
             brush = Brush.radialGradient(
-                0f to Color(0xFF6F239C).copy(alpha = 0.10f),
+                0f to InkShelf2Colors.Accent.copy(alpha = 0.10f),
                 1f to Color.Transparent,
             ),
             center = Offset(size.width * 0.06f, size.height * 0.78f),
@@ -94,8 +94,8 @@ internal fun InkShelf2ActionButton(
     val shape = InkShelf2Metrics.ButtonCorner
     val background = when {
         !enabled -> Brush.horizontalGradient(listOf(InkShelf2Colors.Surface, InkShelf2Colors.Surface))
-        outlined -> Brush.horizontalGradient(listOf(Color(0xD010081A), Color(0xD0140B20)))
-        else -> Brush.horizontalGradient(listOf(Color(0xFFB543EE), Color(0xFFE46EF6)))
+        outlined -> Brush.horizontalGradient(listOf(InkShelf2Colors.Surface, InkShelf2Colors.SurfaceRaised))
+        else -> InkShelf2Colors.AccentGradient
     }
     Box(
         modifier = modifier
@@ -113,7 +113,7 @@ internal fun InkShelf2ActionButton(
                 color = when {
                     !enabled -> InkShelf2Colors.Border
                     outlined -> InkShelf2Colors.AccentLight
-                    else -> Color(0x88FFE5FF)
+                    else -> InkShelf2Colors.AccentLight.copy(alpha = 0.75f)
                 },
                 shape = shape,
             )
@@ -128,7 +128,7 @@ internal fun InkShelf2ActionButton(
             val fg = when {
                 !enabled -> InkShelf2Colors.Muted
                 outlined -> Color.White
-                else -> Color(0xFF130A1A)
+                else -> Color(0xFF08060D)
             }
             if (leadingIcon != null) {
                 Icon(
