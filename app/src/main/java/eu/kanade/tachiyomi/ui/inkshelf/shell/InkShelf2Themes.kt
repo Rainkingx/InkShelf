@@ -125,7 +125,17 @@ internal object InkShelf2Themes {
         current = chosen
     }
 
+    fun hasSavedCustom(context: Context): Boolean =
+        preferences(context).contains(CUSTOM_PRIMARY)
+
     fun select(context: Context, id: String) {
+        if (id == "custom") {
+            if (!hasSavedCustom(context)) return
+            preferences(context).edit().putString(SELECTED, "custom").apply()
+            selectedId = "custom"
+            current = savedCustom(context)
+            return
+        }
         val chosen = presets.firstOrNull { it.id == id } ?: return
         preferences(context).edit().putString(SELECTED, chosen.id).apply()
         selectedId = chosen.id
