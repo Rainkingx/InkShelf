@@ -19,11 +19,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryBooks
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.LibraryBooks
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.NotificationsNone
-import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -71,7 +71,7 @@ enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
     DISCOVER("Discover", Icons.Outlined.Search),
     LIBRARY("Library", Icons.Outlined.LibraryBooks),
-    ACCOUNT("Account", Icons.Outlined.PersonOutline),
+    ACCOUNT("Menu", Icons.Outlined.Menu),
 }
 
 private val inkShelf2Scheme = darkColorScheme(
@@ -265,7 +265,7 @@ private fun InkShelf2BottomNavigation(
                     val image = when (tab) {
                         InkShelf2Tab.HOME -> if (selected) Icons.Filled.Home else Icons.Outlined.Home
                         InkShelf2Tab.LIBRARY -> if (selected) Icons.Filled.LibraryBooks else Icons.Outlined.LibraryBooks
-                        InkShelf2Tab.ACCOUNT -> if (selected) Icons.Filled.Person else Icons.Outlined.PersonOutline
+                        InkShelf2Tab.ACCOUNT -> if (selected) Icons.Filled.Menu else Icons.Outlined.Menu
                         InkShelf2Tab.DISCOVER -> Icons.Outlined.Search
                     }
                     Icon(
