@@ -245,7 +245,7 @@ private fun ShelfCover(item: InkShelf2LibraryItem, onClick: () -> Unit) {
                     .fillMaxWidth()
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color.Transparent, Color(0xE4100917)),
+                            listOf(Color.Transparent, InkShelf2Colors.Background.copy(alpha = 0.89f)),
                         ),
                     ),
             ) {
@@ -272,7 +272,7 @@ private fun ShelfStatus(item: InkShelf2LibraryItem, modifier: Modifier = Modifie
                 LinearProgressIndicator(
                     progress = { progress / 100f },
                     color = InkShelf2Colors.AccentLight,
-                    trackColor = Color(0xFF392844),
+                    trackColor = InkShelf2Colors.SurfaceRaised,
                     modifier = Modifier.fillMaxWidth()
                         .height(5.dp)
                         .clip(RoundedCornerShape(10.dp)),
@@ -298,7 +298,7 @@ private fun ShelfStatus(item: InkShelf2LibraryItem, modifier: Modifier = Modifie
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(5.dp))
-                    .background(Color(0xA40E0918))
+                    .background(InkShelf2Colors.Background.copy(alpha = 0.64f))
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
