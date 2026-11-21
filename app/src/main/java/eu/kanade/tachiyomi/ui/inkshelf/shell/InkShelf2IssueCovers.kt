@@ -42,6 +42,7 @@ import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
+import eu.kanade.tachiyomi.ui.manga.InkShelfIssueMetadata
 
 /** Artwork belongs to Metron; tapping always opens the original source chapter. */
 @Composable
@@ -58,10 +59,14 @@ private fun IssueArtwork(
     var cover by remember(manga.source, manga.url, chapter.name, issue) {
         mutableStateOf<String?>(null)
     }
-    var failed by remember(cover) { mutableStateOf(false) }
+    // InkShelf 1 already supports exact source-supplied per-issue artwork.
+    // Use that first; only ask Metron to fill genuine cover gaps.
+    val sourceCover = InkShelfIssueMetadata.from(chapter).coverUrl
+    val imageUrl = sourceCover ?: cover
+    var failed by remember(imageUrl) { mutableStateOf(false) }
     DisposableEffect(context, manga.source, manga.url, chapter.name, issue, anchorIssueNumber) {
         var active = true
-        if (issue != null) {
+        if (sourceCover == null && issue != null) {
             InkShelfMetronCovers.requestIssueCover(
                 context, manga, issue,
                 onFound = { url -> if (active) cover = url },
@@ -104,9 +109,9 @@ private fun IssueArtwork(
                 fontWeight = FontWeight.Bold,
             )
         }
-        if (cover != null && !failed) {
+        if (imageUrl != null && !failed) {
             AsyncImage(
-                model = cover,
+                model = imageUrl,
                 contentDescription = "Cover for ${chapter.name}",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
