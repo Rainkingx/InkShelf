@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
 import android.widget.Toast
@@ -28,6 +29,7 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.LocalSource
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
+import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverRefreshWorker
 import kotlinx.coroutines.launch
@@ -72,6 +74,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var searchFocusEpoch by remember { mutableIntStateOf(0) }
             var discoverSearchPreset by remember { mutableStateOf("") }
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
+            var metronOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
@@ -83,6 +86,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     tab = destination
                 }
                 sourceHubOpen = false
+                metronOpen = false
                 activeSourceId = null
                 selectedDay = null
                 selectedDiscoverShelf = null
@@ -182,6 +186,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     selectedDay != null -> selectedDay = null
                     activeSourceId != null -> activeSourceId = null
                     sourceHubOpen -> sourceHubOpen = false
+                    metronOpen -> metronOpen = false
                     tabTrail.contains('|') -> {
                         tabTrail = tabTrail.substringBeforeLast('|')
                         tab = InkShelf2Tab.valueOf(tabTrail.substringAfterLast('|'))
@@ -276,7 +281,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         onDayPicks = { selectedDay = it },
                         onTrendingSeeAll = { selectedDiscoverShelf = "Trending Right Now" },
                     )
-                    tab == InkShelf2Tab.DISCOVER && sourceHubOpen -> InkShelf2SourceHub(
+                    tab == InkShelf2Tab.ACCOUNT && sourceHubOpen -> InkShelf2SourceHub(
                         padding = padding,
                         sources = catalogueSources,
                         installed = installedExtensions,
@@ -300,17 +305,8 @@ class InkShelf2Activity : AppCompatActivity() {
                         searchFocusToken = searchFocusEpoch,
                         initialSearchQuery = discoverSearchPreset,
                         onManageSources = {
+                            openTab(InkShelf2Tab.ACCOUNT)
                             sourceHubMode = "Sources"
-                            sourceHubOpen = true
-                            activeSourceId = null
-                        },
-                        onManageExtensions = {
-                            sourceHubMode = "Extensions"
-                            sourceHubOpen = true
-                            activeSourceId = null
-                        },
-                        onManageRepositories = {
-                            sourceHubMode = "Repos"
                             sourceHubOpen = true
                             activeSourceId = null
                         },
@@ -321,7 +317,47 @@ class InkShelf2Activity : AppCompatActivity() {
                         padding = padding,
                         onOpen = openComicDetails,
                     )
-                    else -> InkShelf2AccountScreen(padding)
+                    tab == InkShelf2Tab.ACCOUNT && metronOpen -> InkShelf2MenuMetronScreen(
+                        padding = padding,
+                        onBack = { metronOpen = false },
+                    )
+                    else -> InkShelf2MenuScreen(
+                        padding = padding,
+                        onBrowseSources = {
+                            sourceHubMode = "Sources"
+                            sourceHubOpen = true
+                            activeSourceId = null
+                        },
+                        onExtensions = {
+                            sourceHubMode = "Extensions"
+                            sourceHubOpen = true
+                            activeSourceId = null
+                        },
+                        onRepositories = {
+                            sourceHubMode = "Repos"
+                            sourceHubOpen = true
+                            activeSourceId = null
+                        },
+                        onMetron = { metronOpen = true },
+                        onDownloads = {
+                            startActivity(
+                                Intent(this@InkShelf2Activity, MainActivity::class.java)
+                                    .setAction(MainActivity.SHORTCUT_DOWNLOADS),
+                            )
+                        },
+                        onHistory = {
+                            startActivity(
+                                Intent(this@InkShelf2Activity, MainActivity::class.java)
+                                    .setAction(MainActivity.SHORTCUT_RECENTLY_READ),
+                            )
+                        },
+                        onSettings = {
+                            startActivity(
+                                Intent(this@InkShelf2Activity, MainActivity::class.java)
+                                    .setAction(MainActivity.SHORTCUT_MENU_SETTINGS),
+                            )
+                        },
+                    )
                 }
             }
         }
