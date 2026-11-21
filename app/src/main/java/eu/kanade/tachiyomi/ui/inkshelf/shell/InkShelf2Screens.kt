@@ -430,6 +430,20 @@ internal fun InkShelf2DetailsScreen(
     }
     val visibleChapters = orderedChapters.take(visibleIssueCount)
     val moreIssuesRemaining = (chapters.size - visibleChapters.size).coerceAtLeast(0)
+    val prefetchIssueKeys = orderedChapters.take(4).map { chapter ->
+        chapter.id ?: chapter.url
+    }
+    LaunchedEffect(manga.source, manga.url, prefetchIssueKeys, seriesAnchorIssue) {
+        // Get the first covers into Coil cache while the details header and
+        // synopsis are being displayed. The issue grid remains lazy and only
+        // eight issues are revealed at a time.
+        prefetchFirstIssueCovers(
+            context = context,
+            manga = manga,
+            visibleChapters = orderedChapters.take(4),
+            anchorIssueNumber = seriesAnchorIssue,
+        )
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = padding,
