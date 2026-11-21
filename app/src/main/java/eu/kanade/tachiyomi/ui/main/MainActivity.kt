@@ -413,7 +413,13 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
             }
         onBackPressedDispatcher.addCallback(backPressedCallback!!)
         // Do not let the launcher create a new activity http://stackoverflow.com/questions/16283079
-        if (!isTaskRoot && this !is SearchActivity) {
+        // The 2.0 Menu deliberately opens three original J2K tools in this Activity.
+        // Unlike a duplicate launcher tap, these explicit routes must be allowed as
+        // nested Activities so Back returns to the new Compose shell.
+        val fromInkShelf2Menu = intent.action == SHORTCUT_DOWNLOADS ||
+            intent.action == SHORTCUT_RECENTLY_READ ||
+            intent.action == SHORTCUT_MENU_SETTINGS
+        if (!isTaskRoot && this !is SearchActivity && !fromInkShelf2Menu) {
             finish()
             return
         }
