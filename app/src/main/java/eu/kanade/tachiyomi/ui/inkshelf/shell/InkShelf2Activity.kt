@@ -57,6 +57,8 @@ class InkShelf2Activity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SecureActivityDelegate.setSecure(this)
+        // Restore the selected 2.0 palette before first composition (no purple flash).
+        InkShelf2Themes.restore(this)
         // Keep the same six-hour Discover feed refresh when users launch only
         // the new Compose shell. KEEP ensures no duplicate workers are created.
         InkShelfDiscoverRefreshWorker.schedule(applicationContext)
@@ -75,6 +77,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var discoverSearchPreset by remember { mutableStateOf("") }
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
             var metronOpen by rememberSaveable { mutableStateOf(false) }
+            var themesOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
@@ -87,6 +90,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 }
                 sourceHubOpen = false
                 metronOpen = false
+                themesOpen = false
                 activeSourceId = null
                 selectedDay = null
                 selectedDiscoverShelf = null
@@ -187,6 +191,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     activeSourceId != null -> activeSourceId = null
                     sourceHubOpen -> sourceHubOpen = false
                     metronOpen -> metronOpen = false
+                    themesOpen -> themesOpen = false
                     tabTrail.contains('|') -> {
                         tabTrail = tabTrail.substringBeforeLast('|')
                         tab = InkShelf2Tab.valueOf(tabTrail.substringAfterLast('|'))
@@ -321,6 +326,10 @@ class InkShelf2Activity : AppCompatActivity() {
                         padding = padding,
                         onBack = { metronOpen = false },
                     )
+                    tab == InkShelf2Tab.ACCOUNT && themesOpen -> InkShelf2ThemesScreen(
+                        padding = padding,
+                        onBack = { themesOpen = false },
+                    )
                     else -> InkShelf2MenuScreen(
                         padding = padding,
                         onBrowseSources = {
@@ -339,6 +348,7 @@ class InkShelf2Activity : AppCompatActivity() {
                             activeSourceId = null
                         },
                         onMetron = { metronOpen = true },
+                        onThemes = { themesOpen = true },
                         onDownloads = {
                             startActivity(
                                 Intent(this@InkShelf2Activity, MainActivity::class.java)
