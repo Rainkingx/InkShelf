@@ -49,6 +49,9 @@ internal object InkShelfMetronCovers {
     private val lock = Any()
     private val cache = mutableMapOf<String, Entry>()
     private val pending = mutableMapOf<String, MutableList<Pair<Int, (String) -> Unit>>>()
+    // Covers discovered on an early Metron page stay available to newly
+    // composed rows while later metadata pages are still loading.
+    private val inFlightCovers = mutableMapOf<String, Map<Int, String>>()
 
     private data class Entry(
         val expiresAt: Long,
@@ -69,7 +72,10 @@ internal object InkShelfMetronCovers {
         onFound: (String) -> Unit,
     ) {
         if (issueNumber !in 1..999) return
-        if (configuredToken(context) == null) return
+        // Avoid decrypting the Android Keystore token for every row on the UI
+        // thread. The actual credential is read once on Dispatchers.IO.
+        if (!InkShelf2MetronTokenStore(context).hasToken() &&
+            !InkShelfMetronCredentials.isConfigured(context)) return
         val appContext = context.applicationContext
         val cleanTitle = seriesTitle(manga.title)
         if (cleanTitle.length < 3) return
@@ -77,6 +83,7 @@ internal object InkShelfMetronCovers {
         val anchor = anchorIssueNumber?.takeIf { it in 1..999 }
         val key = "${normalized(cleanTitle)}|${year ?: "unknown"}|${anchor ?: "unanchored"}"
         var cachedUrl: String? = null
+        var inFlightUrl: String? = null
         var shouldFetch = false
         var hadCache = false
         synchronized(lock) {
@@ -89,8 +96,10 @@ internal object InkShelfMetronCovers {
                 val listeners = pending[key]
                 if (listeners != null) {
                     listeners.add(issueNumber to onFound)
+                    inFlightUrl = inFlightCovers[key]?.get(issueNumber)
                 } else {
                     pending[key] = mutableListOf(issueNumber to onFound)
+                    inFlightCovers[key] = emptyMap()
                     shouldFetch = true
                 }
             }
@@ -99,14 +108,32 @@ internal object InkShelfMetronCovers {
             cachedUrl?.let(onFound)
             return
         }
+        inFlightUrl?.let(onFound)
         if (!shouldFetch) return
 
         scope.launch {
             val token = configuredToken(appContext)
-            // A bad token, outage, or rate limit must not become a long-lived
-            // "no matching covers" result in the cache.
+            // Deliver the first matching issue covers as soon as that Metron
+            // page is parsed. Don't wait for up to three pages (and their
+            // rate-limit pauses) to finish.
             val result = if (token.isNullOrBlank()) null else
-                runCatching { lookupSeriesIssues(cleanTitle, year, token, anchor) }.getOrNull()
+                runCatching {
+                    lookupSeriesIssues(cleanTitle, year, token, anchor) { partial ->
+                        synchronized(lock) {
+                            if (pending.containsKey(key)) inFlightCovers[key] = partial
+                        }
+                        withContext(Dispatchers.Main) {
+                            val listeners = synchronized(lock) {
+                                pending[key]?.toList().orEmpty()
+                            }
+                            listeners.forEach { (number, callback) ->
+                                partial[number]?.let(callback)
+                            }
+                        }
+                    }
+                }.getOrNull()
+            // A bad token, outage or rate limit must not become a long-lived
+            // missing-cover entry. Keep previously delivered covers visible.
             val entry = result?.let { covers ->
                 Entry(
                     System.currentTimeMillis() + if (covers.isEmpty()) CACHE_MISS_MS else CACHE_OK_MS,
@@ -116,12 +143,13 @@ internal object InkShelfMetronCovers {
             if (entry != null) saveCache(appContext, key, entry)
             val listeners = synchronized(lock) {
                 if (entry != null) cache[key] = entry
+                inFlightCovers.remove(key)
                 pending.remove(key).orEmpty()
             }
             if (entry != null) {
                 withContext(Dispatchers.Main) {
                     listeners.forEach { (number, callback) ->
-                        entry.covers[number]?.let { cover -> callback(cover) }
+                        entry.covers[number]?.let(callback)
                     }
                 }
             }
@@ -196,6 +224,7 @@ internal object InkShelfMetronCovers {
         year: Int?,
         token: String,
         anchorNumber: Int?,
+        onPartialCovers: suspend (Map<Int, String>) -> Unit,
     ): Map<Int, String> {
         val searchUrl = endpoint("series").newBuilder()
             .addQueryParameter("name", title)
@@ -257,6 +286,7 @@ internal object InkShelfMetronCovers {
         while (nextUrl != null && pages < 3) {
             val body = getJson(nextUrl, token) ?: break
             val issues = body.optJSONArray("results") ?: break
+            var foundOnThisPage = false
             for (i in 0 until issues.length()) {
                 val issue = issues.optJSONObject(i) ?: continue
                 val number = issue.optString("number")
@@ -267,8 +297,9 @@ internal object InkShelfMetronCovers {
                 val image = issue.optString("image")
                 if (!validImageUrl(image)) continue
                 // Standard cover only, never a guessed variant.
-                covers.putIfAbsent(number, image)
+                if (covers.putIfAbsent(number, image) == null) foundOnThisPage = true
             }
+            if (foundOnThisPage) onPartialCovers(covers.toMap())
             pages++
             val next = body.optString("next").takeIf { it.startsWith("https://metron.cloud/api/") }
             nextUrl = next?.toHttpUrlOrNull()
