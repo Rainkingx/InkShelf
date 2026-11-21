@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Icon
@@ -52,6 +53,7 @@ internal fun InkShelf2MenuScreen(
     onExtensions: () -> Unit,
     onRepositories: () -> Unit,
     onMetron: () -> Unit,
+    onThemes: () -> Unit,
     onDownloads: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
@@ -90,6 +92,7 @@ internal fun InkShelf2MenuScreen(
         }
         item {
             MenuSection("METADATA & SETTINGS") {
+                MenuEntry("Appearance & Themes", "Comic colour themes and custom palettes", Icons.Outlined.Palette, onThemes)
                 MenuEntry("Metron", "Comic metadata connection and API token", Icons.Outlined.Key, onMetron)
                 MenuEntry("Settings & Backups", "Reader, appearance, downloads, backup and restore", Icons.Outlined.Settings, onSettings)
             }
