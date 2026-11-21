@@ -263,8 +263,16 @@ class InkShelf2Activity : AppCompatActivity() {
                         title = selectedDiscoverShelf!!,
                         comics = when (selectedDiscoverShelf) {
                             "New This Week" -> discover?.newest.orEmpty()
+                            "Recommended for You" -> discover?.recommendationDetails.orEmpty()
+                                .map { it.manga }
+                                .filter { manga -> enabledSources.any { it.id == manga.source } }
                             else -> discover?.trending.orEmpty()
                         },
+                        recommendationReasons = if (selectedDiscoverShelf == "Recommended for You") {
+                            discover?.recommendationDetails.orEmpty().associate {
+                                "${it.manga.source}:${it.manga.url}" to it.reason
+                            }
+                        } else emptyMap(),
                         padding = padding,
                         onBack = { selectedDiscoverShelf = null },
                         onOpen = openComicDetails,
@@ -316,6 +324,10 @@ class InkShelf2Activity : AppCompatActivity() {
                             activeSourceId = null
                         },
                         onSeeAll = { selectedDiscoverShelf = it },
+                        onRecommendationsUpdated = {
+                            discover = engine.loadDiscover()
+                            home = engine.loadHome()
+                        },
                     )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
