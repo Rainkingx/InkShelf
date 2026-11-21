@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.manga
 import android.content.Context
 import android.net.Uri
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2MetronTokenStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,13 +55,20 @@ internal object InkShelfMetronCovers {
         val covers: Map<Int, String>,
     )
 
+    private fun configuredToken(context: Context): String? =
+        // InkShelf 2.0 has its own Keystore-backed credential form. Prefer it
+        // while preserving existing InkShelf 1 issue cover settings.
+        InkShelf2MetronTokenStore(context).read()?.takeIf(String::isNotBlank)
+            ?: InkShelfMetronCredentials.get(context)?.takeIf(String::isNotBlank)
+
     fun requestIssueCover(
         context: Context,
         manga: Manga,
         issueNumber: Int,
         onFound: (String) -> Unit,
     ) {
-        if (issueNumber !in 1..999 || !InkShelfMetronCredentials.isConfigured(context)) return
+        if (issueNumber !in 1..999) return
+        if (configuredToken(context) == null) return
         val appContext = context.applicationContext
         val cleanTitle = seriesTitle(manga.title)
         if (cleanTitle.length < 3) return
@@ -92,7 +100,7 @@ internal object InkShelfMetronCovers {
         if (!shouldFetch) return
 
         scope.launch {
-            val token = InkShelfMetronCredentials.get(appContext)
+            val token = configuredToken(appContext)
             // A bad token, outage, or rate limit must not become a long-lived
             // "no matching covers" result in the cache.
             val result = if (token.isNullOrBlank()) null else
