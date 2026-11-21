@@ -1,9 +1,5 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
-import android.content.Context
-import coil.Coil
-import coil.request.CachePolicy
-import coil.request.ImageRequest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,46 +44,6 @@ import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
 import eu.kanade.tachiyomi.ui.manga.InkShelfIssueMetadata
 
-/** Prewarm only the first visible row-pairs, while the user reads the synopsis.
- * Metron metadata requests are coalesced per series and rate-limited in the
- * shared service. Image requests go through Coil's shared disk/memory caches.
- * Nothing is fetched for the other 100+ issues until they are actually shown.
- */
-internal fun prefetchFirstIssueCovers(
-    context: Context,
-    manga: Manga,
-    visibleChapters: List<Chapter>,
-    anchorIssueNumber: Int?,
-) {
-    val appContext = context.applicationContext
-    visibleChapters.take(4).forEach { chapter ->
-        val sourceCover = InkShelfIssueMetadata.from(chapter).coverUrl
-        if (sourceCover != null) {
-            prewarmCover(appContext, sourceCover)
-        } else {
-            val number = InkShelf2IssueNumbers.fromChapter(chapter) ?: return@forEach
-            InkShelfMetronCovers.requestIssueCover(
-                context = appContext,
-                manga = manga,
-                issueNumber = number,
-                anchorIssueNumber = anchorIssueNumber,
-                onFound = { imageUrl -> prewarmCover(appContext, imageUrl) },
-            )
-        }
-    }
-}
-
-private fun prewarmCover(context: Context, imageUrl: String) {
-    Coil.imageLoader(context).enqueue(
-        ImageRequest.Builder(context)
-            .data(imageUrl)
-            .size(420, 590)
-            .diskCachePolicy(CachePolicy.ENABLED)
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .build(),
-    )
-}
-
 /** Artwork belongs to Metron; tapping always opens the original source chapter. */
 @Composable
 private fun IssueArtwork(
@@ -108,16 +64,6 @@ private fun IssueArtwork(
     val sourceCover = InkShelfIssueMetadata.from(chapter).coverUrl
     val imageUrl = sourceCover ?: cover
     var failed by remember(imageUrl) { mutableStateOf(false) }
-    val imageRequest = remember(context, imageUrl) {
-        imageUrl?.let { url ->
-            ImageRequest.Builder(context)
-                .data(url)
-                .diskCachePolicy(CachePolicy.ENABLED)
-                .memoryCachePolicy(CachePolicy.ENABLED)
-                .crossfade(140)
-                .build()
-        }
-    }
     DisposableEffect(context, manga.source, manga.url, chapter.name, issue, anchorIssueNumber) {
         var active = true
         if (sourceCover == null && issue != null) {
@@ -163,9 +109,9 @@ private fun IssueArtwork(
                 fontWeight = FontWeight.Bold,
             )
         }
-        if (imageRequest != null && !failed) {
+        if (imageUrl != null && !failed) {
             AsyncImage(
-                model = imageRequest,
+                model = imageUrl,
                 contentDescription = "Cover for ${chapter.name}",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
