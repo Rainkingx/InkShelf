@@ -340,9 +340,9 @@ internal fun InkShelf2DiscoverScreen(
                                 modifier = Modifier.fillMaxSize().background(
                                     Brush.horizontalGradient(
                                         listOf(
-                                            Color(0xEE10081C),
-                                            Color(0xB511061C),
-                                            Color(0x221D0525),
+                                            InkShelf2Colors.Background.copy(alpha = 0.93f),
+                                            InkShelf2Colors.Background.copy(alpha = 0.71f),
+                                            InkShelf2Colors.SurfaceRaised.copy(alpha = 0.13f),
                                         ),
                                     ),
                                 ),
@@ -454,7 +454,7 @@ internal fun InkShelf2DiscoverScreen(
                                 Box(
                                     modifier = Modifier.fillMaxSize().background(
                                         Brush.verticalGradient(
-                                            listOf(Color(0x3306000A), Color(0xF0080613)),
+                                            listOf(InkShelf2Colors.Background.copy(alpha = 0.2f), InkShelf2Colors.Background.copy(alpha = 0.94f)),
                                         ),
                                     ),
                                 )
