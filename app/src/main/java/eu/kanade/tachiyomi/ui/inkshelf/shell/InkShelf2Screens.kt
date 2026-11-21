@@ -39,12 +39,14 @@ import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -398,12 +400,35 @@ internal fun InkShelf2DetailsScreen(
     var showIssueGrid by rememberSaveable {
         mutableStateOf(viewPrefs.getBoolean("grid", true))
     }
+    var newestIssuesFirst by rememberSaveable {
+        mutableStateOf(viewPrefs.getBoolean("newest_first", true))
+    }
+    // Sort by the issue number actually displayed by the extension, not
+    // J2K's internal chapter_order. Annuals/specials without a reliable number
+    // remain in source order after regular issues in either direction.
+    // Keep original Chapter instances: reading and progress still use the
+    // exact source chapter/URL regardless of the visual sort.
+    val orderedChapters = remember(chapters, newestIssuesFirst) {
+        if (newestIssuesFirst) {
+            chapters.sortedWith(
+                compareByDescending<Chapter> {
+                    InkShelf2IssueNumbers.fromChapter(it) ?: Int.MIN_VALUE
+                },
+            )
+        } else {
+            chapters.sortedWith(
+                compareBy<Chapter> {
+                    InkShelf2IssueNumbers.fromChapter(it) ?: Int.MAX_VALUE
+                },
+            )
+        }
+    }
     // Keep initial artwork light: show just four rows of two covers.
     // Reveal subsequent issues only when requested, independently per comic.
     var visibleIssueCount by rememberSaveable(manga.source, manga.url) {
         mutableStateOf(8)
     }
-    val visibleChapters = chapters.take(visibleIssueCount)
+    val visibleChapters = orderedChapters.take(visibleIssueCount)
     val moreIssuesRemaining = (chapters.size - visibleChapters.size).coerceAtLeast(0)
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
@@ -557,12 +582,40 @@ internal fun InkShelf2DetailsScreen(
                         )
                     }
                 }
-                Text(
-                    if (showIssueGrid) "Tap a cover to read that issue"
-                    else "Tap an issue to read",
-                    color = InkShelf2Colors.Muted,
-                    fontSize = 11.sp,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        if (showIssueGrid) "Tap a cover to read that issue"
+                        else "Tap an issue to read",
+                        modifier = Modifier.weight(1f),
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                    )
+                    TextButton(
+                        onClick = {
+                            newestIssuesFirst = !newestIssuesFirst
+                            viewPrefs.edit().putBoolean("newest_first", newestIssuesFirst).apply()
+                            // Start the newly ordered list at the first eight
+                            // instead of loading hundreds of covers at once.
+                            visibleIssueCount = 8
+                        },
+                    ) {
+                        Icon(
+                            Icons.Outlined.SwapVert,
+                            contentDescription = null,
+                            modifier = Modifier.size(17.dp),
+                            tint = InkShelf2Colors.AccentLight,
+                        )
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            if (newestIssuesFirst) "Newest first" else "Oldest first",
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
                 if (chapters.size > 8) {
                     Spacer(Modifier.height(4.dp))
                     Text(
