@@ -43,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -56,6 +57,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -174,6 +176,22 @@ internal fun InkShelf2DiscoverScreen(
         ).filter { it.second.isNotEmpty() }
     }
     val heroPager = rememberPagerState(pageCount = { heroTrending.size.coerceAtLeast(1) })
+    val context = LocalContext.current
+    val highQualityHeroArt = remember { mutableStateMapOf<String, String>() }
+    val heroKeys = heroTrending.map { comic ->
+        comic.source.toString() + ":" + comic.url + ":" + comic.title
+    }
+
+    // Draw normal source thumbnails immediately. Upgrade only the five hero slides
+    // with exact-matched full-resolution covers from Metron in the background.
+    // Missing or unavailable Metron art never affects comic navigation/reading.
+    LaunchedEffect(heroKeys) {
+        heroTrending.forEach { comic ->
+            val key = comic.source.toString() + ":" + comic.url + ":" + comic.title
+            val betterCover = InkShelf2HeroArtwork.findCover(context, comic)
+            if (betterCover != null) highQualityHeroArt[key] = betterCover
+        }
+    }
 
     LazyColumn(
         state = scroll,
@@ -323,6 +341,9 @@ internal fun InkShelf2DiscoverScreen(
                         pageSpacing = 10.dp,
                     ) { index ->
                         val comic = heroTrending[index]
+                        val heroKey = comic.source.toString() + ":" + comic.url + ":" + comic.title
+                        val enhancedUrl = highQualityHeroArt[heroKey]
+                        var enhancedImageFailed by remember(enhancedUrl) { mutableStateOf(false) }
                         Box(
                             modifier = Modifier.fillMaxWidth().height(194.dp)
                                 .clip(RoundedCornerShape(17.dp))
@@ -338,6 +359,18 @@ internal fun InkShelf2DiscoverScreen(
                                 // below provides the shading without muddying the art.
                                 alpha = 1f,
                             )
+                            // Full-size issue artwork is placed over the source thumbnail
+                            // only once available. Coil caches it independently and a failed
+                            // Metron image leaves the original cover safely visible below.
+                            if (enhancedUrl != null && !enhancedImageFailed) {
+                                AsyncImage(
+                                    model = enhancedUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                    onError = { enhancedImageFailed = true },
+                                )
+                            }
                             Box(
                                 modifier = Modifier.fillMaxSize().background(
                                     Brush.horizontalGradient(
