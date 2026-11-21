@@ -40,17 +40,17 @@ internal object InkShelf2Themes {
         id: String,
         title: String,
         description: String,
-        bg: Int,
-        surface: Int,
-        raised: Int,
-        primary: Int,
-        highlight: Int,
-        border: Int,
+        bg: Long,
+        surface: Long,
+        raised: Long,
+        primary: Long,
+        highlight: Long,
+        border: Long,
     ) = InkShelf2Preset(
         id, title, description,
         InkShelf2Palette(
-            Color(bg), Color(surface), Color(raised),
-            Color(primary), Color(highlight), Color(border),
+            Color(bg.toInt()), Color(surface.toInt()), Color(raised.toInt()),
+            Color(primary.toInt()), Color(highlight.toInt()), Color(border.toInt()),
         ),
     )
 
