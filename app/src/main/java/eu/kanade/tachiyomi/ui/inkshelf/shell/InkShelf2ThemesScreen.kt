@@ -81,10 +81,14 @@ internal fun InkShelf2ThemesScreen(
     }
 
     editorSlot?.let { slot ->
-        val chosen = when (slot) {
-            "Accent" -> primary
-            "Highlight" -> secondary
-            else -> background
+        // Keep the colour from before opening this dialog so Cancel actually
+        // discards slider changes, rather than restoring the last preview value.
+        val chosen = remember(slot) {
+            when (slot) {
+                "Accent" -> primary
+                "Highlight" -> secondary
+                else -> background
+            }
         }
         InkShelf2ColorEditor(
             label = slot,
