@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
  */
 internal object InkShelfMetronCovers {
     // Bump version so old failed title matches cannot keep masking correct covers.
-    private const val CACHE_PREFS = "inkshelf_metron_covers_v2"
+    private const val CACHE_PREFS = "inkshelf_metron_covers_v3"
     private const val CACHE_OK_MS = 24L * 60L * 60L * 1000L
     private const val CACHE_MISS_MS = 60L * 60L * 1000L
     private const val MIN_CALL_INTERVAL_MS = 3_500L
@@ -66,6 +66,7 @@ internal object InkShelfMetronCovers {
         manga: Manga,
         issueNumber: Int,
         onFound: (String) -> Unit,
+        anchorIssueNumber: Int? = null,
     ) {
         if (issueNumber !in 1..999) return
         if (configuredToken(context) == null) return
@@ -73,7 +74,8 @@ internal object InkShelfMetronCovers {
         val cleanTitle = seriesTitle(manga.title)
         if (cleanTitle.length < 3) return
         val year = publicationYear(manga.title)
-        val key = "${normalized(cleanTitle)}|${year ?: "unknown"}"
+        val anchor = anchorIssueNumber?.takeIf { it in 1..999 }
+        val key = "${normalized(cleanTitle)}|${year ?: "unknown"}|${anchor ?: "unanchored"}"
         var cachedUrl: String? = null
         var shouldFetch = false
         var hadCache = false
@@ -104,7 +106,7 @@ internal object InkShelfMetronCovers {
             // A bad token, outage, or rate limit must not become a long-lived
             // "no matching covers" result in the cache.
             val result = if (token.isNullOrBlank()) null else
-                runCatching { lookupSeriesIssues(cleanTitle, year, token) }.getOrNull()
+                runCatching { lookupSeriesIssues(cleanTitle, year, token, anchor) }.getOrNull()
             val entry = result?.let { covers ->
                 Entry(
                     System.currentTimeMillis() + if (covers.isEmpty()) CACHE_MISS_MS else CACHE_OK_MS,
@@ -183,29 +185,71 @@ internal object InkShelfMetronCovers {
         }
     }
 
-    /** This same cover service can be reused by the upcoming Daily Recommendations shelf. */
-    private suspend fun lookupSeriesIssues(title: String, year: Int?, token: String): Map<Int, String> {
-        val searchUrl = endpoint("series")
-            .newBuilder()
+    /**
+     * Match the exact series name and start year where present. When the name
+     * belongs to multiple publication runs, verify the highest named issue
+     * that the installed source actually lists. This avoids guessing which
+     * Invincible, Batman or X-Men volume corresponds to the reader chapters.
+     */
+    private suspend fun lookupSeriesIssues(
+        title: String,
+        year: Int?,
+        token: String,
+        anchorNumber: Int?,
+    ): Map<Int, String> {
+        val searchUrl = endpoint("series").newBuilder()
             .addQueryParameter("name", title)
             .apply { if (year != null) addQueryParameter("year_began", year.toString()) }
             .build()
-        val result = getJson(searchUrl, token) ?: return emptyMap()
-        val candidates = result.optJSONArray("results") ?: return emptyMap()
-        val matches = buildList {
+        val matches = mutableSetOf<Int>()
+        var nextSeries: HttpUrl? = searchUrl
+        var searchPages = 0
+        while (nextSeries != null && searchPages < 2) {
+            val page = getJson(nextSeries, token) ?: return emptyMap()
+            val candidates = page.optJSONArray("results") ?: return emptyMap()
             for (i in 0 until candidates.length()) {
-                val candidate = candidates.optJSONObject(i) ?: continue
-                // Metron's series list calls the title "series", while some
-                // other endpoints call it "name".
-                val name = candidate.optString("series").ifBlank { candidate.optString("name") }
-                if (normalized(seriesTitle(name)) != normalized(title)) continue
-                if (year != null && candidate.optInt("year_began") != year) continue
-                val id = candidate.optInt("id", 0)
-                if (id > 0) add(id)
+                val item = candidates.optJSONObject(i) ?: continue
+                val itemTitle = item.optString("series")
+                    .ifBlank { item.optString("name") }
+                if (normalized(seriesTitle(itemTitle)) != normalized(title)) continue
+                if (year != null && item.optInt("year_began") != year) continue
+                val id = item.optInt("id", 0)
+                if (id > 0) matches.add(id)
             }
-        }.distinct()
-        // Do not cross-match two separate publication runs.
-        val seriesId = matches.singleOrNull() ?: return emptyMap()
+            searchPages++
+            val next = page.optString("next")
+                .takeIf { it.startsWith("https://metron.cloud/api/series/") }
+            nextSeries = next?.toHttpUrlOrNull()
+        }
+
+        val seriesId = if (matches.size == 1) {
+            matches.single()
+        } else if (matches.size > 1 && anchorNumber != null) {
+            // Metron supports exact issue-number filters, including the image.
+            // Require ONE matching series among the already exact-title matches.
+            // A reprint/alternate run that also has this issue remains ambiguous.
+            val anchorUrl = endpoint("issue").newBuilder()
+                .addQueryParameter("series_name", title)
+                .addQueryParameter("number", anchorNumber.toString())
+                .apply { if (year != null) addQueryParameter("series_year_began", year.toString()) }
+                .build()
+            val anchorPage = getJson(anchorUrl, token) ?: return emptyMap()
+            val issues = anchorPage.optJSONArray("results") ?: return emptyMap()
+            val matchingSeries = mutableSetOf<Int>()
+            for (i in 0 until issues.length()) {
+                val issue = issues.optJSONObject(i) ?: continue
+                if (issue.optString("number").trim() != anchorNumber.toString()) continue
+                val series = issue.optJSONObject("series") ?: continue
+                val id = series.optInt("id", 0)
+                if (id !in matches) continue
+                if (normalized(seriesTitle(series.optString("name"))) != normalized(title)) continue
+                if (year != null && series.optInt("year_began") != year) continue
+                matchingSeries.add(id)
+            }
+            matchingSeries.singleOrNull()
+        } else {
+            null
+        } ?: return emptyMap()
 
         val covers = mutableMapOf<Int, String>()
         var nextUrl: HttpUrl? = endpoint("series", seriesId.toString(), "issue_list")
