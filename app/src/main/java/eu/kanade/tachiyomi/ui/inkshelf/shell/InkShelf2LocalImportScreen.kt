@@ -21,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -44,8 +45,8 @@ internal fun InkShelf2LocalImportScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var importing by mutableStateOf(false)
-    var importResult by mutableStateOf<String?>(null)
+    var importing by remember { mutableStateOf(false) }
+    var importResult by remember { mutableStateOf<String?>(null) }
     val pickFiles = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments(),
     ) { uris ->
