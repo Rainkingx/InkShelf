@@ -380,6 +380,8 @@ internal fun InkShelf2DetailsScreen(
     issuesError: String?,
     onChapter: (Chapter) -> Unit,
     onSave: () -> Unit,
+    similarComics: List<InkShelf2SimilarPick>,
+    onSimilarComic: (Manga) -> Unit,
 ) {
     // Chapter history, not simply a non-empty chapter list, determines
     // whether the reader has actually been started. J2K records completed
@@ -681,6 +683,14 @@ internal fun InkShelf2DetailsScreen(
                     modifier = Modifier.fillMaxWidth().padding(
                         horizontal = 16.dp, vertical = 12.dp,
                     ),
+                )
+            }
+        }
+        if (similarComics.isNotEmpty()) {
+            item(key = "more-like-this") {
+                InkShelf2MoreLikeThisShelf(
+                    picks = similarComics,
+                    onOpen = onSimilarComic,
                 )
             }
         }
