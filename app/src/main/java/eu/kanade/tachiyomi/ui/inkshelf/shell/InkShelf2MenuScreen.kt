@@ -26,6 +26,9 @@ import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Icon
@@ -54,6 +57,10 @@ internal fun InkShelf2MenuScreen(
     onRepositories: () -> Unit,
     onMetron: () -> Unit,
     onThemes: () -> Unit,
+    onProfile: () -> Unit,
+    onImportComics: () -> Unit,
+    onBackupTools: () -> Unit,
+    profileName: String,
     onDownloads: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
@@ -78,6 +85,29 @@ internal fun InkShelf2MenuScreen(
             }
         }
         item {
+            MenuSection("YOUR INKSHELF") {
+                MenuEntry(
+                    "Your Profile & Guided Setup",
+                    if (profileName.isBlank()) "Choose a name and personalise your library"
+                    else "Signed in locally as $profileName · Edit profile and setup",
+                    Icons.Outlined.PersonOutline,
+                    onProfile,
+                )
+                MenuEntry(
+                    "Import Local Comics",
+                    "Add your own CBZ, CBR, ZIP, RAR or EPUB files",
+                    Icons.Outlined.FileUpload,
+                    onImportComics,
+                )
+                MenuEntry(
+                    "Backup & Restore",
+                    "Protect your library or restore an existing backup",
+                    Icons.Outlined.Backup,
+                    onBackupTools,
+                )
+            }
+        }
+        item {
             MenuSection("READING") {
                 MenuEntry("Downloads", "Manage queued and downloaded issues", Icons.Outlined.Download, onDownloads)
                 MenuEntry("Reading History", "Recently opened comics", Icons.Outlined.History, onHistory)
@@ -94,13 +124,13 @@ internal fun InkShelf2MenuScreen(
             MenuSection("METADATA & SETTINGS") {
                 MenuEntry("Appearance & Themes", "Comic colour themes and custom palettes", Icons.Outlined.Palette, onThemes)
                 MenuEntry("Metron", "Comic metadata connection and API token", Icons.Outlined.Key, onMetron)
-                MenuEntry("Settings & Backups", "Reader, appearance, downloads, backup and restore", Icons.Outlined.Settings, onSettings)
+                MenuEntry("Advanced Settings", "Reader, appearance and download preferences", Icons.Outlined.Settings, onSettings)
             }
         }
         item {
             Text(
                 "Downloads, history and advanced settings currently open the original InkShelf tools. " +
-                    "Your existing library, readers and data are preserved.",
+                    "Your existing library, readers and data are preserved. Profile names are local-only.",
                 modifier = Modifier.padding(horizontal = 18.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 11.sp,
