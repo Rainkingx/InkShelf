@@ -34,7 +34,6 @@ import eu.kanade.tachiyomi.source.LocalSource
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
-import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverRefreshWorker
 import eu.kanade.tachiyomi.util.system.isConnectedToWifi
@@ -50,8 +49,8 @@ import uy.kohesive.injekt.api.get
  * A genuinely separate Compose activity: no MainActivity XML, toolbar,
  * old Conductor controllers, legacy bottom navigation or header overlays.
  *
- * Exposed as a SECOND launcher icon only while the preview is under development.
- * The stable launcher remains available and the library database is shared.
+ * The single InkShelf launcher. The original reader and domain services
+ * remain shared with existing app data and Android background integrations.
  */
 class InkShelf2Activity : AppCompatActivity() {
     private val engine by lazy { InkShelf2Engine(applicationContext) }
