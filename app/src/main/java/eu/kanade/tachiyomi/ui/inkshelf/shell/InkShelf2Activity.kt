@@ -750,10 +750,6 @@ class InkShelf2Activity : AppCompatActivity() {
                     tab == InkShelf2Tab.HOME -> InkShelf2HomeScreen(
                         home = home,
                         library = library,
-                        personalPicks = discover?.recommendationDetails.orEmpty().filter { pick ->
-                            pick.manga.source in enabledSourceIds &&
-                                library.none { it.manga.source == pick.manga.source && it.manga.url == pick.manga.url }
-                        },
                         profileName = profileName,
                         padding = padding,
                         onOpen = openComicDetails,
