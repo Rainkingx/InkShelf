@@ -53,6 +53,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -82,6 +84,8 @@ internal object InkShelf2PulseFeed {
     private const val PREFS = "inkshelf2_pulse"
     private const val TTL_MS = 45 * 60 * 1000L
     private const val CACHE_LIFETIME_MS = 48 * 60 * 60 * 1000L
+    // A single in-flight refresh serves Home and Comic Details alike.
+    private val refreshMutex = Mutex()
 
     private data class Publisher(val name: String, val host: String, val feed: String)
     private data class VideoChannel(val name: String, val id: String)
@@ -110,6 +114,7 @@ internal object InkShelf2PulseFeed {
     }
 
     suspend fun refresh(context: Context): List<InkShelf2PulseArticle> = withContext(Dispatchers.IO) {
+        refreshMutex.withLock {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val existing = readCached(context)
@@ -118,7 +123,7 @@ internal object InkShelf2PulseFeed {
         // if the previous news-only version cached articles minutes ago.
         // Afterward, respect the TTL even when a channel is unavailable.
         if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 2)
-            return@withContext existing
+            return@withLock existing
 
         // Pull each independent feed concurrently so a slow/blocked source
         // does not delay every other publisher or video channel.
@@ -159,6 +164,7 @@ internal object InkShelf2PulseFeed {
         }
         if (entries.isNotEmpty()) InkShelf2PulseArchive.record(context, entries)
         entries
+        }
     }
 
     fun openArticle(context: Context, url: String) {
