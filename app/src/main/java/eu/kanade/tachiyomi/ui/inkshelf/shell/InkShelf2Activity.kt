@@ -131,6 +131,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var settingsOpen by rememberSaveable { mutableStateOf(false) }
             var notificationsOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
+            var updateAllExtensionsRequested by remember { mutableStateOf(false) }
             var externalRepoDraft by rememberSaveable { mutableStateOf("") }
             var updateNotes by remember { mutableStateOf<Pair<String, String>?>(null) }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -143,6 +144,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     tab = destination
                 }
                 sourceHubOpen = false
+                updateAllExtensionsRequested = false
                 metronOpen = false
                 themesOpen = false
                 downloadsOpen = false
@@ -334,6 +336,9 @@ class InkShelf2Activity : AppCompatActivity() {
                         openTab(InkShelf2Tab.ACCOUNT)
                         sourceHubMode = "Extensions"
                         sourceHubOpen = true
+                        updateAllExtensionsRequested = entry.getBooleanExtra(
+                            MainActivity.EXTRA_UPDATE_ALL_EXTENSIONS, false,
+                        )
                     }
                     MainActivity.SHORTCUT_SOURCE -> {
                         val sourceId = entry.getLongExtra(BrowseSourceController.SOURCE_ID_KEY, 0L)
@@ -415,7 +420,10 @@ class InkShelf2Activity : AppCompatActivity() {
                     selectedDiscoverShelf != null -> selectedDiscoverShelf = null
                     selectedDay != null -> selectedDay = null
                     activeSourceId != null -> activeSourceId = null
-                    sourceHubOpen -> sourceHubOpen = false
+                    sourceHubOpen -> {
+                        updateAllExtensionsRequested = false
+                        sourceHubOpen = false
+                    }
                     metronOpen -> metronOpen = false
                     themesOpen -> themesOpen = false
                     downloadsOpen -> downloadsOpen = false
@@ -752,6 +760,8 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         initialMode = sourceHubMode,
                         initialRepoUrl = externalRepoDraft,
+                        updateAllOnOpen = updateAllExtensionsRequested,
+                        onUpdateAllHandled = { updateAllExtensionsRequested = false },
                         onOpenComic = openComicDetails,
                     )
                     tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(

@@ -56,6 +56,7 @@ import eu.kanade.tachiyomi.extension.model.InstallStep
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.LocalSource
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collect
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -77,6 +78,8 @@ internal fun InkShelf2SourceHub(
     onClose: () -> Unit,
     initialMode: String,
     initialRepoUrl: String = "",
+    updateAllOnOpen: Boolean = false,
+    onUpdateAllHandled: () -> Unit = {},
 ) {
     val manager: ExtensionManager = remember { Injekt.get() }
     val prefs: PreferencesHelper = remember { Injekt.get() }
@@ -112,6 +115,7 @@ internal fun InkShelf2SourceHub(
     var revision by remember { mutableIntStateOf(0) }
     var refreshing by remember { mutableStateOf(false) }
     var installing by remember { mutableStateOf(setOf<String>()) }
+    var bulkUpdating by remember { mutableStateOf(false) }
     var trustPending by remember { mutableStateOf<Extension.Untrusted?>(null) }
     var removal by remember { mutableStateOf<String?>(null) }
 
@@ -126,6 +130,12 @@ internal fun InkShelf2SourceHub(
             it.lang !in languages || it.id.toString() in hidden
         }.thenBy { it.name.lowercase() })
     val enabled = catalogues.filter { it.lang in languages && it.id.toString() !in hidden }
+    val pendingUpdates = installed.mapNotNull { installedExt ->
+        available.firstOrNull { candidate ->
+            candidate.pkgName == installedExt.pkgName &&
+                (candidate.versionCode > installedExt.versionCode || candidate.libVersion > installedExt.libVersion)
+        }
+    }.distinctBy { it.pkgName }
 
     LaunchedEffect(tab, revision) {
         if (tab == "Extensions" && repos.isNotEmpty()) {
@@ -159,6 +169,49 @@ internal fun InkShelf2SourceHub(
                 installing = installing - ext.pkgName
                 info = "Installation failed: ${error.message ?: "unknown error"}"
             }
+        }
+    }
+
+    fun installAllUpdates() {
+        if (bulkUpdating || pendingUpdates.isEmpty()) return
+        scope.launch {
+            bulkUpdating = true
+            var failures = 0
+            try {
+                // One installer at a time; Android may ask for confirmation.
+                for (extension in pendingUpdates) {
+                    installing = installing + extension.pkgName
+                    try {
+                        var failed = false
+                        manager.installExtension(
+                            ExtensionManager.ExtensionInfo(extension), scope,
+                        ).collect { result ->
+                            if (result.first == InstallStep.Error) failed = true
+                        }
+                        if (failed) failures++
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        failures++
+                    } finally {
+                        installing = installing - extension.pkgName
+                    }
+                }
+                if (failures > 0) {
+                    info = failures.toString() + " extension update(s) could not complete."
+                } else {
+                    info = "Extension updates finished. Check any Android installation prompts."
+                }
+            } finally {
+                bulkUpdating = false
+            }
+        }
+    }
+
+    LaunchedEffect(updateAllOnOpen, refreshing, pendingUpdates) {
+        if (updateAllOnOpen && !refreshing && pendingUpdates.isNotEmpty()) {
+            onUpdateAllHandled()
+            installAllUpdates()
         }
     }
 
@@ -287,6 +340,16 @@ internal fun InkShelf2SourceHub(
                 }
                 if (installed.isEmpty()) {
                     item { InkShelf2EmptyShelf("No trusted extensions installed. Check available extensions below.") }
+                }
+                if (pendingUpdates.isNotEmpty()) {
+                    item(key = "update-all") {
+                        InkShelf2ActionButton(
+                            if (bulkUpdating) "Updating Extensions…" else "Update All (" + pendingUpdates.size + ")",
+                            onClick = { installAllUpdates() },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            enabled = !bulkUpdating,
+                        )
+                    }
                 }
                 items(installed.filter { showNsfw || !it.isNsfw }.sortedBy { it.name },
                     key = { "installed:" + it.pkgName }) { ext ->
