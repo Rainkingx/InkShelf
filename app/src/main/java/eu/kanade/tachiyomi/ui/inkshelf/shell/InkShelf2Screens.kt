@@ -966,6 +966,9 @@ internal fun InkShelf2DetailsScreen(
                     fontSize = 14.sp,
                     lineHeight = 21.sp,
                 )
+                // Cached news and videos load independently of the reader and
+                // only appear for strict, real full-series headline matches.
+                InkShelf2RelatedPulse(comicTitle = manga.title)
                 Spacer(Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
