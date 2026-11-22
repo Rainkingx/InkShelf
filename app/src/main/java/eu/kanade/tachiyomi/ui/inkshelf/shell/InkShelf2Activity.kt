@@ -315,7 +315,6 @@ class InkShelf2Activity : AppCompatActivity() {
             // All external intents navigate into 2.0; no old Conductor screen is mounted.
             LaunchedEffect(pendingEntryIntent) {
                 val entry = pendingEntryIntent ?: return@LaunchedEffect
-                pendingEntryIntent = null
                 val action = entry.action
                 if (action != null && action != Intent.ACTION_MAIN) {
                     welcomeOpen = false // Leave setup available next time.
@@ -412,6 +411,8 @@ class InkShelf2Activity : AppCompatActivity() {
                         }
                     }
                 }
+                // Do not invalidate the effect while a manga lookup is suspended.
+                if (pendingEntryIntent === entry) pendingEntryIntent = null
             }
             fun backFromComicDetails() {
                 val previousComic = comicBackStack.lastOrNull()
