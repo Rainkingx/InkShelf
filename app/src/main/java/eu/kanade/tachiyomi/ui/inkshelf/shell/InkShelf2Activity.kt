@@ -138,6 +138,9 @@ class InkShelf2Activity : AppCompatActivity() {
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
             var selectedDiscoverShelf by rememberSaveable { mutableStateOf<String?>(null) }
+            // Owned by the shell so reselecting the already-active Home tab
+            // closes The Pulse instead of being ignored by bottom navigation.
+            var pulseExpanded by rememberSaveable { mutableStateOf(false) }
             fun openTab(destination: InkShelf2Tab) {
                 if (tab != destination) {
                     tabTrail = (tabTrail.split('|').takeLast(20) + destination.name)
@@ -158,6 +161,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 activeSourceId = null
                 selectedDay = null
                 selectedDiscoverShelf = null
+                pulseExpanded = false
             }
             val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
             val availableExtensions by extensionManager.availableExtensionsFlow.collectAsState()
@@ -752,6 +756,8 @@ class InkShelf2Activity : AppCompatActivity() {
                         library = library,
                         profileName = profileName,
                         padding = padding,
+                        pulseExpanded = pulseExpanded,
+                        onPulseExpandedChange = { pulseExpanded = it },
                         onOpen = openComicDetails,
                         onRead = { openReader(it) },
                         onSave = { saveComic(it) },
