@@ -179,6 +179,8 @@ class PreferencesHelper(
     fun navigateToPan() = flowPrefs.getBoolean("navigate_pan", true)
 
     fun panelFlowEnabled() = flowPrefs.getBoolean("inkshelf_panel_flow_enabled", false)
+    /** Read-time image fallback only. Does not change the saved Manga or its progress. */
+    fun inkShelfAutoSourceFallback() = flowPrefs.getBoolean("inkshelf2_smart_source_fallback", true)
 
     fun landscapeZoom() = flowPrefs.getBoolean("landscape_zoom", false)
 

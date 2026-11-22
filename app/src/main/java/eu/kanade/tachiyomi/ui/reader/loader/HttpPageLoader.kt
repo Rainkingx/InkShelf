@@ -6,6 +6,11 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
+import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2AlternativePages
+import eu.kanade.tachiyomi.util.system.ImageUtil
+import android.widget.Toast
+import kotlinx.coroutines.withContext
+import java.io.IOException
 import eu.kanade.tachiyomi.util.system.launchIO
 import eu.kanade.tachiyomi.util.system.withIOContext
 import kotlinx.coroutines.CancellationException
@@ -205,13 +210,57 @@ class HttpPageLoader(
                 val imageResponse = source.getImage(page)
                 chapterCache.putImageToCache(imageUrl, imageResponse)
             }
-
-            page.stream = { chapterCache.getImageFile(imageUrl).inputStream() }
+            // A successful HTTP response can still be HTML/a captcha rather
+            // than a comic page. Never decode an unverified cache entry.
+            val savedImage = chapterCache.getImageFile(imageUrl)
+            if (savedImage.length() <= 0L ||
+                ImageUtil.findImageType { savedImage.inputStream() } == null
+            ) {
+                chapterCache.removeFileFromCache(savedImage.name)
+                throw IOException("Source returned invalid comic image")
+            }
+            page.stream = { savedImage.inputStream() }
             page.status = Page.State.READY
         } catch (e: Throwable) {
-            page.status = Page.State.ERROR
-            if (e is CancellationException) {
-                throw e
+            if (e is CancellationException) throw e
+            // ReaderPage keeps its original chapter, so progress and
+            // favourites remain attached to the user's original source.
+            val fallback = try {
+                InkShelf2AlternativePages.recoverByChapterId(
+                    chapter.chapter.manga_id,
+                    chapter.chapter,
+                    page.index,
+                    chapter.pages?.size ?: 0,
+                )
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                null
+            }
+            if (fallback != null) {
+                val bytes = fallback.bytes
+                page.imageUrl = null // Keep the recovered stream, not the failed source URL.
+                page.stream = { bytes.inputStream() }
+                page.status = Page.State.READY
+                val manga = chapter.chapter.manga_id?.let { id ->
+                    withContext(Dispatchers.IO) {
+                        Injekt.get<eu.kanade.tachiyomi.data.database.DatabaseHelper>()
+                            .getManga(id).executeAsBlocking()
+                    }
+                }
+                if (manga != null &&
+                    InkShelf2AlternativePages.markFirstRecovery(manga, chapter.chapter)
+                ) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            preferences.context,
+                            "Source image failed — using " + fallback.sourceName,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            } else {
+                page.status = Page.State.ERROR
             }
         }
     }

@@ -142,6 +142,12 @@ internal fun InkShelf2AdvancedSettingsScreen(
         }
         item(key = "reader-switches") {
             SettingsPanel {
+                ToggleSetting(
+                    "Smart Source Fallback",
+                    "Automatically replace failed images only when the edition, issue and page count match. No new library entries.",
+                    prefs.inkShelfAutoSourceFallback(),
+                )
+                SettingsDivider()
                 ToggleSetting("Panel Flow (beta)", "Jump between comic panels", prefs.panelFlowEnabled())
                 SettingsDivider()
                 ToggleSetting("Animate page transitions", "Animate movement between pages", prefs.pageTransitions())

@@ -15,6 +15,7 @@ import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.download.model.DownloadQueue
+import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2AlternativePages
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.source.SourceManager
@@ -491,11 +492,7 @@ class Downloader(
         download: Download,
         tmpDir: UniFile,
     ) {
-        // If the image URL is empty, do nothing
-        if (page.imageUrl == null) {
-            return
-        }
-
+        // Missing primary-source image URLs are also eligible for a safe fallback.
         val digitCount = (download.pages?.size ?: 0).toString().length.coerceAtLeast(3)
         val filename = String.format("%0${digitCount}d", page.number)
         val tmpFile = tmpDir.findFile("$filename.tmp")
@@ -514,6 +511,9 @@ class Downloader(
         val chapName = download.chapter.preferredChapterName(context, download.manga, preferences)
         try {
             // If the image is already downloaded, do nothing. Otherwise download from network
+            if (page.imageUrl.isNullOrBlank() && imageFile == null) {
+                throw IOException("Source did not supply image URL for page " + page.number)
+            }
             val file =
                 when {
                     imageFile != null -> imageFile
@@ -541,7 +541,36 @@ class Downloader(
             page.status = Page.State.READY
         } catch (e: Throwable) {
             if (e is CancellationException) throw e
-            // Mark this page as error and allow to download the remaining
+            // The source may return a broken image despite reporting HTTP 200.
+            // Borrow only this page from an exact edition/issue/page-count match.
+            val fallback = try {
+                InkShelf2AlternativePages.recover(
+                    download.manga, download.chapter, page.index, download.pages?.size ?: 0,
+                )
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                null
+            }
+            if (fallback != null) {
+                try {
+                    val extension = ImageUtil.findImageType { fallback.bytes.inputStream() }
+                        ?: throw IOException("Alternative image is invalid")
+                    val saved = tmpDir.createFile("$filename.tmp")
+                    saved.openOutputStream().use { it.write(fallback.bytes) }
+                    saved.renameTo("$filename.${extension.extension}")
+                    page.uri = saved.uri
+                    page.progress = 100
+                    page.status = Page.State.READY
+                    Timber.i("InkShelf image fallback: %s page %s via %s",
+                        download.manga.title, page.number, fallback.sourceName)
+                    return
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    // The download remains retryable if even fallback storage fails.
+                }
+            }
             page.progress = 0
             page.status = Page.State.ERROR
             notifier.onError(e.message, chapName, download.manga.title)
