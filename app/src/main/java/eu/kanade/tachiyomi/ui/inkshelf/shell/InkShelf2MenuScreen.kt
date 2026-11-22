@@ -129,8 +129,9 @@ internal fun InkShelf2MenuScreen(
         }
         item {
             Text(
-                "Downloads, history and advanced settings currently open the original InkShelf tools. " +
-                    "Your existing library, readers and data are preserved. Profile names are local-only.",
+                "Downloads and Reading History now use the InkShelf 2.0 interface. " +
+                    "Backup, import and advanced settings still use the established tools until their migration. " +
+                    "Your library and reading data are preserved.",
                 modifier = Modifier.padding(horizontal = 18.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 11.sp,
