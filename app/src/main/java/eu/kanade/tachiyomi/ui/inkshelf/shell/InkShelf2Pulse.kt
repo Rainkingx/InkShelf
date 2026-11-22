@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.OpenInNew
@@ -31,6 +32,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +47,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -64,7 +73,9 @@ internal data class InkShelf2PulseArticle(
     val publisher: String,
     val publishedAt: Long,
     val imageUrl: String?,
+    val isVideo: Boolean = false,
 )
+
 
 internal object InkShelf2PulseFeed {
     private const val PREFS = "inkshelf2_pulse"
@@ -72,10 +83,20 @@ internal object InkShelf2PulseFeed {
     private const val CACHE_LIFETIME_MS = 48 * 60 * 60 * 1000L
 
     private data class Publisher(val name: String, val host: String, val feed: String)
+    private data class VideoChannel(val name: String, val id: String)
 
     private val publishers = listOf(
         Publisher("AIPT Comics", "aiptcomics.com", "https://aiptcomics.com/category/comic-books/feed/"),
         Publisher("The Beat", "comicsbeat.com", "https://www.comicsbeat.com/feed/"),
+    )
+
+    // These are the channels' publicly listed, stable YouTube channel IDs.
+    // Official YouTube RSS feeds require no Google API key or account.
+    private val videoChannels = listOf(
+        VideoChannel("Near Mint Condition", "UCUX6kqTUFzQaKJKBaqzuNdg"),
+        VideoChannel("ComicPop", "UCEqBMWd6aeCVLAUMEO5WqIw"),
+        VideoChannel("Casually Comics", "UCjKC1V-BWoFRVLAmYeoPCWw"),
+        VideoChannel("Variant Comics", "UC4kjDjhexSVuC8JWk4ZanFw"),
     )
 
     private val skipTerms = listOf(
@@ -92,22 +113,33 @@ internal object InkShelf2PulseFeed {
         val now = System.currentTimeMillis()
         val existing = readCached(context)
         val checkedAt = prefs.getLong("checked_at", 0L)
-        if (now - checkedAt in 0L until TTL_MS) return@withContext existing
+        if (now - checkedAt in 0L until TTL_MS &&
+            (existing.any { !it.isVideo } && existing.any { it.isVideo })
+        ) return@withContext existing
 
-        // Cache network failures too, avoiding repeated requests on each
-        // navigation to Home when a publisher is unreachable.
+        // Pull each independent feed concurrently so a slow/blocked source
+        // does not delay every other publisher or video channel.
+        val newsByPublisher = coroutineScope {
+            publishers.map { publisher ->
+                async(Dispatchers.IO) { safeLoad { loadPublisher(publisher) } }
+            }.awaitAll()
+        }
+        val videosByChannel = coroutineScope {
+            videoChannels.map { channel ->
+                async(Dispatchers.IO) { safeLoad { loadVideos(channel) } }
+            }.awaitAll()
+        }
+
+        // Round-robin by publisher: the two Home headlines normally show one
+        // from each site, rather than letting a high-volume site dominate.
+        val news = balance(newsByPublisher, 24)
+        val videos = balance(videosByChannel, 12)
+        val entries = (
+            (if (news.isNotEmpty()) news else existing.filterNot { it.isVideo }) +
+            (if (videos.isNotEmpty()) videos else existing.filter { it.isVideo })
+        ).distinctBy { it.url }
+
         prefs.edit().putLong("checked_at", now).apply()
-        val entries = publishers.flatMap { publisher ->
-            try {
-                loadPublisher(publisher)
-            } catch (_: Exception) {
-                emptyList()
-            }
-        }.filterNot { article ->
-            val title = article.title.lowercase(Locale.ROOT)
-            skipTerms.any { it in title }
-        }.distinctBy { it.url }.sortedByDescending { it.publishedAt }.take(24)
-
         if (entries.isNotEmpty()) {
             val output = JSONArray()
             entries.forEach { article ->
@@ -117,23 +149,49 @@ internal object InkShelf2PulseFeed {
                     put("publisher", article.publisher)
                     put("publishedAt", article.publishedAt)
                     put("imageUrl", article.imageUrl)
+                    put("video", article.isVideo)
                 })
             }
             prefs.edit().putString("articles", output.toString()).putLong("saved_at", now).apply()
-            entries
-        } else existing
+        }
+        entries
     }
 
-    fun openArticle(context: Context, articleUrl: String) {
-        if (!isApprovedArticleLink(articleUrl)) return
+    fun openArticle(context: Context, url: String) {
+        if (!isApprovedArticleLink(url)) return
         try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl)).apply {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                 addCategory(Intent.CATEGORY_BROWSABLE)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
         } catch (_: Exception) {
-            Toast.makeText(context, "No browser available to open the article", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "No app available to open the link", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private inline fun safeLoad(block: () -> List<InkShelf2PulseArticle>): List<InkShelf2PulseArticle> {
+        return try {
+            block().filterNot { article ->
+                val title = article.title.lowercase(Locale.ROOT)
+                skipTerms.any { it in title }
+            }
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun balance(groups: List<List<InkShelf2PulseArticle>>, maxItems: Int): List<InkShelf2PulseArticle> {
+        val ordered = groups.map { it.distinctBy { row -> row.url }.sortedByDescending { row -> row.publishedAt } }
+        val output = mutableListOf<InkShelf2PulseArticle>()
+        for (index in 0 until (ordered.maxOfOrNull { it.size } ?: 0)) {
+            for (group in ordered) {
+                if (index < group.size) output += group[index]
+                if (output.size >= maxItems) return output
+            }
+        }
+        return output
     }
 
     private fun readCached(context: Context): List<InkShelf2PulseArticle> {
@@ -154,6 +212,7 @@ internal object InkShelf2PulseFeed {
                     publisher = row.optString("publisher"),
                     publishedAt = row.optLong("publishedAt"),
                     imageUrl = row.optString("imageUrl").takeIf { validHttps(it) },
+                    isVideo = row.optBoolean("video", false),
                 )
             }
         } catch (_: Exception) {
@@ -162,14 +221,9 @@ internal object InkShelf2PulseFeed {
     }
 
     private fun loadPublisher(publisher: Publisher): List<InkShelf2PulseArticle> {
-        val connection = URL(publisher.feed).openConnection() as HttpURLConnection
+        val connection = openFeed(publisher.feed)
         try {
-            connection.connectTimeout = 6_500
-            connection.readTimeout = 6_500
-            connection.setRequestProperty("User-Agent", "InkShelf/2.0 comic RSS reader")
-            connection.setRequestProperty("Accept", "application/rss+xml, application/xml, text/xml")
             if (connection.responseCode !in 200..299) return emptyList()
-
             val result = mutableListOf<InkShelf2PulseArticle>()
             connection.inputStream.buffered().use { stream ->
                 val parser = Xml.newPullParser()
@@ -192,23 +246,27 @@ internal object InkShelf2PulseFeed {
                                 date = ""
                                 image = null
                             } else if (insideItem) {
-                                when (tag) {
-                                    "title" -> title = parser.nextText().trim()
-                                    "link" -> link = parser.nextText().trim()
-                                    "pubdate", "published" -> date = parser.nextText().trim()
-                                    "thumbnail", "enclosure", "content" -> {
-                                        val imageCandidate = parser.getAttributeValue(null, "url")
+                                when {
+                                    tag == "title" -> title = parser.nextText().trim()
+                                    tag == "link" -> link = parser.nextText().trim()
+                                    tag == "pubdate" || tag == "published" -> date = parser.nextText().trim()
+                                    tag == "description" || tag == "encoded" || tag == "summary" -> {
+                                        val body = parser.nextText()
+                                        if (image == null) image = firstFeedImage(body)
+                                    }
+                                    tag == "thumbnail" || tag == "enclosure" ||
+                                        tag == "content" || tag == "image" -> {
+                                        val candidate = parser.getAttributeValue(null, "url")
+                                            ?: parser.getAttributeValue(null, "href")
                                         val type = parser.getAttributeValue(null, "type").orEmpty()
-                                        if (image == null && validHttps(imageCandidate) &&
-                                            (tag == "thumbnail" || type.startsWith("image/") ||
-                                                imageCandidate.orEmpty().substringBefore('?')
-                                                    .endsWith(".jpg", true) ||
-                                                imageCandidate.orEmpty().substringBefore('?')
-                                                    .endsWith(".png", true) ||
-                                                imageCandidate.orEmpty().substringBefore('?')
-                                                    .endsWith(".webp", true))
-                                        ) {
-                                            image = imageCandidate
+                                        val medium = parser.getAttributeValue(null, "medium").orEmpty()
+                                        val looksLikeImage = tag == "thumbnail" || tag == "image" ||
+                                            type.startsWith("image/") || medium == "image" ||
+                                            listOf(".jpg", ".jpeg", ".png", ".webp", ".avif").any {
+                                                candidate.orEmpty().substringBefore('?').endsWith(it, ignoreCase = true)
+                                            }
+                                        if (image == null && looksLikeImage && validHttps(candidate)) {
+                                            image = normaliseImageUrl(candidate.orEmpty())
                                         }
                                     }
                                 }
@@ -218,7 +276,7 @@ internal object InkShelf2PulseFeed {
                             if (parser.name.equals("item", ignoreCase = true) && insideItem) {
                                 if (title.isNotBlank() && isApprovedArticleLink(link)) {
                                     result += InkShelf2PulseArticle(
-                                        title = title,
+                                        title = cleanText(title),
                                         url = link,
                                         publisher = publisher.name,
                                         publishedAt = parseDate(date),
@@ -238,16 +296,114 @@ internal object InkShelf2PulseFeed {
         }
     }
 
+    private fun loadVideos(channel: VideoChannel): List<InkShelf2PulseArticle> {
+        val feedUrl = "https://www.youtube.com/feeds/videos.xml?channel_id=" + channel.id
+        val connection = openFeed(feedUrl)
+        try {
+            if (connection.responseCode !in 200..299) return emptyList()
+            val videos = mutableListOf<InkShelf2PulseArticle>()
+            connection.inputStream.buffered().use { stream ->
+                val parser = Xml.newPullParser()
+                parser.setInput(stream, null)
+                var insideEntry = false
+                var title = ""
+                var videoId = ""
+                var published = ""
+                var event = parser.eventType
+                while (event != XmlPullParser.END_DOCUMENT && videos.size < 12) {
+                    when (event) {
+                        XmlPullParser.START_TAG -> {
+                            val tag = parser.name.orEmpty().substringAfterLast(':').lowercase(Locale.ROOT)
+                            if (tag == "entry") {
+                                insideEntry = true
+                                title = ""
+                                videoId = ""
+                                published = ""
+                            } else if (insideEntry) {
+                                when (tag) {
+                                    "title" -> title = parser.nextText().trim()
+                                    "videoid" -> videoId = parser.nextText().trim()
+                                    "published" -> published = parser.nextText().trim()
+                                }
+                            }
+                        }
+                        XmlPullParser.END_TAG -> {
+                            if (parser.name.equals("entry", ignoreCase = true) && insideEntry) {
+                                if (title.isNotBlank() && validVideoId(videoId)) {
+                                    videos += InkShelf2PulseArticle(
+                                        title = cleanText(title),
+                                        url = "https://www.youtube.com/watch?v=" + videoId,
+                                        publisher = channel.name,
+                                        publishedAt = parseDate(published),
+                                        imageUrl = "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg",
+                                        isVideo = true,
+                                    )
+                                }
+                                insideEntry = false
+                            }
+                        }
+                    }
+                    event = parser.next()
+                }
+            }
+            return videos
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun openFeed(url: String): HttpURLConnection {
+        return (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 6_000
+            readTimeout = 7_000
+            setRequestProperty("User-Agent", "InkShelf/2.0 RSS reader")
+            setRequestProperty("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml")
+        }
+    }
+
+    // WordPress feeds often put a full <img> inside description or
+    // content:encoded rather than providing a media:thumbnail element.
+    // Read only the first publisher-supplied image; do not scrape web pages.
+    private fun firstFeedImage(html: String): String? {
+        val tags = Regex("<img\\b[^>]*>", RegexOption.IGNORE_CASE).findAll(html)
+        val sources = listOf("src", "data-src", "data-lazy-src", "data-original")
+        for (tag in tags) {
+            for (attr in sources) {
+                val matcher = Regex("\\b" + attr + "\\s*=\\s*[\"']([^\"']+)[\"']", RegexOption.IGNORE_CASE)
+                val candidate = matcher.find(tag.value)?.groupValues?.getOrNull(1) ?: continue
+                val normalised = normaliseImageUrl(candidate)
+                if (validHttps(normalised) &&
+                    !normalised.contains("gravatar", ignoreCase = true) &&
+                    !normalised.contains("pixel", ignoreCase = true) &&
+                    !normalised.startsWith("data:", ignoreCase = true)
+                ) return normalised
+            }
+        }
+        return null
+    }
+
+    private fun normaliseImageUrl(value: String): String =
+        value.trim().replace("&amp;", "&").replace("&#038;", "&")
+
+    private fun cleanText(value: String): String =
+        value.replace("&amp;", "&").replace("&quot;", "\"")
+            .replace("&#8217;", "’").replace("&#8216;", "‘")
+            .replace("&lt;", "<").replace("&gt;", ">")
+            .replace(Regex("<[^>]*>"), "").trim()
+
     private fun parseDate(value: String): Long {
         if (value.isBlank()) return 0L
         for (pattern in listOf(
             "EEE, dd MMM yyyy HH:mm:ss Z",
             "EEE, dd MMM yyyy HH:mm Z",
             "yyyy-MM-dd'T'HH:mm:ssXXX",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
         )) {
             try {
-                return SimpleDateFormat(pattern, Locale.US).apply { isLenient = false }
-                    .parse(value)?.time ?: 0L
+                val parser = SimpleDateFormat(pattern, Locale.US).apply { isLenient = false }
+                if (pattern.endsWith("'Z'")) parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                return parser.parse(value)?.time ?: 0L
             } catch (_: Exception) {
                 // Try another RSS or Atom date format.
             }
@@ -255,10 +411,15 @@ internal object InkShelf2PulseFeed {
         return 0L
     }
 
+    private fun validVideoId(value: String): Boolean = value.matches(Regex("[A-Za-z0-9_-]{11}"))
+
     private fun isApprovedArticleLink(value: String): Boolean {
         if (!validHttps(value)) return false
-        val host = Uri.parse(value).host.orEmpty().lowercase(Locale.ROOT)
-        return publishers.any { host == it.host || host.endsWith("." + it.host) }
+        val uri = Uri.parse(value)
+        val host = uri.host.orEmpty().lowercase(Locale.ROOT)
+        if (publishers.any { host == it.host || host.endsWith("." + it.host) }) return true
+        if (host != "www.youtube.com" && host != "youtube.com") return false
+        return uri.path == "/watch" && validVideoId(uri.getQueryParameter("v").orEmpty())
     }
 
     private fun validHttps(value: String?): Boolean {
@@ -266,7 +427,6 @@ internal object InkShelf2PulseFeed {
         return try { !Uri.parse(value).host.isNullOrBlank() } catch (_: Exception) { false }
     }
 }
-
 @Composable
 internal fun InkShelf2PulsePreview(
     articles: List<InkShelf2PulseArticle>,
