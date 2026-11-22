@@ -510,6 +510,11 @@ internal fun InkShelf2DetailsScreen(
     canDownload: Boolean,
     downloadedChapterIds: Set<Long>,
     queuedChapterIds: Set<Long>,
+    downloadStates: Map<Long, InkShelf2IssueDownloadInfo>,
+    waitingForWifi: Boolean,
+    downloadsPaused: Boolean,
+    onResumeDownloads: () -> Unit,
+    onDeleteIssueDownload: (Chapter) -> Unit,
     onSave: () -> Unit,
     similarComics: List<InkShelf2SimilarPick>,
     onSimilarComic: (Manga) -> Unit,
@@ -571,6 +576,60 @@ internal fun InkShelf2DetailsScreen(
     }
     val unreadDownloads = remember(pendingDownloads) { pendingDownloads.filter { !it.read } }
     var downloadChoicesOpen by rememberSaveable(manga.source, manga.url) { mutableStateOf(false) }
+    var issueActions by remember(manga.source, manga.url) { mutableStateOf<Chapter?>(null) }
+    var issueToRemove by remember(manga.source, manga.url) { mutableStateOf<Chapter?>(null) }
+    val chosenIssue = issueActions
+    if (chosenIssue != null) {
+        val hasOffline = chosenIssue.id in downloadedChapterIds
+        val isQueued = chosenIssue.id in queuedChapterIds
+        AlertDialog(
+            onDismissRequest = { issueActions = null },
+            title = { Text(chosenIssue.name) },
+            text = {
+                Column {
+                    Text("Issue options")
+                    Spacer(Modifier.height(8.dp))
+                    if (hasOffline || isQueued) {
+                        TextButton(onClick = {
+                            issueActions = null
+                            issueToRemove = chosenIssue
+                        }) {
+                            Text(if (hasOffline) "Delete downloaded issue" else "Cancel queued download")
+                        }
+                    } else if (canDownload) {
+                        TextButton(onClick = {
+                            issueActions = null
+                            onDownload(listOf(chosenIssue))
+                        }) { Text("Download issue") }
+                    }
+                    TextButton(onClick = {
+                        issueActions = null
+                        onChapter(chosenIssue)
+                    }) { Text("Read issue") }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { issueActions = null }) { Text("Close") }
+            },
+        )
+    }
+    val removingIssue = issueToRemove
+    if (removingIssue != null) {
+        AlertDialog(
+            onDismissRequest = { issueToRemove = null },
+            title = { Text("Remove offline issue?") },
+            text = { Text("This removes the local download or pending queue entry for ${removingIssue.name}. Your reading progress is kept.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    issueToRemove = null
+                    onDeleteIssueDownload(removingIssue)
+                }) { Text("Remove") }
+            },
+            dismissButton = {
+                TextButton(onClick = { issueToRemove = null }) { Text("Cancel") }
+            },
+        )
+    }
     if (downloadChoicesOpen) {
         AlertDialog(
             onDismissRequest = { downloadChoicesOpen = false },
@@ -702,6 +761,24 @@ internal fun InkShelf2DetailsScreen(
                     outlined = true,
                     enabled = canDownload && !isLoadingIssues && pendingDownloads.isNotEmpty(),
                 )
+                if (queuedChapterIds.isNotEmpty()) {
+                    if (waitingForWifi) {
+                        Text(
+                            "Downloads waiting for Wi-Fi. To use mobile data, turn off Wi-Fi-only in Menu → Settings → Downloads.",
+                            modifier = Modifier.padding(top = 8.dp),
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 12.sp,
+                        )
+                    } else if (downloadsPaused) {
+                        Spacer(Modifier.height(8.dp))
+                        InkShelf2ActionButton(
+                            label = "Resume Downloads",
+                            onClick = onResumeDownloads,
+                            outlined = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
                 if (sourceLinkError != null) {
                     Spacer(Modifier.height(9.dp))
                     Text(
@@ -854,6 +931,10 @@ internal fun InkShelf2DetailsScreen(
                             downloaded = chapter.id in downloadedChapterIds,
                             queued = chapter.id in queuedChapterIds,
                             onDownload = { onDownload(listOf(chapter)) },
+                            downloadInfo = chapter.id?.let(downloadStates::get),
+                            waitingForWifi = waitingForWifi,
+                            downloadsPaused = downloadsPaused,
+                            onLongClick = { issueActions = chapter },
                         )
                     }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
@@ -870,6 +951,10 @@ internal fun InkShelf2DetailsScreen(
                     downloaded = chapter.id in downloadedChapterIds,
                     queued = chapter.id in queuedChapterIds,
                     onDownload = { onDownload(listOf(chapter)) },
+                    downloadInfo = chapter.id?.let(downloadStates::get),
+                    waitingForWifi = waitingForWifi,
+                    downloadsPaused = downloadsPaused,
+                    onLongClick = { issueActions = chapter },
                 )
                 HorizontalDivider(
                     color = InkShelf2Colors.Border.copy(alpha = 0.3f),
