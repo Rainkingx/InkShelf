@@ -111,6 +111,9 @@ class InkShelf2Activity : AppCompatActivity() {
             var selected by remember {
                 mutableStateOf<Manga?>(null, referentialEqualityPolicy())
             }
+            // Related-comic clicks keep a native Details back stack. This is
+            // navigation state only; source URLs and reader data are untouched.
+            var comicBackStack by remember { mutableStateOf<List<Manga>>(emptyList()) }
             var home by remember { mutableStateOf<InkShelf2Engine.Home?>(null) }
             var library by remember { mutableStateOf<List<InkShelf2LibraryItem>>(emptyList()) }
             var discover by remember { mutableStateOf<InkShelf2Engine.Discover?>(null) }
@@ -174,10 +177,19 @@ class InkShelf2Activity : AppCompatActivity() {
 
             // One immediate route for EVERY comic card, just like InkShelf 1.
             val openComicDetails: (Manga) -> Unit = { manga ->
+                comicBackStack = emptyList()
                 sourceLinkError = null
                 issuesError = null
                 loadingIssues = true
                 selected = manga
+            }
+            fun backFromComicDetails() {
+                val previousComic = comicBackStack.lastOrNull()
+                comicBackStack = comicBackStack.dropLast(1)
+                sourceLinkError = null
+                issuesError = null
+                loadingIssues = previousComic != null
+                selected = previousComic
             }
 
             // Register at the shell root, so Back always navigates inside
@@ -185,7 +197,7 @@ class InkShelf2Activity : AppCompatActivity() {
             // than immediately finishing the preview Activity on those tabs.
             BackHandler(enabled = true) {
                 when {
-                    selected != null -> selected = null
+                    selected != null -> backFromComicDetails()
                     selectedDiscoverShelf != null -> selectedDiscoverShelf = null
                     selectedDay != null -> selectedDay = null
                     activeSourceId != null -> activeSourceId = null
@@ -237,17 +249,34 @@ class InkShelf2Activity : AppCompatActivity() {
             ) { padding ->
                 val comic = selected
                 when {
-                    comic != null -> key(detailsRevision, comic.source, comic.url) { InkShelf2DetailsScreen(
+                    comic != null -> key(detailsRevision, comic.source, comic.url) {
+                        val similarPicks = remember(detailsRevision, comic.source, comic.url, discover, library, enabledSources) {
+                            // All candidates originate from the EXISTING J2K
+                            // Discover cache or Library. No synthetic URLs and
+                            // no additional extension searches on page opening.
+                            InkShelf2MoreLikeThis.select(
+                                focus = comic,
+                                candidates = buildList {
+                                    addAll(discover?.recommendationDetails.orEmpty().map { it.manga })
+                                    addAll(discover?.trending.orEmpty())
+                                    addAll(discover?.newest.orEmpty())
+                                    addAll(library.map { it.manga })
+                                },
+                                enabledSources = enabledSources.map { it.id }.toSet(),
+                            )
+                        }
+                        InkShelf2DetailsScreen(
                         manga = comic,
                         chapters = chapters,
                         padding = padding,
-                        onBack = { selected = null },
+                        onBack = { backFromComicDetails() },
                         onRead = { openReader(comic) },
                         sourceName = sourceManager.get(comic.source)?.name,
                         sourceLinkError = sourceLinkError,
                         onFindSource = {
                             val title = comic.title
                             selected = null
+                            comicBackStack = emptyList()
                             sourceLinkError = null
                             openTab(InkShelf2Tab.DISCOVER)
                             discoverSearchPreset = title
@@ -258,7 +287,21 @@ class InkShelf2Activity : AppCompatActivity() {
                         issuesError = issuesError,
                         onChapter = { openChapter(comic, it) },
                         onSave = { saveComic(comic) },
-                    ) }
+                        similarComics = similarPicks,
+                        onSimilarComic = { related ->
+                            // This is exactly the same source-aware navigation
+                            // as Home, Library and Discover. Preserve the
+                            // previous Details page when a related cover opens.
+                            if (related.source != comic.source || related.url != comic.url) {
+                                comicBackStack = (comicBackStack + comic).takeLast(12)
+                                sourceLinkError = null
+                                issuesError = null
+                                loadingIssues = true
+                                selected = related
+                            }
+                        },
+                    )
+                    }
                     selectedDiscoverShelf != null -> InkShelf2DiscoverShelfScreen(
                         title = selectedDiscoverShelf!!,
                         comics = when (selectedDiscoverShelf) {
