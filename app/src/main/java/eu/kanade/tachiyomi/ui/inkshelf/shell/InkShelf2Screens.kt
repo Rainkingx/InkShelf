@@ -110,7 +110,6 @@ internal fun InkShelf2HomeScreen(
     pulseExpanded: Boolean,
     onPulseExpandedChange: (Boolean) -> Unit,
     onOpen: (Manga) -> Unit,
-    onRead: (Manga) -> Unit,
     onSave: (Manga) -> Unit,
     onDiscover: () -> Unit,
     onLibrary: () -> Unit,
@@ -180,10 +179,7 @@ internal fun InkShelf2HomeScreen(
         ),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        item(key = "continue-reading") {
-            // A low-key, personal greeting rather than an oversized profile
-            // panel. Reading controls stay front and centre; the profile and
-            // its statistics remain available from Menu/Library.
+        item(key = "home-greeting") {
             val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
             val greeting = when (hour) {
                 in 5..11 -> "Good morning"
@@ -194,65 +190,13 @@ internal fun InkShelf2HomeScreen(
             Text(
                 text = if (name == null) greeting else "$greeting, $name",
                 modifier = Modifier.fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 2.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            InkShelf2SectionHeading("Continue Reading", onClick = onLibrary, showSeeAll = true)
-            Spacer(Modifier.height(13.dp))
-            val books = home?.history.orEmpty()
-            if (books.isEmpty()) {
-                InkShelf2EmptyShelf("Your reading progress will appear here.")
-            } else {
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    // Match Discover's 16dp outer gutters and 10dp cover gaps.
-                    // Keep the existing three-column comic-cover aspect ratio.
-                    val libraryCoverWidth = (maxWidth - 32.dp - 20.dp) / 3
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        items(books) { item ->
-                            ComicCoverCard(
-                                item.manga,
-                                percent = item.percent,
-                                width = libraryCoverWidth,
-                                showTitle = false,
-                                libraryShape = true,
-                                onClick = { onRead(item.manga) },
-                            )
-                        }
-                    }
-                }
-                // Show the latest real history title and a one-tap resume,
-                // while preserving the approved cover-only carousel above.
-                val lastRead = books.first()
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .clickable { onRead(lastRead.manga) },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(9.dp),
-                ) {
-                    Text(
-                        text = "LAST READ  •  ${lastRead.manga.title}",
-                        modifier = Modifier.weight(1f),
-                        color = InkShelf2Colors.Muted,
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        "RESUME  ›",
-                        color = InkShelf2Colors.AccentLight,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
         }
         item {
             if (slides.isNotEmpty()) {
@@ -420,6 +364,18 @@ internal fun InkShelf2HomeScreen(
                 )
             }
         }
+        item(key = "inkshelf-pulse") {
+            InkShelf2PulsePreview(
+                articles = pulseArticles,
+                loading = pulseLoading,
+                onSeeAll = {
+                    // Open the complete Pulse on its default Articles tab.
+                    pulseShowVideos = false
+                    onPulseExpandedChange(true)
+                },
+                onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
+            )
+        }
         item(key = "unread-library") {
             InkShelf2SectionHeading("Issues Waiting for You", onClick = onLibrary, showSeeAll = true)
             if (unreadIssues > 0) {
@@ -463,18 +419,6 @@ internal fun InkShelf2HomeScreen(
                     }
                 }
             }
-        }
-        item(key = "inkshelf-pulse") {
-            InkShelf2PulsePreview(
-                articles = pulseArticles,
-                loading = pulseLoading,
-                onSeeAll = {
-                    // Open the complete Pulse on its default Articles tab.
-                    pulseShowVideos = false
-                    onPulseExpandedChange(true)
-                },
-                onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
-            )
         }
         item(key = "recently-saved") {
             InkShelf2SectionHeading("Recently Added", onClick = onLibrary, showSeeAll = true)
@@ -1183,7 +1127,7 @@ internal fun InkShelf2AccountScreen(padding: PaddingValues) {
 }
 
 @Composable
-private fun ComicCoverCard(
+internal fun ComicCoverCard(
     manga: Manga,
     onClick: () -> Unit,
     percent: Int? = null,
