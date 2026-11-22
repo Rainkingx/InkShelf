@@ -106,7 +106,6 @@ internal fun InkShelf2HomeScreen(
     val initial = slides.indexOfFirst { it.calendarDay == currentDay }.coerceAtLeast(0)
     val pager = rememberPagerState(initialPage = initial, pageCount = { slides.size.coerceAtLeast(1) })
     val scope = rememberCoroutineScope()
-    val readingSeries = library.count { it.state == InkShelf2ReadingState.READING }
     val unreadIssues = library.asSequence()
         .filter { it.state == InkShelf2ReadingState.READING }
         .sumOf { (it.totalChapters - it.readChapters).coerceAtLeast(0) }
@@ -153,19 +152,6 @@ internal fun InkShelf2HomeScreen(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (library.isNotEmpty()) {
-                Text(
-                    text = if (readingSeries > 0) {
-                        "$readingSeries in progress  •  $unreadIssues unread issues"
-                    } else {
-                        "${library.size} comics saved in your library"
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(start = 18.dp, end = 18.dp, bottom = 8.dp),
-                    color = InkShelf2Colors.Muted,
-                    fontSize = 11.sp,
-                )
-            }
             InkShelf2SectionHeading("Continue Reading", onClick = onLibrary)
             Spacer(Modifier.height(9.dp))
             val books = home?.history.orEmpty()
@@ -267,25 +253,6 @@ internal fun InkShelf2HomeScreen(
                                 ),
                             ),
                         )
-                        Box(
-                            modifier = Modifier.align(Alignment.TopEnd)
-                                .padding(12.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(InkShelf2Colors.Background.copy(alpha = 0.78f))
-                                .border(
-                                    1.dp,
-                                    InkShelf2Colors.AccentLight.copy(alpha = 0.7f),
-                                    RoundedCornerShape(50),
-                                )
-                                .padding(horizontal = 11.dp, vertical = 6.dp),
-                        ) {
-                            Text(
-                                "VIEW ${day.picks.size} PICKS  ›",
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
                         Column(
                             modifier = Modifier.align(Alignment.BottomStart)
                                 .fillMaxWidth()
@@ -305,16 +272,13 @@ internal fun InkShelf2HomeScreen(
                             Spacer(Modifier.height(10.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                 InkShelf2ActionButton(
-                                    // The daily artwork promotes a set of comics.
-                                    // Opening the featured comic must use the
-                                    // same Details page as Trending/New covers,
-                                    // not jump straight into a different reader.
-                                    label = if (pick != null) "Comic Details" else "View Picks",
+                                    // The hero promotes the complete daily selection.
+                                    // Open all three verified picks first; each
+                                    // then opens the normal InkShelf 2 details page.
+                                    label = "Comic Details",
                                     leadingIcon = Icons.Outlined.AutoStories,
                                     enabled = true,
-                                    onClick = {
-                                        if (pick != null) onOpen(pick) else onDayPicks(day)
-                                    },
+                                    onClick = { onDayPicks(day) },
                                     modifier = Modifier.weight(1f),
                                 )
                                 InkShelf2ActionButton(
