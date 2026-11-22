@@ -53,6 +53,19 @@ class InkShelf2Activity : AppCompatActivity() {
     private var refreshEpoch by mutableIntStateOf(0)
     private var lastBackAtMillis = 0L
     private var readerOpenInProgress by mutableStateOf(false)
+    private var lastLocalDailyStamp: Int? = null
+
+    override fun onResume() {
+        super.onResume()
+        val today = InkShelf2DailyRotation.localDayStamp()
+        // Reload only on a real local date change, including when returning
+        // from the background after midnight. The existing six-hour Discover
+        // worker remains responsible for refreshing source data.
+        if (lastLocalDailyStamp != null && lastLocalDailyStamp != today) {
+            refreshEpoch += 1
+        }
+        lastLocalDailyStamp = today
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,6 +118,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 it.id != LocalSource.ID && it.lang in enabledLanguages &&
                     it.id.toString() !in hiddenSources
             }
+            val enabledSourceIds = enabledSources.map { it.id }.toSet()
             // MangaImpl.equals compares only URL and source, so an updated
             // database row may be 'equal' despite having new synopsis/cover
             // metadata. Use identity changes to refresh the Compose details.
@@ -123,9 +137,11 @@ class InkShelf2Activity : AppCompatActivity() {
             var sourceLinkError by remember { mutableStateOf<String?>(null) }
             var detailsRevision by remember { mutableIntStateOf(0) }
 
-            LaunchedEffect(refreshEpoch) {
-                // Read existing data; never reset or migrate the library.
-                home = engine.loadHome()
+            LaunchedEffect(refreshEpoch, enabledSourceIds) {
+                // Wait for real installed-source registration. A source
+                // appearing or disappearing updates the themed picks without
+                // opening any extra external searches.
+                home = engine.loadHome(enabledSourceIds)
                 library = engine.loadLibrary()
                 discover = engine.loadDiscover()
             }
