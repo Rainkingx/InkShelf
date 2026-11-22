@@ -407,7 +407,7 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item(key = "recently-saved") {
-            InkShelf2SectionHeading("Recently Added to Your Library", onClick = onLibrary, showSeeAll = true)
+            InkShelf2SectionHeading("Recently Added", onClick = onLibrary, showSeeAll = true)
             Spacer(Modifier.height(12.dp))
             val recent = library.sortedByDescending { it.manga.date_added }.take(12)
             if (recent.isEmpty()) {
