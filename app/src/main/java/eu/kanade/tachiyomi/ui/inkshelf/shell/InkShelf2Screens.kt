@@ -89,6 +89,9 @@ import java.util.Locale
 @Composable
 internal fun InkShelf2HomeScreen(
     home: InkShelf2Engine.Home?,
+    library: List<InkShelf2LibraryItem>,
+    profileName: String,
+    onProfile: () -> Unit,
     padding: PaddingValues,
     onOpen: (Manga) -> Unit,
     onRead: (Manga) -> Unit,
@@ -113,6 +116,89 @@ internal fun InkShelf2HomeScreen(
         contentPadding = padding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item(key = "personal-greeting") {
+            val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+            val greeting = when (hour) {
+                in 5..11 -> "Good morning"
+                in 12..17 -> "Good afternoon"
+                else -> "Good evening"
+            }
+            val name = profileName.takeIf { it.isNotBlank() }
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 17.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (name == null) "$greeting!" else "$greeting, $name!",
+                        modifier = Modifier.weight(1f),
+                        fontSize = 23.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = InkShelf2Colors.Text,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    TextButton(onClick = onProfile) {
+                        Text(
+                            if (name == null) "Set up" else "Profile",
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+                Text(
+                    "Your comics, your reading, your space.",
+                    color = InkShelf2Colors.Muted,
+                    fontSize = 12.sp,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        "${library.count { it.state == InkShelf2ReadingState.READING }} reading",
+                        color = InkShelf2Colors.AccentLight,
+                        fontSize = 11.sp,
+                    )
+                    Text(
+                        "${library.size} in library",
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                    )
+                    Text(
+                        "${library.count { it.state == InkShelf2ReadingState.COMPLETED }} finished",
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                    )
+                }
+            }
+        }
+        item {
+            InkShelf2SectionHeading("Continue Reading", onClick = onLibrary)
+            Spacer(Modifier.height(9.dp))
+            val books = home?.history.orEmpty()
+            if (books.isEmpty()) {
+                InkShelf2EmptyShelf("Your reading progress will appear here.")
+            } else {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    // Exact three-column Library sizing: 14dp outer gutters,
+                    // 9dp gaps, and a 0.71 comic-cover aspect ratio.
+                    val libraryCoverWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
+                        items(books) { item ->
+                            ComicCoverCard(
+                                item.manga,
+                                percent = item.percent,
+                                width = libraryCoverWidth,
+                                showTitle = false,
+                                libraryShape = true,
+                                onClick = { onRead(item.manga) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
         item {
             if (slides.isNotEmpty()) {
                 HorizontalPager(
@@ -246,55 +332,61 @@ internal fun InkShelf2HomeScreen(
                 )
             }
         }
-        item {
-            InkShelf2SectionHeading("Continue Reading", onClick = onLibrary)
-            Spacer(Modifier.height(9.dp))
-            val books = home?.history.orEmpty()
-            if (books.isEmpty()) {
-                InkShelf2EmptyShelf("Your reading progress will appear here.")
+        item(key = "unread-library") {
+            InkShelf2SectionHeading("Issues Waiting for You", onClick = onLibrary)
+            Spacer(Modifier.height(7.dp))
+            // These are ACTUAL unread chapters from the original J2K
+            // Library database. Do not label them newly published.
+            val waiting = library
+                .filter {
+                    it.state == InkShelf2ReadingState.READING &&
+                        it.totalChapters > it.readChapters
+                }
+                .sortedByDescending { it.manga.last_update }
+                .take(12)
+            if (waiting.isEmpty()) {
+                InkShelf2EmptyShelf("Unread issues from comics you're reading will appear here.")
             } else {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    // Exact three-column Library sizing: 14dp outer gutters,
-                    // 9dp gaps, and a 0.71 comic-cover aspect ratio.
-                    val libraryCoverWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    val cardWidth = (maxWidth - 28.dp - 18.dp) / 3
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(9.dp),
                     ) {
-                        items(books) { item ->
+                        items(waiting, key = { "${it.manga.source}:${it.manga.url}" }) { item ->
                             ComicCoverCard(
                                 item.manga,
-                                percent = item.percent,
-                                width = libraryCoverWidth,
+                                percent = item.progress,
+                                width = cardWidth,
                                 showTitle = false,
                                 libraryShape = true,
-                                onClick = { onRead(item.manga) },
+                                onClick = { onOpen(item.manga) },
                             )
                         }
                     }
                 }
             }
         }
-        item {
-            InkShelf2SectionHeading("Trending Now", onClick = onTrendingSeeAll)
-            Spacer(Modifier.height(9.dp))
-            val books = home?.trendingNow.orEmpty()
-            if (books.isEmpty()) {
-                InkShelf2EmptyShelf("Trending recommendations will appear when Discover refreshes.")
+        item(key = "recently-saved") {
+            InkShelf2SectionHeading("Recently Added to Your Library", onClick = onLibrary)
+            Spacer(Modifier.height(7.dp))
+            val recent = library.sortedByDescending { it.manga.date_added }.take(12)
+            if (recent.isEmpty()) {
+                InkShelf2EmptyShelf("Save a comic to start your personal collection.")
             } else {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val libraryCoverWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    val cardWidth = (maxWidth - 28.dp - 18.dp) / 3
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 14.dp),
                         horizontalArrangement = Arrangement.spacedBy(9.dp),
                     ) {
-                        items(books) { manga ->
+                        items(recent, key = { "${it.manga.source}:${it.manga.url}" }) { item ->
                             ComicCoverCard(
-                                manga,
-                                width = libraryCoverWidth,
+                                item.manga,
+                                width = cardWidth,
                                 showTitle = false,
                                 libraryShape = true,
-                                onClick = { onOpen(manga) },
+                                onClick = { onOpen(item.manga) },
                             )
                         }
                     }
