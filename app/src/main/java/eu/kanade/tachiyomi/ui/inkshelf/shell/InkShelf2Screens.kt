@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -86,7 +87,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Locale
@@ -99,7 +102,6 @@ import java.util.Locale
 internal fun InkShelf2HomeScreen(
     home: InkShelf2Engine.Home?,
     library: List<InkShelf2LibraryItem>,
-    personalPicks: List<InkShelf2Engine.PersonalPick>,
     profileName: String,
     padding: PaddingValues,
     onOpen: (Manga) -> Unit,
@@ -136,17 +138,27 @@ internal fun InkShelf2HomeScreen(
     val unreadIssues = library.asSequence()
         .filter { it.state == InkShelf2ReadingState.READING }
         .sumOf { (it.totalChapters - it.readChapters).coerceAtLeast(0) }
-    val savedKeys = remember(library) {
-        library.map { it.manga.source to it.manga.url }.toSet()
+    // Pulse replaces the Home recommendation shelf; Discover still owns the
+    // complete personalised recommendation feed and remains unchanged.
+    val context = LocalContext.current
+    var pulseArticles by remember { mutableStateOf<List<InkShelf2PulseArticle>>(emptyList()) }
+    var pulseLoading by remember { mutableStateOf(true) }
+    var pulseExpanded by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = pulseExpanded) { pulseExpanded = false }
+    LaunchedEffect(Unit) {
+        pulseArticles = InkShelf2PulseFeed.cached(context)
+        pulseArticles = InkShelf2PulseFeed.refresh(context)
+        pulseLoading = false
     }
-    // Discover owns recommendations; Home surfaces a short subset from the
-    // same real cached source results. Never invent series or source URLs.
-    val suggestions = remember(personalPicks, savedKeys) {
-        personalPicks.asSequence()
-            .filter { (it.manga.source to it.manga.url) !in savedKeys }
-            .distinctBy { it.manga.source to it.manga.url }
-            .take(9)
-            .toList()
+    if (pulseExpanded) {
+        InkShelf2PulseScreen(
+            padding = padding,
+            articles = pulseArticles,
+            loading = pulseLoading,
+            onBack = { pulseExpanded = false },
+            onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
+        )
+        return
     }
     // The data arrives after the first composition; restore today's actual page.
     LaunchedEffect(slides.size, initial) {
@@ -445,45 +457,13 @@ internal fun InkShelf2HomeScreen(
                 }
             }
         }
-        if (suggestions.isNotEmpty()) {
-            item(key = "home-personal-picks") {
-                InkShelf2SectionHeading("Picked for You", onClick = onDiscover, showSeeAll = true)
-                Text(
-                    "Based on your library and reading activity",
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
-                    color = InkShelf2Colors.Muted,
-                    fontSize = 11.sp,
-                )
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val cardWidth = (maxWidth - 32.dp - 20.dp) / 3
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        items(suggestions, key = { "${it.manga.source}:${it.manga.url}" }) { pick ->
-                            Column(modifier = Modifier.width(cardWidth)) {
-                                ComicCoverCard(
-                                    pick.manga,
-                                    width = null,
-                                    showTitle = true,
-                                    libraryShape = true,
-                                    onClick = { onOpen(pick.manga) },
-                                )
-                                if (pick.reason.isNotBlank()) {
-                                    Text(
-                                        pick.reason,
-                                        color = InkShelf2Colors.Muted,
-                                        fontSize = 10.sp,
-                                        lineHeight = 13.sp,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        item(key = "inkshelf-pulse") {
+            InkShelf2PulsePreview(
+                articles = pulseArticles,
+                loading = pulseLoading,
+                onSeeAll = { pulseExpanded = true },
+                onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
+            )
         }
         item(key = "recently-saved") {
             InkShelf2SectionHeading("Recently Added", onClick = onLibrary, showSeeAll = true)
