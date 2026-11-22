@@ -144,6 +144,9 @@ android {
 }
 
 dependencies {
+    // Small, offline JVM regression suite for the pure InkShelf 2.0 matching rules.
+    testImplementation("junit:junit:4.13.2")
+
     // Compose
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.compose.foundation:foundation:1.11.4")
