@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -46,13 +45,14 @@ internal fun InkShelf2WelcomeScreen(
     padding: PaddingValues,
     displayName: String,
     installedSourceCount: Int,
+    step: Int,
+    onStepChange: (Int) -> Unit,
     onNameChange: (String) -> Unit,
     onFinish: () -> Unit,
     onBrowseSources: () -> Unit,
     onBackupTools: () -> Unit,
     onImportComics: () -> Unit,
 ) {
-    var step by rememberSaveable { mutableIntStateOf(0) }
     var name by rememberSaveable { mutableStateOf(displayName) }
     var backupChoice by rememberSaveable { mutableStateOf("Start fresh") }
     var importChoice by rememberSaveable { mutableStateOf("Not right now") }
@@ -64,7 +64,7 @@ internal fun InkShelf2WelcomeScreen(
 
     fun advance() {
         if (step == 0) onNameChange(name)
-        if (step >= steps.lastIndex) onFinish() else step++
+        if (step >= steps.lastIndex) onFinish() else onStepChange(step + 1)
     }
 
     LazyColumn(
@@ -81,7 +81,7 @@ internal fun InkShelf2WelcomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = {
-                    if (step > 0) step-- else onFinish()
+                    if (step > 0) onStepChange(step - 1) else onFinish()
                 }) {
                     Icon(
                         Icons.Outlined.ArrowBack,
@@ -265,7 +265,7 @@ internal fun InkShelf2WelcomeScreen(
                     onClick = {
                         // Skip only the current step; first-run setup is
                         // always optional and can be reopened via the Menu.
-                        if (step == steps.lastIndex) onFinish() else step++
+                        if (step == steps.lastIndex) onFinish() else onStepChange(step + 1)
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
