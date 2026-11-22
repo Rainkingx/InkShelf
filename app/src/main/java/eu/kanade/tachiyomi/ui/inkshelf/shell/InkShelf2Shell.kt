@@ -321,7 +321,14 @@ private fun InkShelf2BottomNavigation(
                         .selectable(
                             selected = selected,
                             role = Role.Tab,
-                            onClick = { if (!selected) onTabSelected(tab) },
+                            // Home can be reselected to exit an open Home subpage
+                            // (for example The Pulse), while other tabs keep
+                            // their existing selected-tab behavior.
+                            onClick = {
+                                if (!selected || tab == InkShelf2Tab.HOME) {
+                                    onTabSelected(tab)
+                                }
+                            },
                         ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
