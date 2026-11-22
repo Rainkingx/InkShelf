@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -743,6 +744,136 @@ private fun InkShelf2PulseListCard(
                     SimpleDateFormat("d MMM yyyy", Locale.UK).format(Date(article.publishedAt)),
                     color = InkShelf2Colors.Muted,
                     fontSize = 10.sp,
+                )
+            }
+        }
+    }
+}
+
+
+/**
+ * Conservative related-content matching. Match the full comic series phrase
+ * (after removing a trailing publishing year), not a shared character name.
+ * This prevents e.g. Batman news being attached to Absolute Batman unless
+ * the headline explicitly mentions "Absolute Batman".
+ */
+internal object InkShelf2PulseMatcher {
+    private val publishingYearSuffix =
+        Regex("""\\s*\\((?:19|20)\\d{2}(?:\\s*[-–—]\\s*(?:(?:19|20)\\d{2})?)?\\)\\s*$""")
+    private val punctuation = Regex("""[^\\p{L}\\p{N}]+""")
+    private val extraSpaces = Regex("""\\s+""")
+
+    private fun normalise(text: String): String =
+        text.lowercase(Locale.ROOT)
+            .replace('’', '\'')
+            .replace(punctuation, " ")
+            .trim()
+            .replace(extraSpaces, " ")
+
+    fun related(
+        comicTitle: String,
+        articles: List<InkShelf2PulseArticle>,
+    ): List<InkShelf2PulseArticle> {
+        val series = normalise(comicTitle.replace(publishingYearSuffix, ""))
+        // A single character name is too ambiguous. Only display credible
+        // multi-word *series* matches, rather than unrelated franchise news.
+        if (series.length < 8 || series.split(' ').size < 2) return emptyList()
+        val phrase = " $series "
+        val matches = articles.filter { article ->
+            (" " + normalise(article.title) + " ").contains(phrase)
+        }.distinctBy { it.url }
+
+        val news = matches.filterNot { it.isVideo }.sortedByDescending { it.publishedAt }.take(2)
+        val videos = matches.filter { it.isVideo }.sortedByDescending { it.publishedAt }.take(2)
+        return buildList {
+            news.getOrNull(0)?.let(::add)
+            videos.getOrNull(0)?.let(::add)
+            news.getOrNull(1)?.let(::add)
+            videos.getOrNull(1)?.let(::add)
+        }
+    }
+}
+
+/**
+ * Related publisher headlines / video reviews shown only when a strict,
+ * real match exists. The comic's chapter loading and reader never wait for
+ * this optional, cached RSS content.
+ */
+@Composable
+internal fun InkShelf2RelatedPulse(comicTitle: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var feed by remember(comicTitle) { mutableStateOf<List<InkShelf2PulseArticle>>(emptyList()) }
+    LaunchedEffect(comicTitle) {
+        feed = InkShelf2PulseFeed.cached(context)
+        try {
+            feed = InkShelf2PulseFeed.refresh(context)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Offline or blocked feeds should never affect comic details.
+        }
+    }
+    val related = remember(comicTitle, feed) { InkShelf2PulseMatcher.related(comicTitle, feed) }
+    if (related.isEmpty()) return
+
+    Spacer(Modifier.height(20.dp))
+    Text(
+        "In The Pulse",
+        fontSize = 22.sp,
+        fontWeight = FontWeight.Bold,
+        color = InkShelf2Colors.Text,
+    )
+    Spacer(Modifier.height(5.dp))
+    Text(
+        "Related comic news & video reviews",
+        color = InkShelf2Colors.Muted,
+        fontSize = 12.sp,
+    )
+    Spacer(Modifier.height(12.dp))
+    androidx.compose.foundation.lazy.LazyRow(
+        // The surrounding Details Column already provides the page's 16dp
+        // horizontal gutters. Keep cards aligned with the synopsis text.
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(related, key = { it.url }) { article ->
+            Column(
+                modifier = Modifier.width(202.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.70f))
+                    .border(
+                        1.dp, InkShelf2Colors.Border.copy(alpha = 0.75f),
+                        RoundedCornerShape(14.dp),
+                    )
+                    .clickable { InkShelf2PulseFeed.openArticle(context, article.url) }
+                    .padding(9.dp),
+            ) {
+                InkShelf2PulseArtwork(article, height = 103)
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    if (article.isVideo) "VIDEO REVIEW" else "RELATED NEWS",
+                    color = InkShelf2Colors.AccentLight,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    article.title,
+                    color = InkShelf2Colors.Text,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 15.sp,
+                    maxLines = 2,
+                    minLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    article.publisher,
+                    color = InkShelf2Colors.Muted,
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
