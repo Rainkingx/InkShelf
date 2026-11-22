@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +30,10 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Add
@@ -61,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -80,6 +86,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Locale
@@ -108,6 +115,24 @@ internal fun InkShelf2HomeScreen(
     val initial = slides.indexOfFirst { it.calendarDay == currentDay }.coerceAtLeast(0)
     val pager = rememberPagerState(initialPage = initial, pageCount = { slides.size.coerceAtLeast(1) })
     val scope = rememberCoroutineScope()
+    // A single restrained entrance sequence per Home visit. The animation is
+    // tied to the Home composition, never to pager.currentPage or a swipe.
+    val heroEntrance = remember { Animatable(0f) }
+    val heroShimmer = remember { Animatable(-0.8f) }
+    val heroDots = remember { Animatable(0f) }
+    LaunchedEffect(slides.isNotEmpty()) {
+        if (slides.isNotEmpty()) {
+            launch {
+                heroEntrance.animateTo(1f, tween(620, easing = FastOutSlowInEasing))
+            }
+            launch {
+                delay(320)
+                heroDots.animateTo(1f, tween(420))
+            }
+            delay(440)
+            heroShimmer.animateTo(1.8f, tween(1050, easing = LinearEasing))
+        }
+    }
     val unreadIssues = library.asSequence()
         .filter { it.state == InkShelf2ReadingState.READING }
         .sumOf { (it.totalChapters - it.readChapters).coerceAtLeast(0) }
@@ -214,19 +239,37 @@ internal fun InkShelf2HomeScreen(
             if (slides.isNotEmpty()) {
                 HorizontalPager(
                     state = pager,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
+                        .graphicsLayer {
+                            alpha = heroEntrance.value
+                            translationY = (1f - heroEntrance.value) * 18.dp.toPx()
+                        },
                     pageSpacing = 10.dp,
                 ) { index ->
                     val day = slides[index]
                     val pick = day.picks.firstOrNull()
+                    val heroShape = RoundedCornerShape(20.dp)
                     Box(
                         modifier = Modifier.fillMaxWidth()
-                            .height(295.dp)
+                            .height(316.dp)
                             .padding(horizontal = 16.dp)
-                            .clip(RoundedCornerShape(19.dp))
+                            // Soft, stationary purple halo; the single shimmer
+                            // below supplies the motion rather than a loop.
+                            .shadow(
+                                elevation = 11.dp,
+                                shape = heroShape,
+                                ambientColor = InkShelf2Colors.Accent.copy(alpha = 0.32f),
+                                spotColor = InkShelf2Colors.AccentLight.copy(alpha = 0.38f),
+                            )
+                            .clip(heroShape)
                             .background(InkShelf2Colors.Surface)
+                            .border(
+                                1.dp,
+                                InkShelf2Colors.AccentLight.copy(alpha = 0.30f),
+                                heroShape,
+                            )
                             // Tapping the hero opens all daily picks; nested
-                            // Read Now and Save actions retain their own clicks.
+                            // button clicks retain their own actions.
                             .clickable { onDayPicks(day) },
                     ) {
                         AsyncImage(
@@ -248,35 +291,69 @@ internal fun InkShelf2HomeScreen(
                                 ),
                             ),
                         )
+                        // Reserve contrast for the lower text/buttons; allow
+                        // bright authentic cover artwork to remain vivid above.
                         Box(
                             modifier = Modifier.fillMaxSize().background(
                                 Brush.verticalGradient(
-                                    listOf(
-                                        Color.Black.copy(alpha = 0.00f),
-                                        InkShelf2Colors.SurfaceRaised.copy(alpha = 0.10f),
-                                        InkShelf2Colors.Background.copy(alpha = 0.85f),
+                                    colorStops = arrayOf(
+                                        0f to Color.Black.copy(alpha = 0.04f),
+                                        0.35f to Color.Black.copy(alpha = 0.03f),
+                                        0.65f to InkShelf2Colors.Background.copy(alpha = 0.56f),
+                                        1f to InkShelf2Colors.Background.copy(alpha = 0.94f),
                                     ),
                                 ),
                             ),
                         )
+                        // A gentle angled light glides across the artwork once
+                        // when Home appears; never on hero swipes or in a loop.
+                        if (index == pager.currentPage &&
+                            heroShimmer.value > -0.5f && heroShimmer.value < 1.6f
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val sweepX = size.width * heroShimmer.value
+                                drawRect(
+                                    brush = Brush.linearGradient(
+                                        0f to Color.Transparent,
+                                        0.42f to Color.Transparent,
+                                        0.50f to Color.White.copy(alpha = 0.20f),
+                                        0.58f to InkShelf2Colors.AccentLight.copy(alpha = 0.10f),
+                                        1f to Color.Transparent,
+                                        start = Offset(sweepX - size.width * 0.42f, 0f),
+                                        end = Offset(sweepX + size.width * 0.42f, size.height),
+                                    ),
+                                )
+                            }
+                        }
                         Column(
                             modifier = Modifier.align(Alignment.BottomStart)
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(horizontal = 18.dp, vertical = 19.dp),
                         ) {
-                            InkShelf2ComicTitle(day.title)
-                            Spacer(Modifier.height(8.dp))
                             Text(
-                                text = if (pick == null) "Explore comics for this theme"
-                                else "${day.picks.size} PICKS  •  ${pick.title}",
-                                color = Color.White.copy(alpha = 0.94f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
+                                text = "TODAY'S FEATURE",
+                                color = InkShelf2Colors.AccentLight,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.2.sp,
+                                maxLines = 1,
+                            )
+                            Spacer(Modifier.height(9.dp))
+                            // Keep the distinctive day-of-week theme, but do
+                            // not print a randomly chosen comic series title.
+                            InkShelf2ComicTitle(day.title)
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                text = if (day.picks.isEmpty()) "Explore today's selection"
+                                else "${day.picks.size} ${if (day.picks.size == 1) "pick" else "picks"} selected for you",
+                                color = Color.White.copy(alpha = 0.95f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Spacer(Modifier.height(10.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Spacer(Modifier.height(16.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 InkShelf2ActionButton(
                                     // The hero promotes the complete daily selection.
                                     // Open all three verified picks first; each
@@ -300,7 +377,9 @@ internal fun InkShelf2HomeScreen(
                     }
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 5.dp),
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(top = 12.dp, bottom = 5.dp)
+                        .graphicsLayer { alpha = heroDots.value },
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     slides.indices.forEach { index ->
