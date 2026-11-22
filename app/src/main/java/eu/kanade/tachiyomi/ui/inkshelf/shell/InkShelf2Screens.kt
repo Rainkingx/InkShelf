@@ -75,13 +75,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -465,9 +468,11 @@ internal fun InkShelf2HomeScreen(
             InkShelf2PulsePreview(
                 articles = pulseArticles,
                 loading = pulseLoading,
-                showVideos = pulseShowVideos,
-                onShowVideos = { pulseShowVideos = it },
-                onSeeAll = { onPulseExpandedChange(true) },
+                onSeeAll = {
+                    // Open the complete Pulse on its default Articles tab.
+                    pulseShowVideos = false
+                    onPulseExpandedChange(true)
+                },
                 onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
             )
         }
@@ -557,6 +562,70 @@ private fun ComicInkLine(value: String, ink: Color, fontSize: androidx.compose.u
             ),
             maxLines = 1,
             softWrap = false,
+        )
+    }
+}
+
+/**
+ * Compact details shortcut: one of the three equally sized actions under
+ * the comic artwork. No full-width pill buttons or nested navigation changes.
+ */
+@Composable
+private fun InkShelf2DetailQuickAction(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    highlight: Boolean = false,
+) {
+    val tint = when {
+        !enabled -> InkShelf2Colors.Muted.copy(alpha = 0.72f)
+        highlight -> InkShelf2Colors.AccentLight
+        else -> InkShelf2Colors.Text
+    }
+    val iconShape = RoundedCornerShape(17.dp)
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 3.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(57.dp)
+                .clip(iconShape)
+                .background(
+                    if (highlight && enabled) InkShelf2Colors.AccentLight.copy(alpha = 0.17f)
+                    else InkShelf2Colors.SurfaceRaised.copy(alpha = 0.70f),
+                )
+                .border(
+                    1.dp,
+                    if (highlight && enabled) InkShelf2Colors.AccentLight.copy(alpha = 0.65f)
+                    else InkShelf2Colors.Border.copy(alpha = 0.85f),
+                    iconShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(29.dp),
+            )
+        }
+        Text(
+            text = label,
+            color = tint,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -803,33 +872,48 @@ internal fun InkShelf2DetailsScreen(
         }
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                InkShelf2ActionButton(
-                    label = when {
-                        isLoadingIssues && chapters.isEmpty() -> "Loading Issues…"
-                        hasReadingProgress -> "Continue Reading"
-                        else -> "Read Now"
-                    },
-                    leadingIcon = Icons.Filled.PlayArrow,
-                    onClick = onRead,
+                // Three compact icon actions replace the former stacked pill
+                // buttons, while retaining the original read/download/save
+                // enablement and callbacks.
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    // As in InkShelf 1, reading becomes available as soon as
-                    // an actual issue exists. Never offer a dead Read Now tap.
-                    enabled = !isOpeningReader && !isLoadingIssues &&
-                        chapters.isNotEmpty() && sourceLinkError == null,
-                )
-                Spacer(Modifier.height(9.dp))
-                InkShelf2ActionButton(
-                    label = when {
-                        !canDownload -> "Downloads Unavailable"
-                        pendingDownloads.isEmpty() -> "All Issues Saved or Queued"
-                        else -> "Download Issues"
-                    },
-                    leadingIcon = Icons.Outlined.FileDownload,
-                    onClick = { downloadChoicesOpen = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    outlined = true,
-                    enabled = canDownload && !isLoadingIssues && pendingDownloads.isNotEmpty(),
-                )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    InkShelf2DetailQuickAction(
+                        label = when {
+                            isLoadingIssues && chapters.isEmpty() -> "Loading Issues"
+                            hasReadingProgress -> "Continue Reading"
+                            else -> "Read Now"
+                        },
+                        icon = Icons.Filled.PlayArrow,
+                        onClick = onRead,
+                        modifier = Modifier.weight(1f),
+                        highlight = true,
+                        enabled = !isOpeningReader && !isLoadingIssues &&
+                            chapters.isNotEmpty() && sourceLinkError == null,
+                    )
+                    InkShelf2DetailQuickAction(
+                        label = when {
+                            !canDownload -> "Unavailable"
+                            pendingDownloads.isEmpty() -> "Downloaded"
+                            else -> "Download Issues"
+                        },
+                        icon = Icons.Outlined.FileDownload,
+                        onClick = { downloadChoicesOpen = true },
+                        modifier = Modifier.weight(1f),
+                        enabled = canDownload && !isLoadingIssues &&
+                            pendingDownloads.isNotEmpty(),
+                    )
+                    InkShelf2DetailQuickAction(
+                        label = if (manga.favorite) "In Library" else "Add to Library",
+                        icon = if (manga.favorite) Icons.Outlined.CheckCircleOutline else Icons.Outlined.Add,
+                        onClick = onSave,
+                        modifier = Modifier.weight(1f),
+                        enabled = !manga.favorite,
+                    )
+                }
+                Spacer(Modifier.height(15.dp))
                 if (queuedChapterIds.isNotEmpty()) {
                     if (waitingForWifi) {
                         Text(
@@ -872,16 +956,7 @@ internal fun InkShelf2DetailsScreen(
                         fontSize = 12.sp,
                     )
                 }
-                Spacer(Modifier.height(8.dp))
-                InkShelf2ActionButton(
-                    label = if (manga.favorite) "In Library" else "Save to Library",
-                    leadingIcon = if (manga.favorite) Icons.Outlined.CheckCircleOutline else Icons.Outlined.Add,
-                    onClick = onSave,
-                    modifier = Modifier.fillMaxWidth(),
-                    outlined = true,
-                    enabled = !manga.favorite,
-                )
-                Spacer(Modifier.height(15.dp))
+                Spacer(Modifier.height(17.dp))
                 InkShelf2PageHeading("Synopsis")
                 Spacer(Modifier.height(8.dp))
                 Text(
