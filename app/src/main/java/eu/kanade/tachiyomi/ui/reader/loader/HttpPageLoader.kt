@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
+import timber.log.Timber
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.concurrent.PriorityBlockingQueue
@@ -223,6 +225,13 @@ class HttpPageLoader(
             page.status = Page.State.READY
         } catch (e: Throwable) {
             if (e is CancellationException) throw e
+            // XOXO image URLs can expire or be served from transient mirrors.
+            // Ask its own extension for a fresh list ONCE before looking at
+            // another provider; this also works if the original cached URLs
+            // were populated by an older version of XOXO.
+            if (source.name.contains("xoxo", ignoreCase = true) &&
+                retryXoxoWithFreshPageList(page)
+            ) return
             // ReaderPage keeps its original chapter, so progress and
             // favourites remain attached to the user's original source.
             val fallback = try {
@@ -262,6 +271,49 @@ class HttpPageLoader(
             } else {
                 page.status = Page.State.ERROR
             }
+        }
+    }
+
+    /**
+     * XOXO sometimes returns expired image links and deliberate HTTP 404
+     * responses. Re-run its own chapter parser, then try the new image link
+     * through XOXO's client (which contains its specific 404 workaround).
+     * No library writes, and no blind transfer of page indices.
+     */
+    private suspend fun retryXoxoWithFreshPageList(page: ReaderPage): Boolean {
+        return try {
+            val chapterSize = chapter.pages?.size ?: return false
+            val pages = withTimeout(15_000L) { source.getPageList(chapter.chapter) }
+            if (pages.size != chapterSize) return false
+            val fresh = pages.getOrNull(page.index) ?: return false
+            val requested = Page(page.index, fresh.url, fresh.imageUrl)
+            if (requested.imageUrl.isNullOrBlank()) {
+                requested.imageUrl = withTimeout(9_000L) { source.getImageUrl(requested) }
+            }
+            val url = requested.imageUrl?.takeIf { it.startsWith("http", true) }
+                ?: return false
+            if (!chapterCache.isImageInCache(url)) {
+                page.status = Page.State.DOWNLOAD_IMAGE
+                val response = withTimeout(13_000L) { source.getImage(requested) }
+                chapterCache.putImageToCache(url, response)
+            }
+            val file = chapterCache.getImageFile(url)
+            if (file.length() <= 0L ||
+                ImageUtil.findImageType { file.inputStream() } == null
+            ) {
+                chapterCache.removeFileFromCache(file.name)
+                return false
+            }
+            page.imageUrl = url
+            page.stream = { file.inputStream() }
+            page.status = Page.State.READY
+            Timber.i("XOXO page %s recovered using fresh page links", page.index + 1)
+            true
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (error: Exception) {
+            Timber.w(error, "XOXO image retry failed for page %s", page.index + 1)
+            false
         }
     }
 }
