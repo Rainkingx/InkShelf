@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -273,7 +274,7 @@ private fun SettingsHeading(title: String) {
 }
 
 @Composable
-private fun SettingsPanel(content: @Composable Column.() -> Unit) {
+private fun SettingsPanel(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 14.dp)
