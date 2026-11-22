@@ -1,6 +1,6 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,9 +40,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import eu.kanade.tachiyomi.R
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -164,7 +165,11 @@ private fun InkShelf2Header(
             .padding(start = 16.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        InkShelf2BookMark()
+        Image(
+            painter = painterResource(id = R.mipmap.ic_launcher),
+            contentDescription = "InkShelf logo",
+            modifier = Modifier.size(36.dp),
+        )
         Text(
             text = "InkShelf",
             modifier = Modifier.padding(start = 7.dp).weight(1f),
@@ -208,31 +213,6 @@ private fun InkShelf2Header(
                 tint = InkShelf2Colors.Text,
             )
         }
-    }
-}
-
-/** Original vector book mark, rather than a bitmap borrowed from the old app bar. */
-@Composable
-private fun InkShelf2BookMark() {
-    Canvas(modifier = Modifier.size(30.dp)) {
-        val w = size.width
-        val h = size.height
-        val left = Path().apply {
-            moveTo(w * 0.49f, h * 0.20f)
-            cubicTo(w * 0.32f, h * 0.12f, w * 0.15f, h * 0.10f, w * 0.05f, h * 0.18f)
-            lineTo(w * 0.05f, h * 0.82f)
-            cubicTo(w * 0.23f, h * 0.75f, w * 0.39f, h * 0.77f, w * 0.49f, h * 0.86f)
-            close()
-        }
-        val right = Path().apply {
-            moveTo(w * 0.53f, h * 0.20f)
-            cubicTo(w * 0.71f, h * 0.11f, w * 0.85f, h * 0.13f, w * 0.95f, h * 0.20f)
-            lineTo(w * 0.95f, h * 0.83f)
-            cubicTo(w * 0.77f, h * 0.76f, w * 0.64f, h * 0.78f, w * 0.53f, h * 0.86f)
-            close()
-        }
-        drawPath(left, InkShelf2Colors.AccentLight)
-        drawPath(right, InkShelf2Colors.Accent)
     }
 }
 
