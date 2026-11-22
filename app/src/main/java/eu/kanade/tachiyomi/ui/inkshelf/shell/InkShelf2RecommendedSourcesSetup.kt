@@ -50,8 +50,8 @@ private const val RECOMMENDED_REPO = "https://github.com/keiyoushi/extensions/ra
 private data class RecommendedSource(val title: String, val packageName: String)
 private val RECOMMENDED_WESTERN_SOURCES = listOf(
     RecommendedSource("BatCave", "eu.kanade.tachiyomi.extension.en.batcave"),
-    RecommendedSource("Read Comics Online", "eu.kanade.tachiyomi.extension.en.readcomicsonline"),
-    RecommendedSource("XOXO Comics", "eu.kanade.tachiyomi.extension.en.xoxocomics"),
+    RecommendedSource("ReadComicsOnline.lol", "eu.kanade.tachiyomi.extension.en.readcomicsonlinelol"),
+    RecommendedSource("ComicHubFree", "eu.kanade.tachiyomi.extension.en.comichubfree"),
 )
 
 /** Adds the official index non-destructively. Existing repositories are never replaced. */
@@ -75,8 +75,8 @@ internal fun InkShelf2RecommendedSourcesSetup(
     val scope = rememberCoroutineScope()
 
     var batCaveSelected by rememberSaveable { mutableStateOf(true) }
-    var readComicsSelected by rememberSaveable { mutableStateOf(true) }
-    var xoxoSelected by rememberSaveable { mutableStateOf(true) }
+    var readComicsLolSelected by rememberSaveable { mutableStateOf(true) }
+    var comicHubSelected by rememberSaveable { mutableStateOf(true) }
     var repositoryReady by remember { mutableStateOf(false) }
     var running by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Connecting the recommended comic repository…") }
@@ -111,8 +111,8 @@ internal fun InkShelf2RecommendedSourcesSetup(
 
     val selected = buildList {
         if (batCaveSelected) add(RECOMMENDED_WESTERN_SOURCES[0])
-        if (readComicsSelected) add(RECOMMENDED_WESTERN_SOURCES[1])
-        if (xoxoSelected) add(RECOMMENDED_WESTERN_SOURCES[2])
+        if (readComicsLolSelected) add(RECOMMENDED_WESTERN_SOURCES[1])
+        if (comicHubSelected) add(RECOMMENDED_WESTERN_SOURCES[2])
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -124,15 +124,15 @@ internal fun InkShelf2RecommendedSourcesSetup(
         )
         Text(
             "The Keiyoushi extension repository is added automatically. These three sources " +
-                "are preselected; uncheck any you don't want.",
+                "are preselected instead of XOXO; uncheck any you don't want.",
             color = InkShelf2Colors.Muted,
             fontSize = 12.sp,
             lineHeight = 17.sp,
         )
         val selections = listOf(
             Triple(RECOMMENDED_WESTERN_SOURCES[0].title, batCaveSelected, { checked: Boolean -> batCaveSelected = checked }),
-            Triple(RECOMMENDED_WESTERN_SOURCES[1].title, readComicsSelected, { checked: Boolean -> readComicsSelected = checked }),
-            Triple(RECOMMENDED_WESTERN_SOURCES[2].title, xoxoSelected, { checked: Boolean -> xoxoSelected = checked }),
+            Triple(RECOMMENDED_WESTERN_SOURCES[1].title, readComicsLolSelected, { checked: Boolean -> readComicsLolSelected = checked }),
+            Triple(RECOMMENDED_WESTERN_SOURCES[2].title, comicHubSelected, { checked: Boolean -> comicHubSelected = checked }),
         )
         selections.forEach { (title, checked, update) ->
             Row(
