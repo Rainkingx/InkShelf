@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,8 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -73,7 +77,9 @@ private enum class ShelfFilter(val title: String) {
 @Composable
 internal fun InkShelf2LibraryScreen(
     library: List<InkShelf2LibraryItem>,
+    readingHistory: List<InkShelf2Engine.Reading>,
     padding: PaddingValues,
+    onRead: (Manga) -> Unit,
     onOpen: (Manga) -> Unit,
     onComicAction: (Manga, Boolean, Boolean) -> Unit,
 ) {
@@ -208,7 +214,22 @@ internal fun InkShelf2LibraryScreen(
                 ShelfFilter.COMPLETED -> "No comics have been fully read yet."
                 ShelfFilter.ON_HOLD -> "No comics are On Hold. You can assign them to an On Hold category in your existing library."
             }
-            InkShelf2EmptyShelf(message)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
+            ) {
+                if (readingHistory.isNotEmpty()) {
+                    item(key = "library-continue-reading") {
+                        InkShelf2LibraryContinueReading(
+                            history = readingHistory,
+                            gutter = 16.dp,
+                            onRead = onRead,
+                            onSeeAll = { selected = ShelfFilter.READING.name },
+                        )
+                    }
+                }
+                item { InkShelf2EmptyShelf(message) }
+            }
         } else if (grid) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
@@ -217,6 +238,19 @@ internal fun InkShelf2LibraryScreen(
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (readingHistory.isNotEmpty()) {
+                    item(
+                        key = "library-continue-reading",
+                        span = { GridItemSpan(maxLineSpan) },
+                    ) {
+                        InkShelf2LibraryContinueReading(
+                            history = readingHistory,
+                            gutter = 2.dp,
+                            onRead = onRead,
+                            onSeeAll = { selected = ShelfFilter.READING.name },
+                        )
+                    }
+                }
                 gridItems(
                     items = visible,
                     key = { it.manga.id ?: it.manga.url },
@@ -233,6 +267,16 @@ internal fun InkShelf2LibraryScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
             ) {
+                if (readingHistory.isNotEmpty()) {
+                    item(key = "library-continue-reading") {
+                        InkShelf2LibraryContinueReading(
+                            history = readingHistory,
+                            gutter = 16.dp,
+                            onRead = onRead,
+                            onSeeAll = { selected = ShelfFilter.READING.name },
+                        )
+                    }
+                }
                 items(visible, key = { it.manga.id ?: it.manga.url }) { item ->
                     ShelfListRow(
                         item,
@@ -245,6 +289,93 @@ internal fun InkShelf2LibraryScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * The former Home Continue Reading shelf, now placed directly below the
+ * Library counters inside the scroll content in both grid and list modes.
+ * Uses the same recent-reading history and exact reader callback as before.
+ */
+@Composable
+private fun InkShelf2LibraryContinueReading(
+    history: List<InkShelf2Engine.Reading>,
+    gutter: Dp,
+    onRead: (Manga) -> Unit,
+    onSeeAll: () -> Unit,
+) {
+    if (history.isEmpty()) return
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = gutter),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Continue Reading",
+                color = InkShelf2Colors.Text,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                "See all  ›",
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onSeeAll)
+                    .padding(horizontal = 6.dp, vertical = 8.dp),
+                color = InkShelf2Colors.AccentLight,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val coverWidth = (maxWidth - gutter * 2 - 20.dp) / 3
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = gutter),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(
+                    items = history,
+                    key = { "${it.manga.source}:${it.manga.url}" },
+                ) { reading ->
+                    ComicCoverCard(
+                        manga = reading.manga,
+                        percent = reading.percent,
+                        width = coverWidth,
+                        showTitle = false,
+                        libraryShape = true,
+                        onClick = { onRead(reading.manga) },
+                    )
+                }
+            }
+        }
+        val lastRead = history.first()
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = gutter, vertical = 10.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onRead(lastRead.manga) },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            Text(
+                text = "LAST READ  •  ${lastRead.manga.title}",
+                modifier = Modifier.weight(1f),
+                color = InkShelf2Colors.Muted,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                "RESUME  ›",
+                color = InkShelf2Colors.AccentLight,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
         }
     }
 }
