@@ -148,7 +148,7 @@ internal fun InkShelf2RecommendedSourcesSetup(
             }
         }
         Text(
-            if (installedSourceCount > 0) "$" + "{installedSourceCount} comic sources currently enabled"
+            if (installedSourceCount > 0) installedSourceCount.toString() + " comic sources currently enabled"
             else "No enabled comic sources yet",
             color = InkShelf2Colors.Muted,
             fontSize = 12.sp,
