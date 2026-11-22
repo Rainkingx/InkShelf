@@ -236,13 +236,16 @@ internal class InkShelf2SourcesEngine {
      * The legacy reader and existing reading/download flags are preserved.
      */
     private suspend fun refreshUsingJ2K(local: Manga, source: Source): ResolvedComic {
+        // XOXO paginates the full issue list. The original J2K details flow
+        // does not impose the short 2.0 catalogue timeouts on this operation.
+        val xoxo = source.name.contains("xoxo", ignoreCase = true)
         val existingChapters = database.getChapters(local).executeAsBlocking()
         if (existingChapters.isNotEmpty() && !local.description.isNullOrBlank()) {
             return ResolvedComic(local, source.name)
         }
         var failure: Throwable? = null
         val update = try {
-            withTimeout(24_000L) {
+            withTimeout(if (xoxo) 60_000L else 24_000L) {
                 source.getMangaUpdate(
                     manga = local.copy(),
                     chapters = emptyList(),
@@ -284,7 +287,7 @@ internal class InkShelf2SourcesEngine {
         // endpoint fails. Use that original J2K API as a fallback.
         if (database.getChapters(local).executeAsBlocking().isEmpty()) {
             val chapterList = try {
-                withTimeout(15_000L) { source.getChapterList(local) }
+                withTimeout(if (xoxo) 45_000L else 15_000L) { source.getChapterList(local) }
             } catch (cancel: CancellationException) {
                 if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
                 failure = cancel
