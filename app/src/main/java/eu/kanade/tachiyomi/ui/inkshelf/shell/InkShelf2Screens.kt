@@ -115,7 +115,10 @@ internal fun InkShelf2HomeScreen(
         contentPadding = padding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item(key = "personal-greeting") {
+        item(key = "continue-reading") {
+            // A low-key, personal greeting rather than an oversized profile
+            // panel. Reading controls stay front and centre; the profile and
+            // its statistics remain available from Menu/Library.
             val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
             val greeting = when (hour) {
                 in 5..11 -> "Good morning"
@@ -123,43 +126,16 @@ internal fun InkShelf2HomeScreen(
                 else -> "Good evening"
             }
             val name = profileName.takeIf { it.isNotBlank() }
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 17.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(7.dp),
-            ) {
-                Text(
-                    if (name == null) "$greeting!" else "$greeting, $name!",
-                    fontSize = 23.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = InkShelf2Colors.Text,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    "Your comics, your reading, your space.",
-                    color = InkShelf2Colors.Muted,
-                    fontSize = 12.sp,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        "${library.count { it.state == InkShelf2ReadingState.READING }} reading",
-                        color = InkShelf2Colors.AccentLight,
-                        fontSize = 11.sp,
-                    )
-                    Text(
-                        "${library.size} in library",
-                        color = InkShelf2Colors.Muted,
-                        fontSize = 11.sp,
-                    )
-                    Text(
-                        "${library.count { it.state == InkShelf2ReadingState.COMPLETED }} finished",
-                        color = InkShelf2Colors.Muted,
-                        fontSize = 11.sp,
-                    )
-                }
-            }
-        }
-        item {
+            Text(
+                text = if (name == null) greeting else "$greeting, $name",
+                modifier = Modifier.fillMaxWidth()
+                    .padding(start = 18.dp, end = 18.dp, top = 9.dp, bottom = 9.dp),
+                color = InkShelf2Colors.Muted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             InkShelf2SectionHeading("Continue Reading", onClick = onLibrary)
             Spacer(Modifier.height(9.dp))
             val books = home?.history.orEmpty()
