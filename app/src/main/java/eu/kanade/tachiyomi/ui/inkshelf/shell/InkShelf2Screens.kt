@@ -90,6 +90,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -150,9 +151,18 @@ internal fun InkShelf2HomeScreen(
     var pulseShowVideos by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = pulseExpanded) { onPulseExpandedChange(false) }
     LaunchedEffect(Unit) {
-        pulseArticles = InkShelf2PulseFeed.cached(context)
-        pulseArticles = InkShelf2PulseFeed.refresh(context)
-        pulseLoading = false
+        // Pulse is optional: stale or unavailable feeds must never crash Home
+        // or leave the news section stuck with a loading indicator.
+        try {
+            pulseArticles = InkShelf2PulseFeed.cached(context)
+            pulseArticles = InkShelf2PulseFeed.refresh(context)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Preserve whatever cached articles were already displayed.
+        } finally {
+            pulseLoading = false
+        }
     }
     if (pulseExpanded) {
         InkShelf2PulseScreen(
