@@ -249,12 +249,12 @@ private fun shelfPublisher(manga: Manga): String? {
     }
 }
 
-private val shelfYearPattern =
-    Regex("""[\(\[](?:19|20)\d{2}(?:\s*[-–]\s*(?:19|20)\d{2})?\s*[\)\]]""")
+private val shelfYearPattern = Regex(
+    """[\(\[]((?:19|20)\d{2})(?:\s*[-–—]\s*(?:(?:19|20)\d{2}|ongoing|present)?)?\s*[\)\]]""",
+    RegexOption.IGNORE_CASE,
+)
 private fun shelfYear(manga: Manga): Int? =
-    shelfYearPattern.find(manga.title)?.value?.let {
-        Regex("""(?:19|20)\d{2}""").find(it)?.value?.toIntOrNull()
-    }
+    shelfYearPattern.find(manga.title)?.groupValues?.getOrNull(1)?.toIntOrNull()
 
 private val shelfGenres = mapOf(
     "Horror" to listOf("horror"),
