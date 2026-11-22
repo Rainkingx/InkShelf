@@ -369,7 +369,7 @@ internal fun InkShelf2SourceHub(
                         )
                     }
                 }
-                items(installed.filter { showNsfw || !it.isNsfw }.sortedBy { it.name },
+                items(installed.sortedBy { it.name },
                     key = { "installed:" + it.pkgName }) { ext ->
                     val paused = ext.pkgName in pausedPackages
                     val update = available.firstOrNull { it.pkgName == ext.pkgName }
