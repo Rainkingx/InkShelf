@@ -8,6 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -35,6 +37,9 @@ internal object InkShelf2PulseArchive {
     private const val PREFS = "inkshelf2_pulse_archive_v1"
     private const val YEAR_MS = 365L * 24 * 60 * 60 * 1000
     private const val SEARCH_TTL_MS = 24L * 60 * 60 * 1000
+    private const val EMPTY_SEARCH_TTL_MS = 60L * 60 * 1000
+    private const val MAX_API_CHARS = 850_000
+    private val lookupMutex = Mutex()
     private const val MAX_NEWS = 650
     private const val MAX_VIDEOS = 180
     private val lock = Any()
@@ -61,19 +66,21 @@ internal object InkShelf2PulseArchive {
         context: Context,
         comicTitle: String,
     ): List<InkShelf2PulseArticle> = withContext(Dispatchers.IO) {
+        lookupMutex.withLock {
         val appContext = context.applicationContext
         val series = InkShelf2PulseMatcher.searchTerm(comicTitle)
-        if (series == null) return@withContext cached(appContext)
+        if (series == null) return@withLock cached(appContext)
 
         val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val searchKey = "searched_" + series.lowercase(Locale.ROOT).hashCode()
         val prior = prefs.getLong(searchKey, 0L)
-        if (now - prior in 0L until SEARCH_TTL_MS) return@withContext cached(appContext)
+        val ttl = if (prefs.getBoolean(searchKey + "_found", false)) SEARCH_TTL_MS
+            else EMPTY_SEARCH_TTL_MS
+        if (now - prior in 0L until ttl) return@withLock cached(appContext)
 
-        // Mark before fetching: rapid navigation never queues a burst of
-        // duplicate historical lookups for the same title.
-        prefs.edit().putLong(searchKey, now).apply()
+        // Do not mark the lookup before completion. Cancelling navigation
+        // must not suppress retries for a full day.
         val result = coroutineScope {
             publishers.map { publisher ->
                 async(Dispatchers.IO) {
@@ -87,7 +94,11 @@ internal object InkShelf2PulseArchive {
                 }
             }.awaitAll().flatten()
         }
-        record(appContext, result)
+        val merged = record(appContext, result)
+        prefs.edit().putLong(searchKey, now)
+            .putBoolean(searchKey + "_found", result.isNotEmpty()).apply()
+        merged
+        }
     }
 
     private fun queryPublisher(
@@ -122,7 +133,18 @@ internal object InkShelf2PulseArchive {
             if (connection.responseCode !in 200..299) return emptyList()
 
             // Cap the response to avoid retaining unexpectedly large API bodies.
-            val payload = connection.inputStream.bufferedReader().use { it.readText().take(850_000) }
+            val payload = connection.inputStream.bufferedReader().use { reader ->
+                val buffer = CharArray(8_192)
+                val data = StringBuilder()
+                while (data.length < MAX_API_CHARS) {
+                    val read = reader.read(
+                        buffer, 0, minOf(buffer.size, MAX_API_CHARS - data.length),
+                    )
+                    if (read < 0) break
+                    data.append(buffer, 0, read)
+                }
+                data.toString()
+            }
             val rows = JSONArray(payload)
             val output = mutableListOf<InkShelf2PulseArticle>()
             val now = System.currentTimeMillis()
