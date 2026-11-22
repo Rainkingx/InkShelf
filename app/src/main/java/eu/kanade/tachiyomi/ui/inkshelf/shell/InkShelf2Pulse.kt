@@ -427,6 +427,7 @@ internal object InkShelf2PulseFeed {
         return try { !Uri.parse(value).host.isNullOrBlank() } catch (_: Exception) { false }
     }
 }
+
 @Composable
 internal fun InkShelf2PulsePreview(
     articles: List<InkShelf2PulseArticle>,
@@ -434,61 +435,111 @@ internal fun InkShelf2PulsePreview(
     onSeeAll: () -> Unit,
     onOpenArticle: (String) -> Unit,
 ) {
-    InkShelf2SectionHeading("InkShelf Pulse", onClick = onSeeAll, showSeeAll = true)
+    val news = articles.filterNot { it.isVideo }
+    val videos = articles.filter { it.isVideo }
+    InkShelf2SectionHeading("The Pulse", onClick = onSeeAll, showSeeAll = true)
     Text(
-        "Fresh stories from the comic world",
+        "Comic-book news, reviews & videos",
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
         color = InkShelf2Colors.Muted,
         fontSize = 12.sp,
     )
-    if (articles.isEmpty()) {
+    if (news.isEmpty()) {
         Text(
-            if (loading) "Finding the latest comic stories…" else "Comic news is unavailable right now. Tap See all to try again.",
+            if (loading) "Finding the latest comic-book news…" else
+                "Comic news is unavailable right now. Tap See all to check again.",
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             color = InkShelf2Colors.Muted,
             fontSize = 12.sp,
         )
-        return
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        articles.take(2).forEach { article ->
-            Column(
-                modifier = Modifier.weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
-                    .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
-                    .clickable { onOpenArticle(article.url) }
-                    .padding(9.dp),
-            ) {
-                InkShelf2PulseArtwork(article, height = 98)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    article.publisher.uppercase(Locale.UK),
-                    color = InkShelf2Colors.AccentLight,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    article.title,
-                    color = InkShelf2Colors.Text,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp,
-                    maxLines = 3,
-                    minLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 15.sp,
-                )
-                if (article.publishedAt > 0) {
-                    Spacer(Modifier.height(5.dp))
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            news.take(2).forEach { article ->
+                Column(
+                    modifier = Modifier.weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
+                        .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
+                        .clickable { onOpenArticle(article.url) }
+                        .padding(9.dp),
+                ) {
+                    InkShelf2PulseArtwork(article, height = 105)
+                    Spacer(Modifier.height(9.dp))
                     Text(
-                        SimpleDateFormat("d MMM", Locale.UK).format(Date(article.publishedAt)),
-                        color = InkShelf2Colors.Muted,
+                        article.publisher.uppercase(Locale.UK),
+                        color = InkShelf2Colors.AccentLight,
                         fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        article.title,
+                        color = InkShelf2Colors.Text,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        maxLines = 3,
+                        minLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 15.sp,
+                    )
+                    if (article.publishedAt > 0) {
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            SimpleDateFormat("d MMM", Locale.UK).format(Date(article.publishedAt)),
+                            color = InkShelf2Colors.Muted,
+                            fontSize = 10.sp,
+                        )
+                    }
+                }
+            }
+        }
+    }
+    if (videos.isNotEmpty()) {
+        Spacer(Modifier.height(18.dp))
+        Text(
+            "WATCH  •  COMIC NEWS & REVIEWS",
+            modifier = Modifier.padding(horizontal = 16.dp),
+            color = InkShelf2Colors.Text,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        androidx.compose.foundation.lazy.LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(videos.take(5), key = { it.url }) { video ->
+                Column(
+                    modifier = Modifier.width(218.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
+                        .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
+                        .clickable { onOpenArticle(video.url) }
+                        .padding(9.dp),
+                ) {
+                    InkShelf2PulseArtwork(video, height = 116)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        video.publisher.uppercase(Locale.UK),
+                        color = InkShelf2Colors.AccentLight,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        video.title,
+                        color = InkShelf2Colors.Text,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        minLines = 2,
+                        lineHeight = 15.sp,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -498,6 +549,7 @@ internal fun InkShelf2PulsePreview(
 
 @Composable
 private fun InkShelf2PulseArtwork(article: InkShelf2PulseArticle, height: Int) {
+    var failed by remember(article.imageUrl) { mutableStateOf(false) }
     Box(
         modifier = Modifier.fillMaxWidth().height(height.dp)
             .clip(RoundedCornerShape(9.dp))
@@ -508,18 +560,19 @@ private fun InkShelf2PulseArtwork(article: InkShelf2PulseArticle, height: Int) {
             ))),
         contentAlignment = Alignment.Center,
     ) {
-        if (article.imageUrl != null) {
+        if (article.imageUrl != null && !failed) {
             AsyncImage(
                 model = article.imageUrl,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
+                onError = { failed = true },
             )
             Box(
                 modifier = Modifier.fillMaxSize()
                     .background(Brush.verticalGradient(listOf(
                         Color.Transparent,
-                        InkShelf2Colors.Background.copy(alpha = 0.25f),
+                        InkShelf2Colors.Background.copy(alpha = 0.30f),
                     ))),
             )
         } else {
@@ -530,13 +583,31 @@ private fun InkShelf2PulseArtwork(article: InkShelf2PulseArticle, height: Int) {
                 modifier = Modifier.size(34.dp),
             )
         }
-        Icon(
-            Icons.Outlined.OpenInNew,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.align(Alignment.TopEnd)
-                .padding(7.dp).size(15.dp),
-        )
+        if (article.isVideo) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(InkShelf2Colors.Accent.copy(alpha = 0.92f))
+                    .border(1.dp, InkShelf2Colors.AccentLight, RoundedCornerShape(50)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.PlayArrow,
+                    contentDescription = "Watch on YouTube",
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
+        } else {
+            Icon(
+                Icons.Outlined.OpenInNew,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.align(Alignment.TopEnd)
+                    .padding(7.dp).size(15.dp),
+            )
+        }
     }
 }
 
@@ -548,6 +619,8 @@ internal fun InkShelf2PulseScreen(
     onBack: () -> Unit,
     onOpenArticle: (String) -> Unit,
 ) {
+    val news = articles.filterNot { it.isVideo }
+    val videos = articles.filter { it.isVideo }
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = PaddingValues(
@@ -562,70 +635,117 @@ internal fun InkShelf2PulseScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back to Home", tint = InkShelf2Colors.Text)
+                    Icon(
+                        Icons.Outlined.ArrowBack,
+                        contentDescription = "Back to Home",
+                        tint = InkShelf2Colors.Text,
+                    )
                 }
                 Column {
-                    Text("InkShelf Pulse", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = InkShelf2Colors.Text)
-                    Text("Comic stories worth exploring", color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                    Text(
+                        "The Pulse",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp,
+                        color = InkShelf2Colors.Text,
+                    )
+                    Text(
+                        "Comic-book news, reviews & videos",
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 12.sp,
+                    )
                 }
             }
         }
-        if (articles.isEmpty()) {
+        if (news.isEmpty() && videos.isEmpty()) {
             item {
                 Text(
-                    if (loading) "Loading comic news…" else "News couldn't be loaded. Please check your connection and visit again.",
+                    if (loading) "Loading comic-book news…" else
+                        "No news or videos available right now. Check your connection and try again.",
                     modifier = Modifier.padding(18.dp),
                     color = InkShelf2Colors.Muted,
                 )
             }
         }
-        items(articles, key = { it.url }) { article ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.72f))
-                    .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.60f), RoundedCornerShape(14.dp))
-                    .clickable { onOpenArticle(article.url) }
-                    .padding(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(modifier = Modifier.width(106.dp)) {
-                    InkShelf2PulseArtwork(article, height = 95)
-                }
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        article.publisher.uppercase(Locale.UK),
-                        color = InkShelf2Colors.AccentLight,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        article.title,
-                        color = InkShelf2Colors.Text,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = 16.sp,
-                    )
-                    if (article.publishedAt > 0) {
-                        Text(
-                            SimpleDateFormat("d MMM yyyy", Locale.UK).format(Date(article.publishedAt)),
-                            color = InkShelf2Colors.Muted,
-                            fontSize = 10.sp,
-                        )
-                    }
-                }
-            }
-        }
-        if (articles.isNotEmpty()) {
+        if (news.isNotEmpty()) {
             item {
                 Text(
-                    "Headlines from AIPT Comics and The Beat. Tap an article to read it on the publisher's website.",
+                    "LATEST NEWS",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
+                    color = InkShelf2Colors.AccentLight,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            items(news, key = { it.url }) { article ->
+                InkShelf2PulseListCard(article, onOpenArticle)
+            }
+        }
+        if (videos.isNotEmpty()) {
+            item {
+                Text(
+                    "WATCH  •  NEWS & REVIEWS",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
+                    color = InkShelf2Colors.AccentLight,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            items(videos, key = { it.url }) { video ->
+                InkShelf2PulseListCard(video, onOpenArticle)
+            }
+        }
+        if (news.isNotEmpty() || videos.isNotEmpty()) {
+            item {
+                Text(
+                    "News: AIPT Comics and The Beat. Videos: Near Mint Condition, ComicPop, Casually Comics and Variant Comics. Open each item at its original source.",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     color = InkShelf2Colors.Muted,
                     fontSize = 11.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InkShelf2PulseListCard(
+    article: InkShelf2PulseArticle,
+    onOpenArticle: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.72f))
+            .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.60f), RoundedCornerShape(14.dp))
+            .clickable { onOpenArticle(article.url) }
+            .padding(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.width(106.dp)) {
+            InkShelf2PulseArtwork(article, height = 95)
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                article.publisher.uppercase(Locale.UK),
+                color = InkShelf2Colors.AccentLight,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                article.title,
+                color = InkShelf2Colors.Text,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 16.sp,
+            )
+            if (article.publishedAt > 0) {
+                Text(
+                    SimpleDateFormat("d MMM yyyy", Locale.UK).format(Date(article.publishedAt)),
+                    color = InkShelf2Colors.Muted,
+                    fontSize = 10.sp,
                 )
             }
         }
