@@ -24,6 +24,8 @@ import androidx.lifecycle.lifecycleScope
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.data.download.DownloadJob
+import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.source.CatalogueSource
@@ -34,6 +36,9 @@ import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverRefreshWorker
+import eu.kanade.tachiyomi.util.system.isConnectedToWifi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
@@ -286,8 +291,13 @@ class InkShelf2Activity : AppCompatActivity() {
                         var queuedIds by remember(comic.source, comic.url) {
                             mutableStateOf<Set<Long>>(emptySet())
                         }
-                        // Observe the original J2K download cache/queue while
-                        // details are visible. No second downloader or database.
+                        var downloadStates by remember(comic.source, comic.url) {
+                            mutableStateOf<Map<Long, InkShelf2IssueDownloadInfo>>(emptyMap())
+                        }
+                        var waitingForWifi by remember { mutableStateOf(false) }
+                        var downloadsPaused by remember { mutableStateOf(false) }
+                        // Read the existing J2K download cache and queue. The
+                        // worker can leave items queued when Wi-Fi-only is on.
                         LaunchedEffect(comic.source, comic.url, chapters) {
                             if (chapters.isNotEmpty()) {
                                 downloadManager.awaitDownloadCacheReady()
@@ -295,14 +305,30 @@ class InkShelf2Activity : AppCompatActivity() {
                                     downloadedIds = chapters.filter {
                                         it.id != null && downloadManager.isChapterDownloaded(it, comic)
                                     }.mapNotNull { it.id }.toSet()
-                                    queuedIds = downloadManager.queue.filter {
+                                    val queued = downloadManager.queue.filter {
                                         it.manga.source == comic.source && it.manga.url == comic.url
+                                    }
+                                    downloadStates = queued.mapNotNull { entry ->
+                                        entry.chapter.id?.let { id ->
+                                            id to InkShelf2IssueDownloadInfo(
+                                                status = entry.status,
+                                                progress = entry.progress.coerceIn(0, 100),
+                                            )
+                                        }
+                                    }.toMap()
+                                    queuedIds = queued.filter {
+                                        it.status != Download.State.ERROR &&
+                                            it.status != Download.State.NOT_DOWNLOADED
                                     }.mapNotNull { it.chapter.id }.toSet()
-                                    delay(2_500)
+                                    waitingForWifi = preferences.downloadOnlyOverWifi() &&
+                                        !applicationContext.isConnectedToWifi()
+                                    downloadsPaused = downloadManager.isPaused()
+                                    delay(1_000)
                                 }
                             } else {
                                 downloadedIds = emptySet()
                                 queuedIds = emptySet()
+                                downloadStates = emptyMap()
                             }
                         }
                         val similarPicks = remember(detailsRevision, comic.source, comic.url, discover, library, enabledSources) {
@@ -345,6 +371,11 @@ class InkShelf2Activity : AppCompatActivity() {
                         canDownload = sourceManager.get(comic.source) is HttpSource && sourceLinkError == null,
                         downloadedChapterIds = downloadedIds,
                         queuedChapterIds = queuedIds,
+                        downloadStates = downloadStates,
+                        waitingForWifi = waitingForWifi,
+                        downloadsPaused = downloadsPaused,
+                        onResumeDownloads = { resumeDownloads() },
+                        onDeleteIssueDownload = { chapter -> removeOfflineIssue(comic, chapter) },
                         onSave = { saveComic(comic) },
                         similarComics = similarPicks,
                         onSimilarComic = { related ->
@@ -489,6 +520,9 @@ class InkShelf2Activity : AppCompatActivity() {
                         library = library,
                         padding = padding,
                         onOpen = openComicDetails,
+                        onComicAction = { manga, removeFromLibrary, deleteDownloads ->
+                            manageComic(manga, removeFromLibrary, deleteDownloads)
+                        },
                     )
                     tab == InkShelf2Tab.ACCOUNT && metronOpen -> InkShelf2MenuMetronScreen(
                         padding = padding,
@@ -628,11 +662,23 @@ class InkShelf2Activity : AppCompatActivity() {
                     ).show()
                     return@launch
                 }
-                downloadManager.downloadChapters(manga, eligible)
+                // Restart failed jobs; simply re-queuing them is a no-op.
+                val retries = eligible.filter {
+                    downloadManager.getChapterDownloadOrNull(it)?.status == Download.State.ERROR
+                }
+                retries.forEach { downloadManager.startDownloadNow(it) }
+                val toQueue = eligible.filter {
+                    downloadManager.getChapterDownloadOrNull(it) == null &&
+                        !downloadManager.isChapterDownloaded(it, manga)
+                }
+                if (toQueue.isNotEmpty()) downloadManager.downloadChapters(manga, toQueue)
                 if (newlySaved) refreshEpoch += 1
                 Toast.makeText(
                     this@InkShelf2Activity,
-                    "Added ${eligible.size} issue${if (eligible.size == 1) "" else "s"} to downloads",
+                    when {
+                        retries.isNotEmpty() && toQueue.isEmpty() -> "Retrying downloads"
+                        else -> "Added ${toQueue.size} issue${if (toQueue.size == 1) "" else "s"} to downloads"
+                    },
                     Toast.LENGTH_SHORT,
                 ).show()
             } catch (cancel: CancellationException) {
@@ -641,6 +687,56 @@ class InkShelf2Activity : AppCompatActivity() {
                 Toast.makeText(
                     this@InkShelf2Activity, "Unable to queue download", Toast.LENGTH_LONG,
                 ).show()
+            }
+        }
+    }
+
+    private fun resumeDownloads() {
+        if (preferences.downloadOnlyOverWifi() && !applicationContext.isConnectedToWifi()) {
+            Toast.makeText(this, "Waiting for Wi-Fi. Change Wi-Fi-only in Download settings to use mobile data.", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (downloadManager.hasQueue()) {
+            DownloadJob.start(applicationContext)
+            Toast.makeText(this, "Resuming downloads", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun removeOfflineIssue(manga: Manga, chapter: Chapter) {
+        val source = sourceManager.get(manga.source) ?: return
+        downloadManager.deleteChapters(listOf(chapter), manga, source, force = true)
+        Toast.makeText(this, "Removing offline issue", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun manageComic(manga: Manga, removeFromLibrary: Boolean, deleteDownloads: Boolean) {
+        lifecycleScope.launch {
+            try {
+                if (deleteDownloads) {
+                    val source = sourceManager.get(manga.source)
+                    if (source == null) {
+                        Toast.makeText(this@InkShelf2Activity, "Comic source unavailable; downloads unchanged", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    withContext(Dispatchers.IO) { downloadManager.deleteManga(manga, source) }
+                }
+                if (removeFromLibrary && !engine.removeFromLibrary(manga)) {
+                    Toast.makeText(this@InkShelf2Activity, "Could not remove comic from Library", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                refreshEpoch += 1
+                Toast.makeText(
+                    this@InkShelf2Activity,
+                    when {
+                        removeFromLibrary && deleteDownloads -> "Removed from Library and deleted offline issues"
+                        removeFromLibrary -> "Removed from Library; offline files kept"
+                        else -> "Offline issues deleted; comic kept in Library"
+                    },
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                Toast.makeText(this@InkShelf2Activity, "Could not update comic", Toast.LENGTH_LONG).show()
             }
         }
     }
