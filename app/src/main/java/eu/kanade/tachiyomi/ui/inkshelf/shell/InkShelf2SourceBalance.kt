@@ -12,10 +12,12 @@ internal object InkShelf2SourceBalance {
     private fun priority(sourceName: String): Int {
         val n = sourceName.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]"), "")
         return when {
-            n.contains("batcave") -> 0
-            n.contains("readcomicsonline") || n.contains("readcomiconline") -> 1
-            n.contains("xoxocomics") || n.contains("xoxo") -> 5
-            else -> 2
+            n.contains("readcomicsonlinelol") -> 0
+            n.contains("comichubfree") -> 1
+            n.contains("batcave") -> 2
+            n.contains("readcomicsonline") || n.contains("readcomiconline") -> 4
+            n.contains("xoxocomics") || n.contains("xoxo") -> 6
+            else -> 3
         }
     }
 
