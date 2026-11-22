@@ -116,7 +116,7 @@ internal fun InkShelf2WelcomeScreen(
                     0 -> {
                         GuideText(
                             "Make it yours",
-                            "Choose what InkShelf calls you. This is a private name stored only on this device — no email, password or online account needed.",
+                            "Choose what InkShelf calls you. Your display name is saved in InkShelf's local settings — no email, password or online account needed.",
                         )
                         OutlinedTextField(
                             value = name,
