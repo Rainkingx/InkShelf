@@ -109,6 +109,16 @@ internal class InkShelf2Engine(private val context: Context) {
         if (id <= 0) null else runCatching { database.getManga(id).executeAsBlocking() }.getOrNull()
     }
 
+    suspend fun recentUpdates(): List<InkShelf2RecentUpdate> = withContext(Dispatchers.IO) {
+        runCatching {
+            database.getRecentChapters("", 0, false).executeAsBlocking()
+                .filter { it.chapter.date_fetch > 0L }
+                .distinctBy { it.chapter.id ?: (it.manga.id.toString() + ":" + it.chapter.url) }
+                .take(100)
+                .map { InkShelf2RecentUpdate(it.manga, it.chapter, it.chapter.date_fetch) }
+        }.getOrDefault(emptyList())
+    }
+
     /** Reading History uses the same J2K history query as the classic Recents screen. */
     suspend fun loadHistory(): List<InkShelf2HistoryEntry> = withContext(Dispatchers.IO) {
         runCatching {

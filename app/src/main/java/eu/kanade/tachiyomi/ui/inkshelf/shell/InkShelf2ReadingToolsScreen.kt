@@ -58,6 +58,7 @@ internal data class InkShelf2QueueEntry(
 )
 internal data class InkShelf2SavedSeries(val manga: Manga, val issues: Int)
 internal data class InkShelf2HistoryEntry(val manga: Manga, val chapter: Chapter, val lastRead: Long)
+internal data class InkShelf2RecentUpdate(val manga: Manga, val chapter: Chapter, val fetchedAt: Long)
 
 @Composable
 private fun ReadingToolHeading(title: String, back: () -> Unit) {
@@ -316,6 +317,85 @@ internal fun InkShelf2HistoryScreen(
                     Icon(
                         Icons.Outlined.PlayArrow,
                         contentDescription = "Read " + entry.chapter.name,
+                        tint = InkShelf2Colors.AccentLight,
+                    )
+                }
+                HorizontalDivider(
+                    color = InkShelf2Colors.Border.copy(alpha = 0.3f),
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+        }
+    }
+}
+
+/** The same J2K recently-fetched chapter query used by the classic Updates tab. */
+@Composable
+internal fun InkShelf2RecentUpdatesScreen(
+    padding: PaddingValues,
+    updates: List<InkShelf2RecentUpdate>,
+    onBack: () -> Unit,
+    onOpen: (Manga) -> Unit,
+    onRead: (Manga, Chapter) -> Unit,
+) {
+    val formatter = remember { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT) }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
+        contentPadding = PaddingValues(
+            top = padding.calculateTopPadding(),
+            bottom = padding.calculateBottomPadding() + 24.dp,
+        ),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item(key = "heading") { ReadingToolHeading("Latest Updates", onBack) }
+        item(key = "intro") {
+            Text(
+                "Recently discovered comic issues",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = InkShelf2Colors.Muted,
+                fontSize = 12.sp,
+            )
+        }
+        if (updates.isEmpty()) {
+            item(key = "empty") {
+                InkShelf2EmptyShelf("No recent issue updates. Refresh your library to check for new chapters.")
+            }
+        } else {
+            items(updates, key = { it.manga.id.toString() + ":" + it.chapter.url + ":" + it.fetchedAt }) { item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .clickable { onRead(item.manga, item.chapter) }
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AsyncImage(
+                        model = item.manga, contentDescription = null,
+                        modifier = Modifier.size(55.dp, 78.dp).clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Column(
+                        Modifier.weight(1f).padding(start = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            item.manga.title, color = InkShelf2Colors.Text,
+                            fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            item.chapter.name,
+                            color = InkShelf2Colors.AccentLight, fontSize = 12.sp,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            formatter.format(Date(item.fetchedAt)),
+                            color = InkShelf2Colors.Muted, fontSize = 11.sp,
+                        )
+                        TextButton(onClick = { onOpen(item.manga) }) { Text("Comic Details") }
+                    }
+                    Icon(
+                        Icons.Outlined.PlayArrow,
+                        contentDescription = "Read " + item.chapter.name,
                         tint = InkShelf2Colors.AccentLight,
                     )
                 }

@@ -126,6 +126,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var themesOpen by rememberSaveable { mutableStateOf(false) }
             var downloadsOpen by rememberSaveable { mutableStateOf(openedFromDownloadNotice) }
             var historyOpen by rememberSaveable { mutableStateOf(false) }
+            var updatesOpen by rememberSaveable { mutableStateOf(false) }
             var backupOpen by rememberSaveable { mutableStateOf(false) }
             var importOpen by rememberSaveable { mutableStateOf(false) }
             var settingsOpen by rememberSaveable { mutableStateOf(false) }
@@ -149,6 +150,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 themesOpen = false
                 downloadsOpen = false
                 historyOpen = false
+                updatesOpen = false
                 backupOpen = false
                 importOpen = false
                 settingsOpen = false
@@ -214,6 +216,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var downloadsWifiRequired by remember { mutableStateOf(false) }
             var downloadsPaused by remember { mutableStateOf(false) }
             var readingHistory by remember { mutableStateOf<List<InkShelf2HistoryEntry>>(emptyList()) }
+            var recentIssueUpdates by remember { mutableStateOf<List<InkShelf2RecentUpdate>>(emptyList()) }
 
             LaunchedEffect(downloadsOpen, library) {
                 if (downloadsOpen) {
@@ -242,6 +245,9 @@ class InkShelf2Activity : AppCompatActivity() {
             }
             LaunchedEffect(historyOpen, refreshEpoch) {
                 if (historyOpen) readingHistory = engine.loadHistory()
+            }
+            LaunchedEffect(updatesOpen, refreshEpoch) {
+                if (updatesOpen) recentIssueUpdates = engine.recentUpdates()
             }
 
             LaunchedEffect(refreshEpoch, enabledSourceIds) {
@@ -329,9 +335,15 @@ class InkShelf2Activity : AppCompatActivity() {
                         openTab(InkShelf2Tab.ACCOUNT)
                         historyOpen = true
                     }
-                    ACTION_SHOW_LIBRARY, ACTION_SHOW_UPDATES,
-                    MainActivity.SHORTCUT_LIBRARY, MainActivity.SHORTCUT_RECENTS,
-                    MainActivity.SHORTCUT_RECENTLY_UPDATED -> openTab(InkShelf2Tab.LIBRARY)
+                    ACTION_SHOW_LIBRARY, MainActivity.SHORTCUT_LIBRARY -> openTab(InkShelf2Tab.LIBRARY)
+                    ACTION_SHOW_UPDATES, MainActivity.SHORTCUT_RECENTLY_UPDATED -> {
+                        openTab(InkShelf2Tab.ACCOUNT)
+                        updatesOpen = true
+                    }
+                    MainActivity.SHORTCUT_RECENTS -> {
+                        openTab(InkShelf2Tab.ACCOUNT)
+                        historyOpen = true
+                    }
                     ACTION_SHOW_EXTENSIONS, MainActivity.SHORTCUT_EXTENSIONS -> {
                         openTab(InkShelf2Tab.ACCOUNT)
                         sourceHubMode = "Extensions"
@@ -428,6 +440,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     themesOpen -> themesOpen = false
                     downloadsOpen -> downloadsOpen = false
                     historyOpen -> historyOpen = false
+                    updatesOpen -> updatesOpen = false
                     backupOpen -> backupOpen = false
                     importOpen -> importOpen = false
                     settingsOpen -> settingsOpen = false
@@ -825,6 +838,13 @@ class InkShelf2Activity : AppCompatActivity() {
                             }
                         },
                         onOpen = openComicDetails,
+                    )
+                    tab == InkShelf2Tab.ACCOUNT && updatesOpen -> InkShelf2RecentUpdatesScreen(
+                        padding = padding,
+                        updates = recentIssueUpdates,
+                        onBack = { updatesOpen = false },
+                        onOpen = openComicDetails,
+                        onRead = { manga, chapter -> openChapter(manga, chapter) },
                     )
                     tab == InkShelf2Tab.ACCOUNT && historyOpen -> InkShelf2HistoryScreen(
                         padding = padding,
