@@ -403,11 +403,6 @@ class InkShelf2Activity : AppCompatActivity() {
                         home = home,
                         library = library,
                         profileName = profileName,
-                        onProfile = {
-                            openTab(InkShelf2Tab.ACCOUNT)
-                            welcomeStep = 0
-                            welcomeOpen = true
-                        },
                         padding = padding,
                         onOpen = openComicDetails,
                         onRead = { openReader(it) },
