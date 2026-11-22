@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -78,6 +79,7 @@ enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
     DISCOVER("Discover", Icons.Outlined.Search),
     LIBRARY("Library", Icons.Outlined.LibraryBooks),
+    GUIDES("Guides", Icons.Outlined.AutoStories),
     ACCOUNT("Menu", Icons.Outlined.Menu),
 }
 
@@ -338,6 +340,7 @@ private fun InkShelf2BottomNavigation(
                         InkShelf2Tab.LIBRARY -> if (selected) Icons.Filled.LibraryBooks else Icons.Outlined.LibraryBooks
                         InkShelf2Tab.ACCOUNT -> if (selected) Icons.Filled.Menu else Icons.Outlined.Menu
                         InkShelf2Tab.DISCOVER -> Icons.Outlined.Search
+                        InkShelf2Tab.GUIDES -> Icons.Outlined.AutoStories
                     }
                     Icon(
                         imageVector = image,
