@@ -104,6 +104,8 @@ internal fun InkShelf2HomeScreen(
     library: List<InkShelf2LibraryItem>,
     profileName: String,
     padding: PaddingValues,
+    pulseExpanded: Boolean,
+    onPulseExpandedChange: (Boolean) -> Unit,
     onOpen: (Manga) -> Unit,
     onRead: (Manga) -> Unit,
     onSave: (Manga) -> Unit,
@@ -143,9 +145,8 @@ internal fun InkShelf2HomeScreen(
     val context = LocalContext.current
     var pulseArticles by remember { mutableStateOf<List<InkShelf2PulseArticle>>(emptyList()) }
     var pulseLoading by remember { mutableStateOf(true) }
-    var pulseExpanded by rememberSaveable { mutableStateOf(false) }
     var pulseShowVideos by rememberSaveable { mutableStateOf(false) }
-    BackHandler(enabled = pulseExpanded) { pulseExpanded = false }
+    BackHandler(enabled = pulseExpanded) { onPulseExpandedChange(false) }
     LaunchedEffect(Unit) {
         pulseArticles = InkShelf2PulseFeed.cached(context)
         pulseArticles = InkShelf2PulseFeed.refresh(context)
@@ -158,7 +159,7 @@ internal fun InkShelf2HomeScreen(
             loading = pulseLoading,
             showVideos = pulseShowVideos,
             onShowVideos = { pulseShowVideos = it },
-            onBack = { pulseExpanded = false },
+            onBack = { onPulseExpandedChange(false) },
             onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
         )
         return
@@ -466,7 +467,7 @@ internal fun InkShelf2HomeScreen(
                 loading = pulseLoading,
                 showVideos = pulseShowVideos,
                 onShowVideos = { pulseShowVideos = it },
-                onSeeAll = { pulseExpanded = true },
+                onSeeAll = { onPulseExpandedChange(true) },
                 onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
             )
         }
