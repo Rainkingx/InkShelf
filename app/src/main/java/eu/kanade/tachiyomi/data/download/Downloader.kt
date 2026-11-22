@@ -667,10 +667,13 @@ class Downloader(
         tmpDir: UniFile,
         dirname: String,
     ) {
-        // Page list hasn't been initialized
-        val downloadPageCount = download.pages?.size ?: return
-        // Ensure that all pages has been downloaded
-        if (download.downloadedImages < downloadPageCount) return
+        // A partially failed chapter must never remain in DOWNLOADING or be
+        // presented as complete. Keep it in the queue with ERROR for retry.
+        val downloadPageCount = download.pages?.size
+        if (downloadPageCount == null || download.downloadedImages < downloadPageCount) {
+            download.status = Download.State.ERROR
+            return
+        }
         // Ensure that the chapter folder has all the pages
         val downloadedImagesCount =
             tmpDir.listFiles().orEmpty().count {
