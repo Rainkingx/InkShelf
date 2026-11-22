@@ -187,6 +187,11 @@ class SettingsMainController :
             this
         }
 
+    /** Safe entry point for 2.0 onboarding. Keeps the original verified
+     * multi-file import, metadata parsing and Local Source registration.
+     */
+    fun beginLocalComicImportFromInkShelf2() = launchLocalComicImportPicker()
+
     private fun launchLocalComicImportPicker() {
         val picker =
             Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
