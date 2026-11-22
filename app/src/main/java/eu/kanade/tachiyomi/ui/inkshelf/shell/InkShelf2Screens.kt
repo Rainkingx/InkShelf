@@ -90,6 +90,7 @@ import java.util.Locale
 internal fun InkShelf2HomeScreen(
     home: InkShelf2Engine.Home?,
     library: List<InkShelf2LibraryItem>,
+    personalPicks: List<InkShelf2Engine.PersonalPick>,
     profileName: String,
     padding: PaddingValues,
     onOpen: (Manga) -> Unit,
@@ -105,6 +106,22 @@ internal fun InkShelf2HomeScreen(
     val initial = slides.indexOfFirst { it.calendarDay == currentDay }.coerceAtLeast(0)
     val pager = rememberPagerState(initialPage = initial, pageCount = { slides.size.coerceAtLeast(1) })
     val scope = rememberCoroutineScope()
+    val readingSeries = library.count { it.state == InkShelf2ReadingState.READING }
+    val unreadIssues = library.asSequence()
+        .filter { it.state == InkShelf2ReadingState.READING }
+        .sumOf { (it.totalChapters - it.readChapters).coerceAtLeast(0) }
+    val savedKeys = remember(library) {
+        library.map { it.manga.source to it.manga.url }.toSet()
+    }
+    // Discover owns recommendations; Home surfaces a short subset from the
+    // same real cached source results. Never invent series or source URLs.
+    val suggestions = remember(personalPicks, savedKeys) {
+        personalPicks.asSequence()
+            .filter { (it.manga.source to it.manga.url) !in savedKeys }
+            .distinctBy { it.manga.source to it.manga.url }
+            .take(9)
+            .toList()
+    }
     // The data arrives after the first composition; restore today's actual page.
     LaunchedEffect(slides.size, initial) {
         if (slides.isNotEmpty()) pager.scrollToPage(initial)
@@ -136,6 +153,19 @@ internal fun InkShelf2HomeScreen(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (library.isNotEmpty()) {
+                Text(
+                    text = if (readingSeries > 0) {
+                        "$readingSeries in progress  •  $unreadIssues unread issues"
+                    } else {
+                        "${library.size} comics saved in your library"
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(start = 18.dp, end = 18.dp, bottom = 8.dp),
+                    color = InkShelf2Colors.Muted,
+                    fontSize = 11.sp,
+                )
+            }
             InkShelf2SectionHeading("Continue Reading", onClick = onLibrary)
             Spacer(Modifier.height(9.dp))
             val books = home?.history.orEmpty()
@@ -161,6 +191,31 @@ internal fun InkShelf2HomeScreen(
                             )
                         }
                     }
+                }
+                // Show the latest real history title and a one-tap resume,
+                // while preserving the approved cover-only carousel above.
+                val lastRead = books.first()
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 8.dp)
+                        .clickable { onRead(lastRead.manga) },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    Text(
+                        text = "LAST READ  •  ${lastRead.manga.title}",
+                        modifier = Modifier.weight(1f),
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "RESUME  ›",
+                        color = InkShelf2Colors.AccentLight,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             }
         }
@@ -299,6 +354,14 @@ internal fun InkShelf2HomeScreen(
         }
         item(key = "unread-library") {
             InkShelf2SectionHeading("Issues Waiting for You", onClick = onLibrary)
+            if (unreadIssues > 0) {
+                Text(
+                    "$unreadIssues unread issues across comics you're reading",
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
+                    color = InkShelf2Colors.Muted,
+                    fontSize = 11.sp,
+                )
+            }
             Spacer(Modifier.height(7.dp))
             // These are ACTUAL unread chapters from the original J2K
             // Library database. Do not label them newly published.
@@ -322,11 +385,52 @@ internal fun InkShelf2HomeScreen(
                             ComicCoverCard(
                                 item.manga,
                                 percent = item.progress,
+                                badgeText = "${(item.totalChapters - item.readChapters).coerceAtLeast(0)} unread",
                                 width = cardWidth,
                                 showTitle = false,
                                 libraryShape = true,
                                 onClick = { onOpen(item.manga) },
                             )
+                        }
+                    }
+                }
+            }
+        }
+        if (suggestions.isNotEmpty()) {
+            item(key = "home-personal-picks") {
+                InkShelf2SectionHeading("Picked for You", onClick = onDiscover)
+                Text(
+                    "Based on your library and reading activity",
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    color = InkShelf2Colors.Muted,
+                    fontSize = 11.sp,
+                )
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    val cardWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    ) {
+                        items(suggestions, key = { "${it.manga.source}:${it.manga.url}" }) { pick ->
+                            Column(modifier = Modifier.width(cardWidth)) {
+                                ComicCoverCard(
+                                    pick.manga,
+                                    width = null,
+                                    showTitle = true,
+                                    libraryShape = true,
+                                    onClick = { onOpen(pick.manga) },
+                                )
+                                if (pick.reason.isNotBlank()) {
+                                    Text(
+                                        pick.reason,
+                                        color = InkShelf2Colors.Muted,
+                                        fontSize = 10.sp,
+                                        lineHeight = 13.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -782,6 +886,7 @@ private fun ComicCoverCard(
     manga: Manga,
     onClick: () -> Unit,
     percent: Int? = null,
+    badgeText: String? = null,
     width: androidx.compose.ui.unit.Dp? = 106.dp,
     showTitle: Boolean = true,
     libraryShape: Boolean = false,
@@ -811,6 +916,19 @@ private fun ComicCoverCard(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
+            if (!badgeText.isNullOrBlank()) {
+                Text(
+                    text = badgeText,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(InkShelf2Colors.Background.copy(alpha = 0.90f))
+                        .padding(horizontal = 7.dp, vertical = 4.dp),
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
             if (percent != null) {
                 Column(
                     modifier = Modifier.align(Alignment.BottomCenter)
