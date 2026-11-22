@@ -96,6 +96,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var historyOpen by rememberSaveable { mutableStateOf(false) }
             var backupOpen by rememberSaveable { mutableStateOf(false) }
             var importOpen by rememberSaveable { mutableStateOf(false) }
+            var settingsOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
@@ -113,6 +114,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 historyOpen = false
                 backupOpen = false
                 importOpen = false
+                settingsOpen = false
                 activeSourceId = null
                 selectedDay = null
                 selectedDiscoverShelf = null
@@ -267,6 +269,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     historyOpen -> historyOpen = false
                     backupOpen -> backupOpen = false
                     importOpen -> importOpen = false
+                    settingsOpen -> settingsOpen = false
                     welcomeOpen -> {
                         welcomeStep = 0
                         profileStore.completeWelcome()
@@ -566,6 +569,13 @@ class InkShelf2Activity : AppCompatActivity() {
                             manageComic(manga, removeFromLibrary, deleteDownloads)
                         },
                     )
+                    tab == InkShelf2Tab.ACCOUNT && settingsOpen -> InkShelf2AdvancedSettingsScreen(
+                        padding = padding,
+                        onBack = { settingsOpen = false },
+                        onThemes = { settingsOpen = false; themesOpen = true },
+                        onDownloads = { settingsOpen = false; downloadsOpen = true },
+                        onBackup = { settingsOpen = false; backupOpen = true },
+                    )
                     tab == InkShelf2Tab.ACCOUNT && importOpen -> InkShelf2LocalImportScreen(
                         padding = padding,
                         onBack = { importOpen = false },
@@ -641,12 +651,7 @@ class InkShelf2Activity : AppCompatActivity() {
                             downloadsOpen = false
                             historyOpen = true
                         },
-                        onSettings = {
-                            startActivity(
-                                Intent(this@InkShelf2Activity, MainActivity::class.java)
-                                    .setAction(MainActivity.SHORTCUT_MENU_SETTINGS),
-                            )
-                        },
+                        onSettings = { settingsOpen = true },
                     )
                 }
             }

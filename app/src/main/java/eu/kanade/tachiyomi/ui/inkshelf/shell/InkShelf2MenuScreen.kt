@@ -129,9 +129,8 @@ internal fun InkShelf2MenuScreen(
         }
         item {
             Text(
-                "Downloads, Reading History, Backup & Restore, and Local Import now use InkShelf 2.0 screens. " +
-                    "Advanced Settings still uses the original tools until all options are migrated. " +
-                    "Your library and reading data remain unchanged.",
+                "Downloads, Reading History, Backup, Import, and core Reader/Download/Library settings now use InkShelf 2.0. " +
+                    "Additional specialised settings and old notification routes are still being migrated.",
                 modifier = Modifier.padding(horizontal = 18.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 11.sp,

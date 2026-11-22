@@ -161,6 +161,9 @@ class PreferencesHelper(
 
     fun defaultReadingMode() = prefs.getInt(Keys.defaultReadingMode, ReadingModeType.RIGHT_TO_LEFT.flagValue)
 
+    /** Compose 2.0 adapter to the same legacy reading-mode key. */
+    fun defaultReadingModeSetting() = flowPrefs.getInt(Keys.defaultReadingMode, ReadingModeType.RIGHT_TO_LEFT.flagValue)
+
     fun defaultOrientationType() = flowPrefs.getInt(Keys.defaultOrientationType, OrientationType.FREE.flagValue)
 
     fun imageScaleType() = flowPrefs.getInt(Keys.imageScaleType, 1)
@@ -275,6 +278,8 @@ class PreferencesHelper(
 
     fun downloadOnlyOverWifi() = prefs.getBoolean(Keys.downloadOnlyOverWifi, true)
 
+    fun downloadOnlyOverWifiSetting() = flowPrefs.getBoolean(Keys.downloadOnlyOverWifi, true)
+
     fun folderPerManga() = flowPrefs.getBoolean("create_folder_per_manga", false)
 
     fun librarySearchSuggestion() = flowPrefs.getString(Keys.librarySearchSuggestion, "")
@@ -290,6 +295,8 @@ class PreferencesHelper(
     fun removeAfterReadSlots() = flowPrefs.getInt(Keys.removeAfterReadSlots, -1)
 
     fun removeAfterMarkedAsRead() = prefs.getBoolean(Keys.removeAfterMarkedAsRead, false)
+
+    fun removeAfterMarkedAsReadSetting() = flowPrefs.getBoolean(Keys.removeAfterMarkedAsRead, false)
 
     fun libraryUpdateInterval() = flowPrefs.getInt(Keys.libraryUpdateInterval, 24)
 
@@ -396,7 +403,11 @@ class PreferencesHelper(
 
     fun skipRead() = prefs.getBoolean(Keys.skipRead, false)
 
+    fun skipReadSetting() = flowPrefs.getBoolean(Keys.skipRead, false)
+
     fun skipFiltered() = prefs.getBoolean(Keys.skipFiltered, true)
+
+    fun skipFilteredSetting() = flowPrefs.getBoolean(Keys.skipFiltered, true)
 
     fun skipDupe() = flowPrefs.getBoolean("skip_dupe", false)
 
@@ -409,6 +420,8 @@ class PreferencesHelper(
     fun secureScreen() = flowPrefs.getEnum("secure_screen_v2", Values.SecureScreenMode.INCOGNITO)
 
     fun hideNotificationContent() = prefs.getBoolean(Keys.hideNotificationContent, false)
+
+    fun hideNotificationContentSetting() = flowPrefs.getBoolean(Keys.hideNotificationContent, false)
 
     fun removeArticles() = flowPrefs.getBoolean(Keys.removeArticles, false)
 
