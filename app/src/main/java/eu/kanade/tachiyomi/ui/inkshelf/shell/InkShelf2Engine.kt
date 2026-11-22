@@ -28,6 +28,7 @@ internal class InkShelf2Engine(private val context: Context) {
         val title: String,
         val artwork: InkShelfDailyHeroArt.Artwork,
         val picks: List<Manga>,
+        val pickReasons: Map<String, String> = emptyMap(),
     )
     data class Home(
         val history: List<Reading>,
@@ -47,7 +48,7 @@ internal class InkShelf2Engine(private val context: Context) {
         Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY, Calendar.SUNDAY,
     )
 
-    suspend fun loadHome(): Home = withContext(Dispatchers.IO) {
+    suspend fun loadHome(enabledSourceIds: Set<Long>): Home = withContext(Dispatchers.IO) {
         val history = runCatching {
             database.getRecentMangaLimit("", 0, false).executeAsBlocking()
                 .asSequence()
@@ -69,34 +70,34 @@ internal class InkShelf2Engine(private val context: Context) {
             database.getLibraryMangas().executeAsBlocking().filter { it.favorite }
         }.getOrDefault(emptyList())
 
+        val dayStamp = InkShelf2DailyRotation.localDayStamp()
+        val usedAcrossDays = mutableSetOf<String>()
         val days = weekdays.map { day ->
-            // "What's New Wednesday" means freshly surfaced comics, not only
-            // titles whose names happen to contain the current year.
-            // Discover's NEW_THIS_WEEK shelf is sourced from current Latest
-            // feeds. Its provider does not guarantee an exact publication
-            // date, so don't mislabel these as released within seven days.
-            val pools = if (day == Calendar.WEDNESDAY) {
-                sequenceOf(
-                    discover.newest,
-                    discover.trending.filter { matchesTheme(it, day) },
-                    discover.recommended.filter { matchesTheme(it, day) },
-                    saved.filter { matchesTheme(it, day) },
-                )
-            } else {
-                sequenceOf(discover.newest, discover.trending, discover.recommended, saved)
-                    .map { pool -> pool.filter { matchesTheme(it, day) } }
-            }
-            val picks = pools.flatten()
-                .filter { !it.thumbnail_url.isNullOrBlank() }
-                .distinctBy { it.title.lowercase(Locale.ROOT).trim() }
-                .take(3)
-                .toList()
-            Day(day, dayTitle(day), InkShelfDailyHeroArt.forDay(day), picks)
+            val picks = InkShelf2DailyRotation.select(
+                day = day,
+                dayStamp = dayStamp,
+                newest = discover.newest,
+                trending = discover.trending,
+                personal = discover.recommended,
+                library = saved,
+                enabledSourceIds = enabledSourceIds,
+                usedAcrossDays = usedAcrossDays,
+            )
+            usedAcrossDays += picks.map { InkShelf2DailyRotation.seriesKey(it.manga) }
+            Day(
+                calendarDay = day,
+                title = dayTitle(day),
+                artwork = InkShelfDailyHeroArt.forDay(day),
+                picks = picks.map { it.manga },
+                pickReasons = picks.associate {
+                    "${it.manga.source}:${it.manga.url}" to it.reason
+                },
+            )
         }
         // The weekday hero owns its own three themed picks. The Home shelf
         // instead shows the live cached Trending feed, matching Discover.
         val trendingNow = discover.trending
-            .filter { !it.thumbnail_url.isNullOrBlank() }
+            .filter { it.source in enabledSourceIds && !it.thumbnail_url.isNullOrBlank() }
             .distinctBy { "${it.source}:${it.url}" }
         Home(history, days, trendingNow)
     }
@@ -170,26 +171,4 @@ internal class InkShelf2Engine(private val context: Context) {
         else -> "SUPER SUNDAY"
     }
 
-    /** Conservative matching: never pad a theme with unrelated titles. */
-    private fun matchesTheme(manga: Manga, day: Int): Boolean {
-        val title = manga.title.lowercase(Locale.ROOT)
-        val tags = listOfNotNull(manga.genre, manga.originalGenre)
-            .joinToString(" ").lowercase(Locale.ROOT)
-        val all = "$title $tags"
-        val keywords = when (day) {
-            Calendar.MONDAY -> listOf("x-men", "wolverine", "mutant", "x-force")
-            Calendar.WEDNESDAY -> listOf("new release", "new this week", Calendar.getInstance().get(Calendar.YEAR).toString())
-            Calendar.THURSDAY -> listOf("classic", "196", "197", "198", "199")
-            Calendar.FRIDAY -> listOf("fantastic", "magic", "fantasy", "cosmic")
-            Calendar.SATURDAY -> listOf("spider-man", "spiderman", "spider-verse", "venom")
-            Calendar.SUNDAY -> listOf("superman", "batman", "wonder woman", "justice league")
-            else -> listOf("image comics", "dark horse", "boom", "idw", "indie", "saga", "spawn", "invincible")
-        }
-        if (day == Calendar.TUESDAY && listOf(
-                "marvel comics", "dc comics", "x-men", "batman", "superman",
-                "spider-man", "wonder woman", "avengers",
-            ).any { it in all }
-        ) return false
-        return keywords.any { it in all }
-    }
 }
