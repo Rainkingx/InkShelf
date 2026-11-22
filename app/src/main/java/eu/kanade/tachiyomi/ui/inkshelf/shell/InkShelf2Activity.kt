@@ -94,6 +94,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var themesOpen by rememberSaveable { mutableStateOf(false) }
             var downloadsOpen by rememberSaveable { mutableStateOf(false) }
             var historyOpen by rememberSaveable { mutableStateOf(false) }
+            var backupOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
@@ -109,6 +110,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 themesOpen = false
                 downloadsOpen = false
                 historyOpen = false
+                backupOpen = false
                 activeSourceId = null
                 selectedDay = null
                 selectedDiscoverShelf = null
@@ -261,6 +263,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     themesOpen -> themesOpen = false
                     downloadsOpen -> downloadsOpen = false
                     historyOpen -> historyOpen = false
+                    backupOpen -> backupOpen = false
                     welcomeOpen -> {
                         welcomeStep = 0
                         profileStore.completeWelcome()
@@ -467,7 +470,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     )
                     welcomeOpen &&
                         (tab != InkShelf2Tab.ACCOUNT ||
-                            (!sourceHubOpen && !metronOpen && !themesOpen)) ->
+                            (!sourceHubOpen && !metronOpen && !themesOpen && !backupOpen)) ->
                         InkShelf2WelcomeScreen(
                         padding = padding,
                         displayName = profileName,
@@ -491,10 +494,8 @@ class InkShelf2Activity : AppCompatActivity() {
                             activeSourceId = null
                         },
                         onBackupTools = {
-                            startActivity(
-                                Intent(this@InkShelf2Activity, MainActivity::class.java)
-                                    .setAction(MainActivity.SHORTCUT_BACKUP_TOOLS),
-                            )
+                            openTab(InkShelf2Tab.ACCOUNT)
+                            backupOpen = true
                         },
                         onImportComics = {
                             startActivity(
@@ -564,6 +565,11 @@ class InkShelf2Activity : AppCompatActivity() {
                             manageComic(manga, removeFromLibrary, deleteDownloads)
                         },
                     )
+                    tab == InkShelf2Tab.ACCOUNT && backupOpen -> InkShelf2BackupScreen(
+                        padding = padding,
+                        onBack = { backupOpen = false },
+                        onRestoreQueued = { backupOpen = false },
+                    )
                     tab == InkShelf2Tab.ACCOUNT && downloadsOpen -> InkShelf2DownloadsScreen(
                         padding = padding,
                         queued = downloadQueue,
@@ -625,12 +631,7 @@ class InkShelf2Activity : AppCompatActivity() {
                                     .setAction(MainActivity.SHORTCUT_LOCAL_COMIC_IMPORT),
                             )
                         },
-                        onBackupTools = {
-                            startActivity(
-                                Intent(this@InkShelf2Activity, MainActivity::class.java)
-                                    .setAction(MainActivity.SHORTCUT_BACKUP_TOOLS),
-                            )
-                        },
+                        onBackupTools = { backupOpen = true },
                         onDownloads = {
                             historyOpen = false
                             downloadsOpen = true
