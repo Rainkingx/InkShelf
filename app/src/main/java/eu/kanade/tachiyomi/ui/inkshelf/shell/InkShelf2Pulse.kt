@@ -92,7 +92,7 @@ internal object InkShelf2PulseFeed {
         val now = System.currentTimeMillis()
         val existing = readCached(context)
         val checkedAt = prefs.getLong("checked_at", 0L)
-        if (now - checkedAt in 0 until TTL_MS) return@withContext existing
+        if (now - checkedAt in 0L until TTL_MS) return@withContext existing
 
         // Cache network failures too, avoiding repeated requests on each
         // navigation to Home when a publisher is unreachable.
@@ -140,7 +140,7 @@ internal object InkShelf2PulseFeed {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val savedAt = prefs.getLong("saved_at", 0L)
         val age = System.currentTimeMillis() - savedAt
-        if (savedAt == 0L || age !in 0 until CACHE_LIFETIME_MS) return emptyList()
+        if (savedAt == 0L || age !in 0L until CACHE_LIFETIME_MS) return emptyList()
         return try {
             val rows = JSONArray(prefs.getString("articles", "[]") ?: "[]")
             (0 until rows.length()).mapNotNull { index ->
