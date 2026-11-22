@@ -161,6 +161,19 @@ internal class InkShelf2Engine(private val context: Context) {
         }.getOrDefault(false)
     }
 
+    /** Remove Library membership without discarding reading history or files. */
+    suspend fun removeFromLibrary(manga: Manga): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val entry = database.getManga(manga.url, manga.source).executeAsBlocking()
+                ?: return@runCatching false
+            if (!entry.favorite) return@runCatching false
+            entry.favorite = false
+            database.updateMangaFavorite(entry).executeAsBlocking()
+            manga.favorite = false
+            true
+        }.getOrDefault(false)
+    }
+
     private fun dayTitle(day: Int): String = when (day) {
         Calendar.MONDAY -> "MUTANT MONDAY"
         Calendar.TUESDAY -> "INDIE TUESDAY"
