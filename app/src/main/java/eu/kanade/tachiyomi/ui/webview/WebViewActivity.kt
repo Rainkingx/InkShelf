@@ -78,7 +78,11 @@ open class WebViewActivity : BaseWebViewActivity() {
                 }
             }
 
-            binding.webview.setUserAgent(headers["user-agent"] ?: network.defaultUserAgent)
+            // OkHttp preserves the source's header casing; look it up case-insensitively.
+            binding.webview.setUserAgent(
+                headers.entries.firstOrNull { it.key.equals("user-agent", ignoreCase = true) }?.value
+                    ?: network.defaultUserAgent,
+            )
 
             binding.webview.webViewClient =
                 object : WebViewClientCompat() {

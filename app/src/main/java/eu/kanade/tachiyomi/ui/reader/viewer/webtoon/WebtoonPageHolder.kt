@@ -339,13 +339,14 @@ class WebtoonPageHolder(
                 page?.let { it.chapter.pageLoader?.retryPage(it) }
             }
         }
-        val imageUrl =
-            if (withOpenInWebView) {
-                page?.imageUrl
-            } else {
-                viewer.activity.viewModel.getChapterUrl(page?.chapter?.chapter)
-            }
-        return errorLayout!!.configureView(imageUrl)
+        // Prefer the real chapter webpage. Direct XOXO image URLs may return
+        // a deliberate HTTP 404 to browsers despite working through the app.
+        val webUrl = viewer.activity.viewModel.getChapterUrl(page?.chapter?.chapter)
+            ?.takeIf { it.startsWith("http", ignoreCase = true) }
+            ?: page?.imageUrl
+        return errorLayout!!.configureView(
+            webUrl, viewer.activity.viewModel.manga?.source,
+        )
     }
 
     private fun removeErrorLayout() {

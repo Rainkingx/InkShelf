@@ -29,11 +29,11 @@ class ReaderErrorView
             binding = ReaderErrorBinding.bind(this)
         }
 
-        fun configureView(url: String?): ReaderErrorBinding {
+        fun configureView(url: String?, sourceId: Long? = null): ReaderErrorBinding {
             if (url?.startsWith("http", true) == true) {
                 binding.actionOpenInWebView.isVisible = true
                 binding.actionOpenInWebView.setOnClickListener {
-                    context.startActivity(WebViewActivity.newIntent(context, url))
+                    context.startActivity(WebViewActivity.newIntent(context, url, sourceId = sourceId))
                 }
             } else {
                 binding.actionOpenInWebView.isVisible = false

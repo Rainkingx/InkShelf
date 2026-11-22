@@ -1071,13 +1071,15 @@ class PagerPageHolder(
                 page.chapter.pageLoader?.retryPage(page)
             }
         }
-        val imageUrl =
-            if (withOpenInWebView) {
-                page.imageUrl
-            } else {
-                viewer.activity.viewModel.getChapterUrl(page.chapter.chapter)
-            }
-        return errorLayout!!.configureView(imageUrl)
+        // Open the real chapter webpage, not a raw image URL. XOXO's image
+        // host intentionally sends HTTP 404 even for existing image files;
+        // its OkHttp image interceptor handles that but Android WebView cannot.
+        val webUrl = viewer.activity.viewModel.getChapterUrl(page.chapter.chapter)
+            ?.takeIf { it.startsWith("http", ignoreCase = true) }
+            ?: page.imageUrl
+        return errorLayout!!.configureView(
+            webUrl, viewer.activity.viewModel.manga?.source,
+        )
     }
 
     private suspend fun mergeOrSplitPages(
