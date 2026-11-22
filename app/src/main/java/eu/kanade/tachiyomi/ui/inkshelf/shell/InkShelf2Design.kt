@@ -162,23 +162,56 @@ internal fun InkShelf2PageHeading(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun InkShelf2SectionHeading(text: String, onClick: (() -> Unit)?) {
+internal fun InkShelf2SectionHeading(
+    text: String,
+    onClick: (() -> Unit)?,
+    showSeeAll: Boolean = false,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = InkShelf2Metrics.PageGutter)
-            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+            // In compact mode the heading remains clickable, as before. For
+            // Discover-style headings, only the explicit See all action opens.
+            .then(
+                if (onClick != null && !showSeeAll) Modifier.clickable(onClick = onClick)
+                else Modifier
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text, color = InkShelf2Colors.Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
         if (onClick != null) {
-            Icon(
-                imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = "See all " + text,
-                tint = InkShelf2Colors.Text,
-                modifier = Modifier.size(24.dp),
-            )
+            if (showSeeAll) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onClick)
+                        .padding(horizontal = 6.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "See all",
+                        color = InkShelf2Colors.AccentLight,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.width(3.dp))
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = "See all " + text,
+                        tint = InkShelf2Colors.AccentLight,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.ChevronRight,
+                    contentDescription = "See all " + text,
+                    tint = InkShelf2Colors.Text,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
     }
 }
