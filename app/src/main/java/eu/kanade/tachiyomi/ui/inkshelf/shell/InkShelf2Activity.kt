@@ -839,6 +839,55 @@ class InkShelf2Activity : AppCompatActivity() {
                             home = engine.loadHome(enabledSourceIds)
                         },
                     )
+                    tab == InkShelf2Tab.GUIDES -> InkShelf2GuidesScreen(
+                        padding = padding,
+                        onMetronSettings = {
+                            openTab(InkShelf2Tab.ACCOUNT)
+                            metronOpen = true
+                        },
+                        onReadIssue = { issue ->
+                            // Only open a saved comic when its title resolves
+                            // unambiguously. Never invent URLs or duplicate rows.
+                            val clean: (String) -> String = { title ->
+                                title.lowercase(java.util.Locale.ROOT)
+                                    .replace(Regex("""\s*\((?:19|20)\d{2}(?:[-–—]\d{0,4})?\)\s*$"""), "")
+                                    .replace(Regex("""[^\p{L}\p{N}]+"""), " ")
+                                    .trim()
+                            }
+                            val matches = library.map { it.manga }
+                                .filter { clean(it.title) == clean(issue.series) }
+                                .distinctBy { comic -> comic.source.toString() + ":" + comic.url }
+                            val targetNumber = issue.number.toIntOrNull()
+                            if (matches.size == 1) {
+                                val manga = matches.single()
+                                if (targetNumber == null) {
+                                    openComicDetails(manga)
+                                } else {
+                                    lifecycleScope.launch {
+                                        val chaptersForGuide = try {
+                                            engine.chapters(manga)
+                                        } catch (cancel: CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) {
+                                            emptyList()
+                                        }
+                                        val target = chaptersForGuide.firstOrNull {
+                                            InkShelf2IssueNumbers.fromChapter(it) == targetNumber
+                                        }
+                                        if (target != null) {
+                                            openChapter(manga, target)
+                                        } else {
+                                            openComicDetails(manga)
+                                        }
+                                    }
+                                }
+                            } else {
+                                openTab(InkShelf2Tab.DISCOVER)
+                                discoverSearchPreset = issue.series
+                                searchFocusEpoch += 1
+                            }
+                        },
+                    )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
                         readingHistory = home?.history.orEmpty(),
