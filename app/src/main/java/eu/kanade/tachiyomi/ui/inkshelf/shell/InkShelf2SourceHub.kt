@@ -5,6 +5,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -120,6 +122,8 @@ internal fun InkShelf2SourceHub(
     var bulkUpdating by remember { mutableStateOf(false) }
     var trustPending by remember { mutableStateOf<Extension.Untrusted?>(null) }
     var removal by remember { mutableStateOf<String?>(null) }
+    var extensionActions by remember { mutableStateOf<String?>(null) }
+    var extensionRemoveConfirm by remember { mutableStateOf<String?>(null) }
 
     @Suppress("UNUSED_VARIABLE")
     val revisionDependency = revision
@@ -222,6 +226,96 @@ internal fun InkShelf2SourceHub(
         }
     }
 
+    // A long press offers maintenance for the actual installed extension,
+    // never deletion of comic library entries or reading progress.
+    extensionActions?.let { pkgName ->
+        val extension = installed.firstOrNull { it.pkgName == pkgName }
+        if (extension == null) {
+            extensionActions = null
+        } else {
+            val packageCandidate = available.firstOrNull { it.pkgName == pkgName }
+            AlertDialog(
+                onDismissRequest = { extensionActions = null },
+                title = { Text("Manage ${extension.name}") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "Version ${extension.versionName}. Reinstall to refresh the extension without removing your comics, or uninstall and add it again from Extensions.",
+                            color = InkShelf2Colors.Muted,
+                            fontSize = 13.sp,
+                        )
+                        InkShelf2ActionButton(
+                            label = if (packageCandidate != null &&
+                                (packageCandidate.versionCode > extension.versionCode ||
+                                    packageCandidate.libVersion > extension.libVersion)
+                            ) "Install available update" else "Reinstall extension",
+                            enabled = packageCandidate != null && pkgName !in installing,
+                            onClick = {
+                                packageCandidate?.let { install(it) }
+                                extensionActions = null
+                                info = "Android may ask you to approve the extension installation."
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (packageCandidate == null) {
+                            Text(
+                                "This extension is not currently listed in your repository. Refresh Extensions before removing it.",
+                                color = InkShelf2Colors.Muted,
+                                fontSize = 12.sp,
+                            )
+                        }
+                        InkShelf2ActionButton(
+                            label = "Remove extension",
+                            outlined = true,
+                            onClick = {
+                                extensionActions = null
+                                extensionRemoveConfirm = pkgName
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            "Saved comics, downloads and reading progress are kept. Removing an extension temporarily makes its comics unavailable until it is installed again.",
+                            color = InkShelf2Colors.Muted,
+                            fontSize = 11.sp,
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { extensionActions = null }) { Text("Close") }
+                },
+            )
+        }
+    }
+    extensionRemoveConfirm?.let { pkgName ->
+        val extension = installed.firstOrNull { it.pkgName == pkgName }
+        AlertDialog(
+            onDismissRequest = { extensionRemoveConfirm = null },
+            title = { Text("Uninstall ${extension?.name ?: "extension"}?") },
+            text = {
+                Text(
+                    "Only the extension app is uninstalled. Your InkShelf library, downloaded issues and reading progress remain. Reinstall it from the Available extensions list to restore this source."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    extensionRemoveConfirm = null
+                    if (extension != null) {
+                        try {
+                            manager.uninstallExtension(pkgName)
+                            openHubTab("Extensions")
+                            info = "Complete Android's uninstall confirmation, then find ${extension.name} in Available and tap Install."
+                        } catch (error: Exception) {
+                            info = "Could not launch uninstall: ${error.message ?: "unknown error"}"
+                        }
+                    }
+                }) { Text("Uninstall extension") }
+            },
+            dismissButton = {
+                TextButton(onClick = { extensionRemoveConfirm = null }) { Text("Cancel") }
+            },
+        )
+    }
+
     trustPending?.let { ext ->
         AlertDialog(
             onDismissRequest = { trustPending = null },
@@ -305,7 +399,7 @@ internal fun InkShelf2SourceHub(
                 item {
                     InkShelf2SectionHeading("Installed Comic Sources", null)
                     Text(
-                        "Browse catalogues from your existing J2K extensions.",
+                        "Browse installed sources. Long-press a source for update or reinstall options.",
                         modifier = Modifier.padding(horizontal = 16.dp),
                         color = InkShelf2Colors.Muted, fontSize = 12.sp,
                     )
@@ -320,6 +414,9 @@ internal fun InkShelf2SourceHub(
                 }
                 items(catalogues, key = { it.id }) { source ->
                     val active = source in enabled
+                    val owningExtension = installed.firstOrNull { ext ->
+                        ext.sources.any { it.id == source.id }
+                    }
                     HubInfoRow(
                         title = source.name,
                         subtitle = "${source.lang.uppercase()} • " + when {
@@ -331,6 +428,9 @@ internal fun InkShelf2SourceHub(
                             source.id in pausedIds -> "Extensions"
                             active -> "Browse"
                             else -> "Enable"
+                        },
+                        onLongPress = owningExtension?.let { ext ->
+                            { extensionActions = ext.pkgName }
                         },
                         onAction = {
                             when {
@@ -388,6 +488,7 @@ internal fun InkShelf2SourceHub(
                                 update != null -> "Update"
                                 else -> "Browse"
                             },
+                            onLongPress = { extensionActions = ext.pkgName },
                             onAction = {
                                 if (paused) {
                                     InkShelf2ExtensionPause.setPaused(ext, false)
@@ -548,13 +649,26 @@ private fun HubTab(label: String, active: Boolean, modifier: Modifier, onClick: 
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun HubInfoRow(title: String, subtitle: String, action: String, onAction: () -> Unit) {
+private fun HubInfoRow(
+    title: String,
+    subtitle: String,
+    action: String,
+    onAction: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
+) {
     val shape = RoundedCornerShape(12.dp)
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(shape)
             .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.72f))
             .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.40f), shape)
+            .then(
+                if (onLongPress != null) Modifier.combinedClickable(
+                    onClick = onAction,
+                    onLongClick = onLongPress,
+                ) else Modifier
+            )
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
