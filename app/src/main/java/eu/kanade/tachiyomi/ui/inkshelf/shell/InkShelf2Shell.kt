@@ -33,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -44,7 +45,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import eu.kanade.tachiyomi.R
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,6 +81,40 @@ enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
     ACCOUNT("Menu", Icons.Outlined.Menu),
 }
 
+/**
+ * The single, offline InkShelf 2.0 font family. All UI text uses Oxanium to
+ * echo the geometric, technical style of the approved uppercase wordmark.
+ * Comic art, extension screens supplied by third parties and the original
+ * J2K reader are intentionally not re-themed here.
+ */
+private val InkShelf2FontFamily = FontFamily(
+    Font(R.font.oxanium_regular, weight = FontWeight.Normal),
+    Font(R.font.oxanium_medium, weight = FontWeight.Medium),
+    Font(R.font.oxanium_semibold, weight = FontWeight.SemiBold),
+    Font(R.font.oxanium_bold, weight = FontWeight.Bold),
+    Font(R.font.oxanium_extrabold, weight = FontWeight.ExtraBold),
+)
+
+private val InkShelf2AppTypography: Typography = Typography().let { base ->
+    Typography(
+        displayLarge = base.displayLarge.copy(fontFamily = InkShelf2FontFamily),
+        displayMedium = base.displayMedium.copy(fontFamily = InkShelf2FontFamily),
+        displaySmall = base.displaySmall.copy(fontFamily = InkShelf2FontFamily),
+        headlineLarge = base.headlineLarge.copy(fontFamily = InkShelf2FontFamily),
+        headlineMedium = base.headlineMedium.copy(fontFamily = InkShelf2FontFamily),
+        headlineSmall = base.headlineSmall.copy(fontFamily = InkShelf2FontFamily),
+        titleLarge = base.titleLarge.copy(fontFamily = InkShelf2FontFamily),
+        titleMedium = base.titleMedium.copy(fontFamily = InkShelf2FontFamily),
+        titleSmall = base.titleSmall.copy(fontFamily = InkShelf2FontFamily),
+        bodyLarge = base.bodyLarge.copy(fontFamily = InkShelf2FontFamily),
+        bodyMedium = base.bodyMedium.copy(fontFamily = InkShelf2FontFamily),
+        bodySmall = base.bodySmall.copy(fontFamily = InkShelf2FontFamily),
+        labelLarge = base.labelLarge.copy(fontFamily = InkShelf2FontFamily),
+        labelMedium = base.labelMedium.copy(fontFamily = InkShelf2FontFamily),
+        labelSmall = base.labelSmall.copy(fontFamily = InkShelf2FontFamily),
+    )
+}
+
 @Composable
 fun InkShelf2Theme(content: @Composable () -> Unit) {
     // Rebuild Material 3's scheme from the active appearance on every change.
@@ -97,6 +133,7 @@ fun InkShelf2Theme(content: @Composable () -> Unit) {
             onSurfaceVariant = InkShelf2Colors.Muted,
             outline = palette.border,
         ),
+        typography = InkShelf2AppTypography,
         content = content,
     )
 }
@@ -172,15 +209,29 @@ private fun InkShelf2Header(
             contentDescription = "InkShelf logo",
             modifier = Modifier.size(40.dp),
         )
-        Text(
-            text = "InkShelf",
-            modifier = Modifier.padding(start = 7.dp).weight(1f),
-            color = InkShelf2Colors.Text,
-            fontSize = 24.sp,
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-1).sp,
-        )
+        Row(
+            modifier = Modifier.padding(start = 5.dp).weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "INK",
+                color = InkShelf2Colors.Text,
+                fontFamily = InkShelf2FontFamily,
+                fontSize = 21.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-0.7).sp,
+                maxLines = 1,
+            )
+            Text(
+                text = "SHELF",
+                color = InkShelf2Colors.AccentLight,
+                fontFamily = InkShelf2FontFamily,
+                fontSize = 21.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = (-0.7).sp,
+                maxLines = 1,
+            )
+        }
         IconButton(onClick = onNotifications) {
             Box(modifier = Modifier.size(32.dp)) {
                 Icon(
