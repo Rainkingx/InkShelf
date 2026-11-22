@@ -137,7 +137,7 @@ internal fun InkShelf2SourceHub(
     val enabled = catalogues.filter {
         it.lang in languages && it.id.toString() !in hidden && it.id !in pausedIds
     }
-    val pendingUpdates = installed.mapNotNull { installedExt ->
+    val pendingUpdates = installed.filterNot { it.pkgName in pausedPackages }.mapNotNull { installedExt ->
         available.firstOrNull { candidate ->
             candidate.pkgName == installedExt.pkgName &&
                 (candidate.versionCode > installedExt.versionCode || candidate.libVersion > installedExt.libVersion)

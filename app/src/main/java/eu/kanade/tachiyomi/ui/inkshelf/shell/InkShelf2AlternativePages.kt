@@ -81,6 +81,8 @@ internal object InkShelf2AlternativePages {
             emptyList()
         }
         for (match in matches) {
+            // The user may have paused an extension after this issue lookup was cached.
+            if (InkShelf2ExtensionPause.isPausedSource(match.source.id)) continue
             try {
                 val bytes = withTimeout(13_000L) {
                     val remote = match.pages[pageIndex]

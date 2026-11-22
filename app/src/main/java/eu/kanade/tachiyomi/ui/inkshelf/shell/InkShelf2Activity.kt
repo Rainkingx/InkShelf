@@ -162,7 +162,10 @@ class InkShelf2Activity : AppCompatActivity() {
             val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
             val availableExtensions by extensionManager.availableExtensionsFlow.collectAsState()
             val untrustedExtensions by extensionManager.untrustedExtensionsFlow.collectAsState()
-            val extensionUpdates = installedExtensions.mapNotNull { installed ->
+            val pausedExtensionPackages = preferences.inkShelf2PausedExtensions().get()
+            val extensionUpdates = installedExtensions
+                .filterNot { it.pkgName in pausedExtensionPackages }
+                .mapNotNull { installed ->
                 availableExtensions.firstOrNull { available ->
                     available.pkgName == installed.pkgName &&
                         (available.versionCode > installed.versionCode || available.libVersion > installed.libVersion)
