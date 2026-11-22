@@ -53,20 +53,6 @@ class InkShelf2Activity : AppCompatActivity() {
     private var refreshEpoch by mutableIntStateOf(0)
     private var lastBackAtMillis = 0L
     private var readerOpenInProgress by mutableStateOf(false)
-    private var lastLocalDailyStamp: Int? = null
-
-    override fun onResume() {
-        super.onResume()
-        val today = InkShelf2DailyRotation.localDayStamp()
-        // Reload only on a real local date change, including when returning
-        // from the background after midnight. The existing six-hour Discover
-        // worker remains responsible for refreshing source data.
-        if (lastLocalDailyStamp != null && lastLocalDailyStamp != today) {
-            refreshEpoch += 1
-        }
-        lastLocalDailyStamp = today
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SecureActivityDelegate.setSecure(this)
@@ -385,7 +371,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         onSeeAll = { selectedDiscoverShelf = it },
                         onRecommendationsUpdated = {
                             discover = engine.loadDiscover()
-                            home = engine.loadHome()
+                            home = engine.loadHome(enabledSourceIds)
                         },
                     )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
