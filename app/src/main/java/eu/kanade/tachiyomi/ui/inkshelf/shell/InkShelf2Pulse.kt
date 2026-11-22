@@ -157,6 +157,7 @@ internal object InkShelf2PulseFeed {
             }
             prefs.edit().putString("articles", output.toString()).putLong("saved_at", now).apply()
         }
+        if (entries.isNotEmpty()) InkShelf2PulseArchive.record(context, entries)
         entries
     }
 
@@ -416,7 +417,7 @@ internal object InkShelf2PulseFeed {
 
     private fun validVideoId(value: String): Boolean = value.matches(Regex("[A-Za-z0-9_-]{11}"))
 
-    private fun isApprovedArticleLink(value: String): Boolean {
+    internal fun isApprovedArticleLink(value: String): Boolean {
         if (!validHttps(value)) return false
         val uri = Uri.parse(value)
         val host = uri.host.orEmpty().lowercase(Locale.ROOT)
@@ -762,6 +763,12 @@ internal object InkShelf2PulseMatcher {
         Regex("""\s*\((?:19|20)\d{2}(?:\s*[-–—]\s*(?:(?:19|20)\d{2})?)?\)\s*$""")
     private val punctuation = Regex("""[^\p{L}\p{N}]+""")
     private val extraSpaces = Regex("""\s+""")
+    private val volumeSuffix = Regex("""\s+(?:(?:vol(?:ume)?\.?)\s*\d+|#\s*\d+)$""", RegexOption.IGNORE_CASE)
+    private val comicContexts = listOf(
+        "comic", "comics", "issue", "review", "omnibus", "volume", "vol",
+        "collected", "graphic novel", "edition", "writer", "artist",
+        "cover", "covers", "series", "first look",
+    )
 
     private fun normalise(text: String): String =
         text.lowercase(Locale.ROOT)
@@ -770,19 +777,39 @@ internal object InkShelf2PulseMatcher {
             .trim()
             .replace(extraSpaces, " ")
 
+    fun searchTerm(comicTitle: String): String? {
+        val title = comicTitle.replace(publishingYearSuffix, "")
+            .replace(volumeSuffix, "").trim()
+        val normalised = normalise(title)
+        // Names shorter than four letters are much too ambiguous for a
+        // historical search. Others still require strict headline checks.
+        return title.takeIf { normalised.length >= 4 }
+    }
+
+    fun isMatch(comicTitle: String, article: InkShelf2PulseArticle): Boolean {
+        val search = searchTerm(comicTitle) ?: return false
+        val series = normalise(search)
+        val headline = " " + normalise(article.title) + " "
+        val phrase = " $series "
+        if (!headline.contains(phrase)) return false
+
+        // Longer full-series phrases reliably identify a specific comic
+        // (e.g. Absolute Batman, Ultimate Spider-Man or X-Men). A short
+        // single-name franchise (Spawn, Batman, Saga) must also reference
+        // the comic medium; film, TV and gaming headlines are excluded.
+        if (series.split(' ').size >= 2) return true
+        val medium = comicContexts.any { context ->
+            (" " + context + " ") in headline
+        }
+        val issueNumber = Regex("""#\s*\d+""").containsMatchIn(article.title)
+        return medium || issueNumber
+    }
+
     fun related(
         comicTitle: String,
         articles: List<InkShelf2PulseArticle>,
     ): List<InkShelf2PulseArticle> {
-        val series = normalise(comicTitle.replace(publishingYearSuffix, ""))
-        // A single character name is too ambiguous. Only display credible
-        // multi-word *series* matches, rather than unrelated franchise news.
-        if (series.length < 8 || series.split(' ').size < 2) return emptyList()
-        val phrase = " $series "
-        val matches = articles.filter { article ->
-            (" " + normalise(article.title) + " ").contains(phrase)
-        }.distinctBy { it.url }
-
+        val matches = articles.filter { isMatch(comicTitle, it) }.distinctBy { it.url }
         val news = matches.filterNot { it.isVideo }.sortedByDescending { it.publishedAt }.take(2)
         val videos = matches.filter { it.isVideo }.sortedByDescending { it.publishedAt }.take(2)
         return buildList {
@@ -804,13 +831,27 @@ internal fun InkShelf2RelatedPulse(comicTitle: String) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var feed by remember(comicTitle) { mutableStateOf<List<InkShelf2PulseArticle>>(emptyList()) }
     LaunchedEffect(comicTitle) {
-        feed = InkShelf2PulseFeed.cached(context)
+        // Render cached matches first. The comic/reader itself never waits.
+        val recent = InkShelf2PulseFeed.cached(context)
+        val historical = InkShelf2PulseArchive.cached(context)
+        feed = (recent + historical).distinctBy { it.url }
         try {
-            feed = InkShelf2PulseFeed.refresh(context)
+            val latest = InkShelf2PulseFeed.refresh(context)
+            feed = (latest + InkShelf2PulseArchive.cached(context)).distinctBy { it.url }
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: Exception) {
-            // Offline or blocked feeds should never affect comic details.
+            // Keep cached cards when feeds are down.
+        }
+        try {
+            // Public WordPress search can reach up to one year back when
+            // supported by the publisher; results are cached per series.
+            val matches = InkShelf2PulseArchive.searchForComic(context, comicTitle)
+            feed = (feed + matches).distinctBy { it.url }
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // An optional article lookup must never block Comic Details.
         }
     }
     val related = remember(comicTitle, feed) { InkShelf2PulseMatcher.related(comicTitle, feed) }
