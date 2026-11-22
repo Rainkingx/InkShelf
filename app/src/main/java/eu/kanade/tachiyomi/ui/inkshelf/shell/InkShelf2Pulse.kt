@@ -430,10 +430,62 @@ internal object InkShelf2PulseFeed {
     }
 }
 
+/**
+ * Shared segmented selector for Home and the full Pulse destination.
+ * The selected state is owned by Home so See all opens the same category.
+ */
+@Composable
+private fun InkShelf2PulseTabs(
+    showVideos: Boolean,
+    onShowVideos: (Boolean) -> Unit,
+) {
+    val containerShape = RoundedCornerShape(13.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(containerShape)
+            .background(InkShelf2Colors.SurfaceRaised)
+            .border(1.dp, InkShelf2Colors.Border, containerShape)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        listOf(false to "Articles", true to "Videos").forEach { (isVideo, label) ->
+            val selected = showVideos == isVideo
+            val pillShape = RoundedCornerShape(10.dp)
+            Box(
+                modifier = Modifier.weight(1f).height(38.dp)
+                    .clip(pillShape)
+                    .background(
+                        if (selected) InkShelf2Colors.AccentLight.copy(alpha = 0.19f)
+                        else Color.Transparent,
+                    )
+                    .border(
+                        1.dp,
+                        if (selected) InkShelf2Colors.AccentLight.copy(alpha = 0.76f)
+                        else Color.Transparent,
+                        pillShape,
+                    )
+                    .clickable { if (!selected) onShowVideos(isVideo) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    color = if (selected) InkShelf2Colors.AccentLight else InkShelf2Colors.Text,
+                    fontSize = 13.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 internal fun InkShelf2PulsePreview(
     articles: List<InkShelf2PulseArticle>,
     loading: Boolean,
+    showVideos: Boolean,
+    onShowVideos: (Boolean) -> Unit,
     onSeeAll: () -> Unit,
     onOpenArticle: (String) -> Unit,
 ) {
@@ -446,103 +498,108 @@ internal fun InkShelf2PulsePreview(
         color = InkShelf2Colors.Muted,
         fontSize = 12.sp,
     )
-    if (news.isEmpty()) {
-        Text(
-            if (loading) "Finding the latest comic-book news…" else
-                "Comic news is unavailable right now. Tap See all to check again.",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            color = InkShelf2Colors.Muted,
-            fontSize = 12.sp,
-        )
-    } else {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            news.take(2).forEach { article ->
-                Column(
-                    modifier = Modifier.weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
-                        .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
-                        .clickable { onOpenArticle(article.url) }
-                        .padding(9.dp),
-                ) {
-                    InkShelf2PulseArtwork(article, height = 105)
-                    Spacer(Modifier.height(9.dp))
-                    Text(
-                        article.publisher.uppercase(Locale.UK),
-                        color = InkShelf2Colors.AccentLight,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        article.title,
-                        color = InkShelf2Colors.Text,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp,
-                        maxLines = 3,
-                        minLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = 15.sp,
-                    )
-                    if (article.publishedAt > 0) {
-                        Spacer(Modifier.height(5.dp))
+    InkShelf2PulseTabs(showVideos, onShowVideos)
+    Spacer(Modifier.height(14.dp))
+
+    if (!showVideos) {
+        if (news.isEmpty()) {
+            Text(
+                if (loading) "Finding the latest comic-book news…"
+                else "Comic-book news is unavailable right now. Tap See all to try again.",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                color = InkShelf2Colors.Muted,
+                fontSize = 12.sp,
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                news.take(2).forEach { article ->
+                    Column(
+                        modifier = Modifier.weight(1f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
+                            .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
+                            .clickable { onOpenArticle(article.url) }
+                            .padding(9.dp),
+                    ) {
+                        InkShelf2PulseArtwork(article, height = 105)
+                        Spacer(Modifier.height(9.dp))
                         Text(
-                            SimpleDateFormat("d MMM", Locale.UK).format(Date(article.publishedAt)),
-                            color = InkShelf2Colors.Muted,
+                            article.publisher.uppercase(Locale.UK),
+                            color = InkShelf2Colors.AccentLight,
                             fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
                         )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            article.title,
+                            color = InkShelf2Colors.Text,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            maxLines = 3,
+                            minLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 15.sp,
+                        )
+                        if (article.publishedAt > 0) {
+                            Spacer(Modifier.height(5.dp))
+                            Text(
+                                SimpleDateFormat("d MMM", Locale.UK).format(Date(article.publishedAt)),
+                                color = InkShelf2Colors.Muted,
+                                fontSize = 10.sp,
+                            )
+                        }
                     }
                 }
             }
         }
-    }
-    if (videos.isNotEmpty()) {
-        Spacer(Modifier.height(18.dp))
-        Text(
-            "WATCH  •  COMIC NEWS & REVIEWS",
-            modifier = Modifier.padding(horizontal = 16.dp),
-            color = InkShelf2Colors.Text,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
-        )
-        Spacer(Modifier.height(10.dp))
-        androidx.compose.foundation.lazy.LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(videos.take(5), key = { it.url }) { video ->
-                Column(
-                    modifier = Modifier.width(218.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
-                        .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
-                        .clickable { onOpenArticle(video.url) }
-                        .padding(9.dp),
-                ) {
-                    InkShelf2PulseArtwork(video, height = 116)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        video.publisher.uppercase(Locale.UK),
-                        color = InkShelf2Colors.AccentLight,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        video.title,
-                        color = InkShelf2Colors.Text,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        minLines = 2,
-                        lineHeight = 15.sp,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+    } else {
+        if (videos.isEmpty()) {
+            Text(
+                if (loading) "Finding comic-book news and review videos…"
+                else "No videos available right now. Tap See all to check again.",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                color = InkShelf2Colors.Muted,
+                fontSize = 12.sp,
+            )
+        } else {
+            androidx.compose.foundation.lazy.LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(videos.take(8), key = { it.url }) { video ->
+                    Column(
+                        modifier = Modifier.width(218.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
+                            .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
+                            .clickable { onOpenArticle(video.url) }
+                            .padding(9.dp),
+                    ) {
+                        InkShelf2PulseArtwork(video, height = 116)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            video.publisher.uppercase(Locale.UK),
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            video.title,
+                            color = InkShelf2Colors.Text,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            minLines = 2,
+                            lineHeight = 15.sp,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -618,11 +675,12 @@ internal fun InkShelf2PulseScreen(
     padding: PaddingValues,
     articles: List<InkShelf2PulseArticle>,
     loading: Boolean,
+    showVideos: Boolean,
+    onShowVideos: (Boolean) -> Unit,
     onBack: () -> Unit,
     onOpenArticle: (String) -> Unit,
 ) {
-    val news = articles.filterNot { it.isVideo }
-    val videos = articles.filter { it.isVideo }
+    val selected = articles.filter { it.isVideo == showVideos }
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = PaddingValues(
@@ -658,48 +716,31 @@ internal fun InkShelf2PulseScreen(
                 }
             }
         }
-        if (news.isEmpty() && videos.isEmpty()) {
+        item {
+            InkShelf2PulseTabs(showVideos, onShowVideos)
+        }
+        if (selected.isEmpty()) {
             item {
                 Text(
-                    if (loading) "Loading comic-book news…" else
-                        "No news or videos available right now. Check your connection and try again.",
-                    modifier = Modifier.padding(18.dp),
+                    when {
+                        loading -> if (showVideos) "Loading comic-book videos…" else "Loading comic-book news…"
+                        showVideos -> "No videos available right now. Check your connection and try again."
+                        else -> "No articles available right now. Check your connection and try again."
+                    },
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
                     color = InkShelf2Colors.Muted,
                 )
             }
-        }
-        if (news.isNotEmpty()) {
-            item {
-                Text(
-                    "LATEST NEWS",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
-                    color = InkShelf2Colors.AccentLight,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            items(news, key = { it.url }) { article ->
+        } else {
+            items(selected, key = { it.url }) { article ->
                 InkShelf2PulseListCard(article, onOpenArticle)
             }
-        }
-        if (videos.isNotEmpty()) {
             item {
                 Text(
-                    "WATCH  •  NEWS & REVIEWS",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
-                    color = InkShelf2Colors.AccentLight,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            items(videos, key = { it.url }) { video ->
-                InkShelf2PulseListCard(video, onOpenArticle)
-            }
-        }
-        if (news.isNotEmpty() || videos.isNotEmpty()) {
-            item {
-                Text(
-                    "News: AIPT Comics and The Beat. Videos: Near Mint Condition, ComicPop, Casually Comics and Variant Comics. Open each item at its original source.",
+                    if (showVideos)
+                        "YouTube news and reviews from selected comic channels. Videos open in YouTube."
+                    else
+                        "Comic news from AIPT Comics and The Beat. Articles open on the original publisher's website.",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     color = InkShelf2Colors.Muted,
                     fontSize = 11.sp,
