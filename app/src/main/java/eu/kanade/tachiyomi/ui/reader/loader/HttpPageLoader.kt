@@ -310,7 +310,12 @@ class HttpPageLoader(
             Timber.i("XOXO page %s recovered using fresh page links", page.index + 1)
             true
         } catch (cancel: CancellationException) {
-            throw cancel
+            if (cancel is kotlinx.coroutines.TimeoutCancellationException) {
+                Timber.w("XOXO fresh image retry timed out on page %s", page.index + 1)
+                false
+            } else {
+                throw cancel
+            }
         } catch (error: Exception) {
             Timber.w(error, "XOXO image retry failed for page %s", page.index + 1)
             false
