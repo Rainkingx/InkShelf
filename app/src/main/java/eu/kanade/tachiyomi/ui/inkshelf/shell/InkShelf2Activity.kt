@@ -23,16 +23,19 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.LocalSource
 import eu.kanade.tachiyomi.source.SourceManager
+import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverRefreshWorker
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -47,6 +50,7 @@ import uy.kohesive.injekt.api.get
 class InkShelf2Activity : AppCompatActivity() {
     private val engine by lazy { InkShelf2Engine(applicationContext) }
     private val sourcesEngine by lazy { InkShelf2SourcesEngine() }
+    private val downloadManager: DownloadManager by lazy { Injekt.get() }
     private val sourceManager: SourceManager by lazy { Injekt.get() }
     private val extensionManager: ExtensionManager by lazy { Injekt.get() }
     private val preferences: PreferencesHelper by lazy { Injekt.get() }
@@ -276,6 +280,31 @@ class InkShelf2Activity : AppCompatActivity() {
                 }
                 when {
                     comic != null -> key(detailsRevision, comic.source, comic.url) {
+                        var downloadedIds by remember(comic.source, comic.url) {
+                            mutableStateOf<Set<Long>>(emptySet())
+                        }
+                        var queuedIds by remember(comic.source, comic.url) {
+                            mutableStateOf<Set<Long>>(emptySet())
+                        }
+                        // Observe the original J2K download cache/queue while
+                        // details are visible. No second downloader or database.
+                        LaunchedEffect(comic.source, comic.url, chapters) {
+                            if (chapters.isNotEmpty()) {
+                                downloadManager.awaitDownloadCacheReady()
+                                while (true) {
+                                    downloadedIds = chapters.filter {
+                                        it.id != null && downloadManager.isChapterDownloaded(it, comic)
+                                    }.mapNotNull { it.id }.toSet()
+                                    queuedIds = downloadManager.queue.filter {
+                                        it.manga.source == comic.source && it.manga.url == comic.url
+                                    }.mapNotNull { it.chapter.id }.toSet()
+                                    delay(2_500)
+                                }
+                            } else {
+                                downloadedIds = emptySet()
+                                queuedIds = emptySet()
+                            }
+                        }
                         val similarPicks = remember(detailsRevision, comic.source, comic.url, discover, library, enabledSources) {
                             // All candidates originate from the EXISTING J2K
                             // Discover cache or Library. No synthetic URLs and
@@ -312,6 +341,10 @@ class InkShelf2Activity : AppCompatActivity() {
                         isLoadingIssues = loadingIssues,
                         issuesError = issuesError,
                         onChapter = { openChapter(comic, it) },
+                        onDownload = { requested -> downloadIssues(comic, requested) },
+                        canDownload = sourceManager.get(comic.source) is HttpSource && sourceLinkError == null,
+                        downloadedChapterIds = downloadedIds,
+                        queuedChapterIds = queuedIds,
                         onSave = { saveComic(comic) },
                         similarComics = similarPicks,
                         onSimilarComic = { related ->
@@ -572,6 +605,44 @@ class InkShelf2Activity : AppCompatActivity() {
 
     private fun openChapter(manga: Manga, chapter: Chapter) {
         startActivity(ReaderActivity.newIntent(this, manga, chapter))
+    }
+
+    /** Queue through InkShelf 1's existing source-backed offline download manager. */
+    private fun downloadIssues(manga: Manga, chapters: List<Chapter>) {
+        val eligible = chapters.filter { it.id != null }
+        if (eligible.isEmpty()) {
+            Toast.makeText(this, "No downloadable issues are loaded", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (sourceManager.get(manga.source) !is HttpSource) {
+            Toast.makeText(this, "This comic source cannot download issues", Toast.LENGTH_LONG).show()
+            return
+        }
+        lifecycleScope.launch {
+            try {
+                // Downloaded issues must remain reachable from the Library.
+                val newlySaved = !manga.favorite
+                if (newlySaved && !engine.addToLibrary(manga)) {
+                    Toast.makeText(
+                        this@InkShelf2Activity, "Could not add comic to your library", Toast.LENGTH_LONG,
+                    ).show()
+                    return@launch
+                }
+                downloadManager.downloadChapters(manga, eligible)
+                if (newlySaved) refreshEpoch += 1
+                Toast.makeText(
+                    this@InkShelf2Activity,
+                    "Added ${eligible.size} issue${if (eligible.size == 1) "" else "s"} to downloads",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                Toast.makeText(
+                    this@InkShelf2Activity, "Unable to queue download", Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
     }
 
     private fun saveComic(manga: Manga) {

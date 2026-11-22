@@ -36,11 +36,13 @@ import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.CheckCircleOutline
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.ViewList
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -504,6 +506,10 @@ internal fun InkShelf2DetailsScreen(
     isLoadingIssues: Boolean,
     issuesError: String?,
     onChapter: (Chapter) -> Unit,
+    onDownload: (List<Chapter>) -> Unit,
+    canDownload: Boolean,
+    downloadedChapterIds: Set<Long>,
+    queuedChapterIds: Set<Long>,
     onSave: () -> Unit,
     similarComics: List<InkShelf2SimilarPick>,
     onSimilarComic: (Manga) -> Unit,
@@ -557,6 +563,58 @@ internal fun InkShelf2DetailsScreen(
     }
     val visibleChapters = orderedChapters.take(visibleIssueCount)
     val moreIssuesRemaining = (chapters.size - visibleChapters.size).coerceAtLeast(0)
+    val pendingDownloads = remember(chapters, downloadedChapterIds, queuedChapterIds) {
+        chapters.filter { chapter ->
+            val id = chapter.id ?: return@filter false
+            id !in downloadedChapterIds && id !in queuedChapterIds
+        }
+    }
+    val unreadDownloads = remember(pendingDownloads) { pendingDownloads.filter { !it.read } }
+    var downloadChoicesOpen by rememberSaveable(manga.source, manga.url) { mutableStateOf(false) }
+    if (downloadChoicesOpen) {
+        AlertDialog(
+            onDismissRequest = { downloadChoicesOpen = false },
+            title = { Text("Download Issues") },
+            text = {
+                Column {
+                    Text("Choose what to save for offline reading. The comic will also be added to your Library.")
+                    Spacer(Modifier.height(12.dp))
+                    TextButton(
+                        enabled = pendingDownloads.isNotEmpty(),
+                        onClick = {
+                            downloadChoicesOpen = false
+                            onDownload(pendingDownloads)
+                        },
+                    ) { Text("All remaining issues (${pendingDownloads.size})") }
+                    TextButton(
+                        enabled = unreadDownloads.isNotEmpty(),
+                        onClick = {
+                            downloadChoicesOpen = false
+                            onDownload(unreadDownloads)
+                        },
+                    ) { Text("Unread issues only (${unreadDownloads.size})") }
+                    TextButton(
+                        enabled = unreadDownloads.isNotEmpty(),
+                        onClick = {
+                            downloadChoicesOpen = false
+                            val next = unreadDownloads.minByOrNull {
+                                if (it.chapter_number >= 0f) it.chapter_number else Float.MAX_VALUE
+                            }
+                            if (next != null) onDownload(listOf(next))
+                        },
+                    ) { Text("Next unread issue") }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { downloadChoicesOpen = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = InkShelf2Colors.SurfaceRaised,
+            titleContentColor = InkShelf2Colors.Text,
+            textContentColor = InkShelf2Colors.Muted,
+        )
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = padding,
@@ -630,6 +688,19 @@ internal fun InkShelf2DetailsScreen(
                     // an actual issue exists. Never offer a dead Read Now tap.
                     enabled = !isOpeningReader && !isLoadingIssues &&
                         chapters.isNotEmpty() && sourceLinkError == null,
+                )
+                Spacer(Modifier.height(9.dp))
+                InkShelf2ActionButton(
+                    label = when {
+                        !canDownload -> "Downloads Unavailable"
+                        pendingDownloads.isEmpty() -> "All Issues Saved or Queued"
+                        else -> "Download Issues"
+                    },
+                    leadingIcon = Icons.Outlined.FileDownload,
+                    onClick = { downloadChoicesOpen = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    outlined = true,
+                    enabled = canDownload && !isLoadingIssues && pendingDownloads.isNotEmpty(),
                 )
                 if (sourceLinkError != null) {
                     Spacer(Modifier.height(9.dp))
@@ -779,6 +850,10 @@ internal fun InkShelf2DetailsScreen(
                             anchorIssueNumber = seriesAnchorIssue,
                             modifier = Modifier.weight(1f),
                             onClick = { onChapter(chapter) },
+                            canDownload = canDownload,
+                            downloaded = chapter.id in downloadedChapterIds,
+                            queued = chapter.id in queuedChapterIds,
+                            onDownload = { onDownload(listOf(chapter)) },
                         )
                     }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
@@ -791,6 +866,10 @@ internal fun InkShelf2DetailsScreen(
                     chapter = chapter,
                     anchorIssueNumber = seriesAnchorIssue,
                     onClick = { onChapter(chapter) },
+                    canDownload = canDownload,
+                    downloaded = chapter.id in downloadedChapterIds,
+                    queued = chapter.id in queuedChapterIds,
+                    onDownload = { onDownload(listOf(chapter)) },
                 )
                 HorizontalDivider(
                     color = InkShelf2Colors.Border.copy(alpha = 0.3f),

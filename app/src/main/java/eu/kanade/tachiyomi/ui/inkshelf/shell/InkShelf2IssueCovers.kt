@@ -19,8 +19,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.CheckCircleOutline
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -144,6 +146,10 @@ internal fun InkShelf2IssueGridCard(
     modifier: Modifier = Modifier,
     anchorIssueNumber: Int?,
     onClick: () -> Unit,
+    canDownload: Boolean = false,
+    downloaded: Boolean = false,
+    queued: Boolean = false,
+    onDownload: () -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -161,13 +167,37 @@ internal fun InkShelf2IssueGridCard(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        Text(
-            issueStatus(chapter),
-            modifier = Modifier.padding(start = 3.dp, top = 3.dp),
-            color = if (chapter.read || chapter.last_page_read > 0)
-                InkShelf2Colors.AccentLight else InkShelf2Colors.Muted,
-            fontSize = 11.sp,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                when {
+                    downloaded -> "Downloaded"
+                    queued -> "Queued"
+                    else -> issueStatus(chapter)
+                },
+                modifier = Modifier.weight(1f).padding(start = 3.dp, top = 3.dp),
+                color = if (downloaded || queued || chapter.read || chapter.last_page_read > 0)
+                    InkShelf2Colors.AccentLight else InkShelf2Colors.Muted,
+                fontSize = 11.sp,
+            )
+            if (canDownload) {
+                IconButton(
+                    onClick = onDownload,
+                    enabled = !downloaded && !queued,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        if (downloaded) Icons.Outlined.CheckCircleOutline else Icons.Outlined.FileDownload,
+                        contentDescription = when {
+                            downloaded -> "Downloaded ${chapter.name}"
+                            queued -> "Queued ${chapter.name}"
+                            else -> "Download ${chapter.name}"
+                        },
+                        modifier = Modifier.size(19.dp),
+                        tint = if (queued) InkShelf2Colors.Muted else InkShelf2Colors.AccentLight,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -177,6 +207,10 @@ internal fun InkShelf2IssueListRow(
     chapter: Chapter,
     anchorIssueNumber: Int?,
     onClick: () -> Unit,
+    canDownload: Boolean = false,
+    downloaded: Boolean = false,
+    queued: Boolean = false,
+    onDownload: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier.fillMaxWidth()
@@ -195,11 +229,33 @@ internal fun InkShelf2IssueListRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                issueStatus(chapter),
-                color = if (chapter.read || chapter.last_page_read > 0)
+                when {
+                    downloaded -> "Downloaded"
+                    queued -> "Queued"
+                    else -> issueStatus(chapter)
+                },
+                color = if (downloaded || queued || chapter.read || chapter.last_page_read > 0)
                     InkShelf2Colors.AccentLight else InkShelf2Colors.Muted,
                 fontSize = 11.sp,
             )
+        }
+        if (canDownload) {
+            IconButton(
+                onClick = onDownload,
+                enabled = !downloaded && !queued,
+                modifier = Modifier.size(40.dp),
+            ) {
+                Icon(
+                    if (downloaded) Icons.Outlined.CheckCircleOutline else Icons.Outlined.FileDownload,
+                    contentDescription = when {
+                        downloaded -> "Downloaded ${chapter.name}"
+                        queued -> "Queued ${chapter.name}"
+                        else -> "Download ${chapter.name}"
+                    },
+                    tint = if (queued) InkShelf2Colors.Muted else InkShelf2Colors.AccentLight,
+                    modifier = Modifier.size(21.dp),
+                )
+            }
         }
         Icon(
             Icons.Outlined.PlayArrow,
