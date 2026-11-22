@@ -555,6 +555,7 @@ class InkShelf2Activity : AppCompatActivity() {
                             sourceHubOpen = true
                             activeSourceId = null
                         },
+                        onSourcesChanged = { refreshEpoch += 1 },
                         onBackupTools = {
                             openTab(InkShelf2Tab.ACCOUNT)
                             backupOpen = true
