@@ -187,16 +187,23 @@ internal fun InkShelf2HomeScreen(
                 else -> "Good evening"
             }
             val name = profileName.takeIf { it.isNotBlank() }
-            Text(
-                text = if (name == null) greeting else "$greeting, $name",
+            Column(
                 modifier = Modifier.fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 2.dp),
-                color = InkShelf2Colors.Muted,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+                    .padding(start = 16.dp, end = 16.dp, top = 4.dp),
+            ) {
+                // Match the same heading treatment used on Library and Discover.
+                InkShelf2PageHeading("Home")
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (name == null) greeting else "$greeting, $name",
+                    color = InkShelf2Colors.AccentLight,
+                    fontSize = 18.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         item {
             if (slides.isNotEmpty()) {
