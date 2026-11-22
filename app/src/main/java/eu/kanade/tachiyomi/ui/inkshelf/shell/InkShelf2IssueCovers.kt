@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,8 +45,32 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
 import eu.kanade.tachiyomi.ui.manga.InkShelfIssueMetadata
+
+/** Real J2K queue progress; no second downloader or file cache. */
+internal data class InkShelf2IssueDownloadInfo(
+    val status: Download.State,
+    val progress: Int,
+)
+
+private fun downloadStatusText(
+    chapter: Chapter,
+    downloaded: Boolean,
+    info: InkShelf2IssueDownloadInfo?,
+    waitingForWifi: Boolean,
+    downloadsPaused: Boolean,
+): String = when {
+    downloaded -> "Downloaded • offline ready"
+    info?.status == Download.State.DOWNLOADING -> "Downloading ${info.progress}%"
+    info?.status == Download.State.ERROR -> "Download failed • retry"
+    info?.status == Download.State.QUEUE && waitingForWifi -> "Waiting for Wi-Fi"
+    info?.status == Download.State.QUEUE && downloadsPaused -> "Paused • resume downloads"
+    info?.status == Download.State.QUEUE -> "Queued"
+    info?.status == Download.State.DOWNLOADED -> "Finishing download…"
+    else -> issueStatus(chapter)
+}
 
 /** Artwork belongs to Metron; tapping always opens the original source chapter. */
 @Composable
@@ -150,11 +176,15 @@ internal fun InkShelf2IssueGridCard(
     downloaded: Boolean = false,
     queued: Boolean = false,
     onDownload: () -> Unit = {},
+    downloadInfo: InkShelf2IssueDownloadInfo? = null,
+    waitingForWifi: Boolean = false,
+    downloadsPaused: Boolean = false,
+    onLongClick: () -> Unit = {},
 ) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(bottom = 4.dp),
     ) {
         IssueArtwork(manga, chapter, anchorIssueNumber, Modifier.fillMaxWidth().aspectRatio(0.71f))
@@ -169,13 +199,9 @@ internal fun InkShelf2IssueGridCard(
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                when {
-                    downloaded -> "Downloaded"
-                    queued -> "Queued"
-                    else -> issueStatus(chapter)
-                },
+                downloadStatusText(chapter, downloaded, downloadInfo, waitingForWifi, downloadsPaused),
                 modifier = Modifier.weight(1f).padding(start = 3.dp, top = 3.dp),
-                color = if (downloaded || queued || chapter.read || chapter.last_page_read > 0)
+                color = if (downloaded || queued || downloadInfo != null || chapter.read || chapter.last_page_read > 0)
                     InkShelf2Colors.AccentLight else InkShelf2Colors.Muted,
                 fontSize = 11.sp,
             )
@@ -186,7 +212,7 @@ internal fun InkShelf2IssueGridCard(
                     modifier = Modifier.size(32.dp),
                 ) {
                     Icon(
-                        if (downloaded) Icons.Outlined.CheckCircleOutline else Icons.Outlined.FileDownload,
+                        if (downloaded) Icons.Outlined.CheckCircleOutline else if (queued) Icons.Outlined.HourglassEmpty else Icons.Outlined.FileDownload,
                         contentDescription = when {
                             downloaded -> "Downloaded ${chapter.name}"
                             queued -> "Queued ${chapter.name}"
@@ -211,10 +237,14 @@ internal fun InkShelf2IssueListRow(
     downloaded: Boolean = false,
     queued: Boolean = false,
     onDownload: () -> Unit = {},
+    downloadInfo: InkShelf2IssueDownloadInfo? = null,
+    waitingForWifi: Boolean = false,
+    downloadsPaused: Boolean = false,
+    onLongClick: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier.fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -229,15 +259,21 @@ internal fun InkShelf2IssueListRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                when {
-                    downloaded -> "Downloaded"
-                    queued -> "Queued"
-                    else -> issueStatus(chapter)
-                },
-                color = if (downloaded || queued || chapter.read || chapter.last_page_read > 0)
+                downloadStatusText(chapter, downloaded, downloadInfo, waitingForWifi, downloadsPaused),
+                color = if (downloaded || queued || downloadInfo != null || chapter.read || chapter.last_page_read > 0)
                     InkShelf2Colors.AccentLight else InkShelf2Colors.Muted,
                 fontSize = 11.sp,
             )
+            if (downloadInfo?.status == Download.State.DOWNLOADING) {
+                Spacer(Modifier.height(5.dp))
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { downloadInfo.progress / 100f },
+                    modifier = Modifier.fillMaxWidth().height(4.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = InkShelf2Colors.AccentLight,
+                    trackColor = InkShelf2Colors.Border,
+                )
+            }
         }
         if (canDownload) {
             IconButton(
@@ -246,7 +282,7 @@ internal fun InkShelf2IssueListRow(
                 modifier = Modifier.size(40.dp),
             ) {
                 Icon(
-                    if (downloaded) Icons.Outlined.CheckCircleOutline else Icons.Outlined.FileDownload,
+                    if (downloaded) Icons.Outlined.CheckCircleOutline else if (queued) Icons.Outlined.HourglassEmpty else Icons.Outlined.FileDownload,
                     contentDescription = when {
                         downloaded -> "Downloaded ${chapter.name}"
                         queued -> "Queued ${chapter.name}"
