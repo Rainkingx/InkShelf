@@ -52,11 +52,11 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
-import okhttp3.Response
 import timber.log.Timber
 import uy.kohesive.injekt.injectLazy
 import java.io.BufferedOutputStream
 import java.io.File
+import java.io.IOException
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -503,8 +503,13 @@ class Downloader(
         // Delete temp file if it exists
         tmpFile?.delete()
 
-        // Try to find the image file
-        val imageFile = tmpDir.listFiles()?.find { it.name!!.startsWith("$filename.") || it.name!!.startsWith("${filename}__001") }
+        // A source can serve HTML, an error page, or an empty response with HTTP 200.
+        // Reuse local files only when their bytes actually identify a supported image.
+        val existingFile = tmpDir.listFiles()?.find {
+            it.name!!.startsWith("$filename.") || it.name!!.startsWith("${filename}__001")
+        }
+        val imageFile = existingFile?.takeIf(::isValidImageFile)
+        if (existingFile != null && imageFile == null) existingFile.delete()
 
         val chapName = download.chapter.preferredChapterName(context, download.manga, preferences)
         try {
@@ -512,11 +517,10 @@ class Downloader(
             val file =
                 when {
                     imageFile != null -> imageFile
-                    chapterCache.isImageInCache(page.imageUrl!!) ->
+                    chapterCache.isImageInCache(page.imageUrl!!) &&
+                        isValidCachedImage(page.imageUrl!!) ->
                         moveImageFromCache(
-                            chapterCache.getImageFile(
-                                page.imageUrl!!,
-                            ),
+                            chapterCache.getImageFile(page.imageUrl!!),
                             tmpDir,
                             filename,
                         )
@@ -565,8 +569,10 @@ class Downloader(
             val file = tmpDir.createFile("$filename.tmp")
             try {
                 response.body.source().saveTo(file.openOutputStream())
-                val extension = getImageExtension(response, file)
-                file.renameTo("$filename.$extension")
+                val imageType = ImageUtil.findImageType { file.openInputStream() }
+                    ?: throw IOException("Invalid image data for page ${page.index + 1}; source returned a non-image response")
+                if (file.length() <= 0L) throw IOException("Empty image on page ${page.index + 1}")
+                file.renameTo("$filename.${imageType.extension}")
             } catch (e: Exception) {
                 response.close()
                 file.delete()
@@ -603,36 +609,24 @@ class Downloader(
                 input.copyTo(output)
             }
         }
-        val extension = ImageUtil.findImageType(cacheFile.inputStream()) ?: return tmpFile
+        val extension = ImageUtil.findImageType { cacheFile.inputStream() }
+            ?: throw IOException("Cached response is not an image")
         tmpFile.renameTo("$filename.${extension.extension}")
         cacheFile.delete()
         return tmpFile
     }
 
-    /**
-     * Returns the extension of the downloaded image from the network response, or if it's null,
-     * analyze the file. If everything fails, assume it's a jpg.
-     *
-     * @param response the network response of the image.
-     * @param file the file where the image is already downloaded.
-     */
-    private fun getImageExtension(
-        response: Response,
-        file: UniFile,
-    ): String {
-        // Read content type if it's an image, some servers don't send the right content type.
-        val mime =
-            response.body
-                .contentType()
-                ?.takeIf { it.type == "image" }
-                ?.let { ct -> "${ct.type}/${ct.subtype}" }
-                // Else guess from the uri.
-                ?: context.contentResolver.getType(file.uri)
-                // Else read magic numbers.
-                ?: ImageUtil.findImageType { file.openInputStream() }?.mime
+    /** Read only an image's header, not the entire page, when validating downloads. */
+    private fun isValidImageFile(file: UniFile): Boolean =
+        runCatching {
+            file.length() > 0L && ImageUtil.findImageType { file.openInputStream() } != null
+        }.getOrDefault(false)
 
-        return ImageUtil.getExtensionFromMimeType(mime)
-    }
+    private fun isValidCachedImage(url: String): Boolean =
+        runCatching {
+            val file = chapterCache.getImageFile(url)
+            file.length() > 0L && ImageUtil.findImageType { file.inputStream() } != null
+        }.getOrDefault(false)
 
     private fun splitTallImageIfNeeded(
         page: Page,
@@ -690,8 +684,19 @@ class Downloader(
                 }
             }
 
+        // Matching file counts alone are not proof of a good download. In
+        // particular, challenge/error HTML can be saved under a .jpg extension.
+        val validImages = tmpDir.listFiles().orEmpty()
+            .filter { file ->
+                val name = file.name.orEmpty()
+                name !in listOf(NOMEDIA_FILE) && !name.endsWith(".tmp") &&
+                    (!name.contains("__") || name.endsWith("__001.jpg"))
+            }.all(::isValidImageFile)
+
         download.status =
-            if (downloadedImagesCount == downloadPageCount) {
+            if (downloadedImagesCount == downloadPageCount && validImages &&
+                download.pages.orEmpty().all { it.status == Page.State.READY }
+            ) {
                 // TODO: Uncomment when #8537 is resolved
 //            val chapterUrl = download.source.getChapterUrl(download.chapter)
 //            createComicInfoFile(
