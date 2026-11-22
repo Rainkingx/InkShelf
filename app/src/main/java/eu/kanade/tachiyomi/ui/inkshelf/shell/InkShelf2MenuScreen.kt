@@ -135,12 +135,12 @@ internal fun InkShelf2MenuScreen(
                     onExtensions,
                 )
                 MenuEntry("Extension Repositories", "Manage extension catalogue repositories", Icons.Outlined.Storage, onRepositories)
+                MenuEntry("Metron", "Comic metadata connection and API token", Icons.Outlined.Key, onMetron)
             }
         }
         item {
-            MenuSection("METADATA & SETTINGS") {
-                MenuEntry("Metron", "Comic metadata connection and API token", Icons.Outlined.Key, onMetron)
-                MenuEntry("Advanced Settings", "Reader, appearance and download preferences", Icons.Outlined.Settings, onSettings)
+            MenuSection("SETTINGS") {
+                MenuEntry("Advanced Settings", "Reader, library and download preferences", Icons.Outlined.Settings, onSettings)
             }
         }
         item {
