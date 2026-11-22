@@ -92,13 +92,31 @@ class HttpPageLoader(
      */
     override suspend fun getPages(): List<ReaderPage> {
         val pages =
-            try {
-                chapterCache.getPageListFromCache(chapter.chapter)
-            } catch (e: Throwable) {
-                if (e is CancellationException) {
-                    throw e
+            if (source.name.contains("xoxo", ignoreCase = true)) {
+                // XOXO image URLs can expire between reading sessions. Prefer
+                // the extension's current chapter page list over a stale disk
+                // cache, but keep the cached list as a network-failure fallback.
+                try {
+                    withTimeout(25_000L) {
+                        source.getPageList(chapter.chapter).also {
+                            if (it.isEmpty()) throw IOException("XOXO returned an empty page list")
+                        }
+                    }
+                } catch (cancel: CancellationException) {
+                    if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+                    Timber.w("XOXO chapter page list timed out; attempting cached pages")
+                    chapterCache.getPageListFromCache(chapter.chapter)
+                } catch (error: Exception) {
+                    Timber.w(error, "XOXO chapter page list failed; attempting cached pages")
+                    chapterCache.getPageListFromCache(chapter.chapter)
                 }
-                source.getPageList(chapter.chapter)
+            } else {
+                try {
+                    chapterCache.getPageListFromCache(chapter.chapter)
+                } catch (e: Throwable) {
+                    if (e is CancellationException) throw e
+                    source.getPageList(chapter.chapter)
+                }
             }
         return pages.mapIndexed { index, page ->
             // Don't trust sources and use our own indexing
