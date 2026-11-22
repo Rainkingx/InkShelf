@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,10 +30,12 @@ import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.ViewList
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,9 +53,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import eu.kanade.tachiyomi.data.database.models.Manga
 import java.util.Locale
 
 /** Four functional filters that reflect actual local J2K status, not mock values. */
+private enum class ComicAction(val title: String, val explanation: String) {
+    REMOVE("Remove from Library", "The comic leaves your Library. Reading progress and downloaded issues are kept."),
+    DELETE_DOWNLOADS("Delete offline downloads", "The comic stays in your Library, but its downloaded issues and queued downloads will be removed."),
+    REMOVE_AND_DELETE("Remove comic and downloads", "The comic leaves your Library and its downloaded issues are deleted. Reading history is kept."),
+}
+
 private enum class ShelfFilter(val title: String) {
     ALL("All"),
     READING("Reading"),
@@ -64,11 +74,57 @@ private enum class ShelfFilter(val title: String) {
 internal fun InkShelf2LibraryScreen(
     library: List<InkShelf2LibraryItem>,
     padding: PaddingValues,
-    onOpen: (eu.kanade.tachiyomi.data.database.models.Manga) -> Unit,
+    onOpen: (Manga) -> Unit,
+    onComicAction: (Manga, Boolean, Boolean) -> Unit,
 ) {
     var grid by rememberSaveable { mutableStateOf(true) }
     var selected by rememberSaveable { mutableStateOf(ShelfFilter.ALL.name) }
+    var menuComic by androidx.compose.runtime.remember { mutableStateOf<Manga?>(null) }
+    var confirmAction by androidx.compose.runtime.remember { mutableStateOf<Pair<Manga, ComicAction>?>(null) }
     val active = ShelfFilter.valueOf(selected)
+    val selectedComic = menuComic
+    if (selectedComic != null) {
+        AlertDialog(
+            onDismissRequest = { menuComic = null },
+            title = { Text("Comic options") },
+            text = {
+                Column {
+                    Text(selectedComic.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(9.dp))
+                    ComicAction.entries.forEach { action ->
+                        TextButton(onClick = {
+                            menuComic = null
+                            confirmAction = selectedComic to action
+                        }) { Text(action.title) }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { menuComic = null }) { Text("Close") }
+            },
+        )
+    }
+    val pending = confirmAction
+    if (pending != null) {
+        AlertDialog(
+            onDismissRequest = { confirmAction = null },
+            title = { Text(pending.second.title + "?") },
+            text = { Text(pending.second.explanation) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmAction = null
+                    onComicAction(
+                        pending.first,
+                        pending.second != ComicAction.DELETE_DOWNLOADS,
+                        pending.second != ComicAction.REMOVE,
+                    )
+                }) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmAction = null }) { Text("Cancel") }
+            },
+        )
+    }
 
     val readingCount = library.count { it.state == InkShelf2ReadingState.READING }
     val completedCount = library.count { it.state == InkShelf2ReadingState.COMPLETED }
@@ -165,7 +221,11 @@ internal fun InkShelf2LibraryScreen(
                     items = visible,
                     key = { it.manga.id ?: it.manga.url },
                 ) { item ->
-                    ShelfCover(item, onClick = { onOpen(item.manga) })
+                    ShelfCover(
+                        item,
+                        onClick = { onOpen(item.manga) },
+                        onLongClick = { menuComic = item.manga },
+                    )
                 }
             }
         } else {
@@ -174,7 +234,11 @@ internal fun InkShelf2LibraryScreen(
                 contentPadding = PaddingValues(top = 8.dp, bottom = 20.dp),
             ) {
                 items(visible, key = { it.manga.id ?: it.manga.url }) { item ->
-                    ShelfListRow(item, onClick = { onOpen(item.manga) })
+                    ShelfListRow(
+                        item,
+                        onClick = { onOpen(item.manga) },
+                        onLongClick = { menuComic = item.manga },
+                    )
                     HorizontalDivider(
                         color = InkShelf2Colors.Border.copy(alpha = 0.3f),
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -221,7 +285,7 @@ private fun ShelfFilterPill(text: String, active: Boolean, modifier: Modifier = 
 }
 
 @Composable
-private fun ShelfCover(item: InkShelf2LibraryItem, onClick: () -> Unit) {
+private fun ShelfCover(item: InkShelf2LibraryItem, onClick: () -> Unit, onLongClick: () -> Unit) {
     val shape = RoundedCornerShape(9.dp)
     Box(
         modifier = Modifier
@@ -230,7 +294,7 @@ private fun ShelfCover(item: InkShelf2LibraryItem, onClick: () -> Unit) {
             .clip(shape)
             .background(InkShelf2Colors.SurfaceRaised)
             .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.7f), shape)
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
         AsyncImage(
             model = item.manga,
@@ -328,11 +392,11 @@ private fun ShelfStatus(item: InkShelf2LibraryItem, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun ShelfListRow(item: InkShelf2LibraryItem, onClick: () -> Unit) {
+private fun ShelfListRow(item: InkShelf2LibraryItem, onClick: () -> Unit, onLongClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
