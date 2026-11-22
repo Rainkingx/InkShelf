@@ -699,13 +699,21 @@ internal fun InkShelf2DetailsScreen(
             )
         }
     }
-    // Keep initial artwork light: show just four rows of two covers.
-    // Reveal subsequent issues only when requested, independently per comic.
+    // Show just three issues at first to keep long comic details compact.
+    // More issues expand in groups of three without changing source order.
     var visibleIssueCount by rememberSaveable(manga.source, manga.url) {
-        mutableStateOf(8)
+        mutableStateOf(3)
     }
     val visibleChapters = orderedChapters.take(visibleIssueCount)
     val moreIssuesRemaining = (chapters.size - visibleChapters.size).coerceAtLeast(0)
+    val synopsisText = manga.description?.takeIf { it.isNotBlank() }
+        ?: "No synopsis available from the selected source."
+    var synopsisExpanded by rememberSaveable(manga.source, manga.url) {
+        mutableStateOf(false)
+    }
+    var synopsisOverflows by remember(manga.source, manga.url, synopsisText) {
+        mutableStateOf(false)
+    }
     val pendingDownloads = remember(chapters, downloadedChapterIds, queuedChapterIds) {
         chapters.filter { chapter ->
             val id = chapter.id ?: return@filter false
@@ -960,12 +968,31 @@ internal fun InkShelf2DetailsScreen(
                 InkShelf2PageHeading("Synopsis")
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    manga.description?.takeIf { it.isNotBlank() }
-                        ?: "No synopsis available from the selected source.",
+                    synopsisText,
                     color = InkShelf2Colors.Muted,
                     fontSize = 14.sp,
                     lineHeight = 21.sp,
+                    maxLines = if (synopsisExpanded) Int.MAX_VALUE else 4,
+                    overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { result ->
+                        if (!synopsisExpanded) {
+                            synopsisOverflows = result.hasVisualOverflow
+                        }
+                    },
                 )
+                if (synopsisOverflows || synopsisExpanded) {
+                    TextButton(
+                        onClick = { synopsisExpanded = !synopsisExpanded },
+                        modifier = Modifier.padding(top = 2.dp),
+                    ) {
+                        Text(
+                            if (synopsisExpanded) "Read less" else "Read more",
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
                 // Cached news and videos load independently of the reader and
                 // only appear for strict, real full-series headline matches.
                 InkShelf2RelatedPulse(comicTitle = manga.title)
@@ -1019,9 +1046,8 @@ internal fun InkShelf2DetailsScreen(
                         onClick = {
                             newestIssuesFirst = !newestIssuesFirst
                             viewPrefs.edit().putBoolean("newest_first", newestIssuesFirst).apply()
-                            // Start the newly ordered list at the first eight
-                            // instead of loading hundreds of covers at once.
-                            visibleIssueCount = 8
+                            // Restart with three issues in the new sort order.
+                            visibleIssueCount = 3
                         },
                     ) {
                         Icon(
@@ -1038,7 +1064,7 @@ internal fun InkShelf2DetailsScreen(
                         )
                     }
                 }
-                if (chapters.size > 8) {
+                if (chapters.size > 3) {
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "Showing ${visibleChapters.size} of ${chapters.size} issues",
@@ -1111,10 +1137,10 @@ internal fun InkShelf2DetailsScreen(
         if (moreIssuesRemaining > 0) {
             item(key = "load-more-issues") {
                 InkShelf2ActionButton(
-                    label = "Show ${minOf(8, moreIssuesRemaining)} More Issues",
+                    label = "See More Issues",
                     outlined = true,
                     onClick = {
-                        visibleIssueCount = (visibleIssueCount + 8).coerceAtMost(chapters.size)
+                        visibleIssueCount = (visibleIssueCount + 3).coerceAtMost(chapters.size)
                     },
                     modifier = Modifier.fillMaxWidth().padding(
                         horizontal = 16.dp, vertical = 12.dp,
