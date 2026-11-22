@@ -50,6 +50,7 @@ class InkShelf2Activity : AppCompatActivity() {
     private val sourceManager: SourceManager by lazy { Injekt.get() }
     private val extensionManager: ExtensionManager by lazy { Injekt.get() }
     private val preferences: PreferencesHelper by lazy { Injekt.get() }
+    private val profileStore by lazy { InkShelf2ProfileStore(applicationContext) }
     private var refreshEpoch by mutableIntStateOf(0)
     private var lastBackAtMillis = 0L
     private var readerOpenInProgress by mutableStateOf(false)
@@ -69,6 +70,10 @@ class InkShelf2Activity : AppCompatActivity() {
 
         setContent {
             var tab by rememberSaveable { mutableStateOf(InkShelf2Tab.HOME) }
+            var profileName by remember { mutableStateOf(profileStore.displayName()) }
+            var welcomeOpen by rememberSaveable {
+                mutableStateOf(!profileStore.hasCompletedWelcome())
+            }
             // Persist visited main tabs rather than relying on Activity.finish().
             // Store only enum names, which are safe for Android saved state.
             var tabTrail by rememberSaveable { mutableStateOf("HOME") }
@@ -206,6 +211,10 @@ class InkShelf2Activity : AppCompatActivity() {
                     sourceHubOpen -> sourceHubOpen = false
                     metronOpen -> metronOpen = false
                     themesOpen -> themesOpen = false
+                    welcomeOpen -> {
+                        profileStore.completeWelcome()
+                        welcomeOpen = false
+                    }
                     tabTrail.contains('|') -> {
                         tabTrail = tabTrail.substringBeforeLast('|')
                         tab = InkShelf2Tab.valueOf(tabTrail.substringAfterLast('|'))
@@ -233,8 +242,8 @@ class InkShelf2Activity : AppCompatActivity() {
             }
             InkShelf2Shell(
                 currentTab = tab,
-                showHeader = selected == null,
-                showBottomNav = selected == null,
+                showHeader = selected == null && !welcomeOpen,
+                showBottomNav = selected == null && !welcomeOpen,
                 onTabSelected = { openTab(it) },
                 onSearch = {
                     openTab(InkShelf2Tab.DISCOVER)
@@ -352,6 +361,12 @@ class InkShelf2Activity : AppCompatActivity() {
                     )
                     tab == InkShelf2Tab.HOME -> InkShelf2HomeScreen(
                         home = home,
+                        library = library,
+                        profileName = profileName,
+                        onProfile = {
+                            openTab(InkShelf2Tab.ACCOUNT)
+                            welcomeOpen = true
+                        },
                         padding = padding,
                         onOpen = openComicDetails,
                         onRead = { openReader(it) },
@@ -410,6 +425,38 @@ class InkShelf2Activity : AppCompatActivity() {
                         padding = padding,
                         onBack = { themesOpen = false },
                     )
+                    welcomeOpen -> InkShelf2WelcomeScreen(
+                        padding = padding,
+                        displayName = profileName,
+                        installedSourceCount = enabledSources.size,
+                        onNameChange = { chosenName ->
+                            profileStore.setName(chosenName)
+                            profileName = profileStore.displayName()
+                        },
+                        onFinish = {
+                            profileStore.completeWelcome()
+                            welcomeOpen = false
+                            openTab(InkShelf2Tab.HOME)
+                        },
+                        onBrowseSources = {
+                            openTab(InkShelf2Tab.ACCOUNT)
+                            sourceHubMode = "Sources"
+                            sourceHubOpen = true
+                            activeSourceId = null
+                        },
+                        onBackupTools = {
+                            startActivity(
+                                Intent(this@InkShelf2Activity, MainActivity::class.java)
+                                    .setAction(MainActivity.SHORTCUT_BACKUP_TOOLS),
+                            )
+                        },
+                        onImportComics = {
+                            startActivity(
+                                Intent(this@InkShelf2Activity, MainActivity::class.java)
+                                    .setAction(MainActivity.SHORTCUT_LOCAL_COMIC_IMPORT),
+                            )
+                        },
+                    )
                     else -> InkShelf2MenuScreen(
                         padding = padding,
                         onBrowseSources = {
@@ -429,6 +476,20 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         onMetron = { metronOpen = true },
                         onThemes = { themesOpen = true },
+                        profileName = profileName,
+                        onProfile = { welcomeOpen = true },
+                        onImportComics = {
+                            startActivity(
+                                Intent(this@InkShelf2Activity, MainActivity::class.java)
+                                    .setAction(MainActivity.SHORTCUT_LOCAL_COMIC_IMPORT),
+                            )
+                        },
+                        onBackupTools = {
+                            startActivity(
+                                Intent(this@InkShelf2Activity, MainActivity::class.java)
+                                    .setAction(MainActivity.SHORTCUT_BACKUP_TOOLS),
+                            )
+                        },
                         onDownloads = {
                             startActivity(
                                 Intent(this@InkShelf2Activity, MainActivity::class.java)
