@@ -144,6 +144,7 @@ internal fun InkShelf2HomeScreen(
     var pulseArticles by remember { mutableStateOf<List<InkShelf2PulseArticle>>(emptyList()) }
     var pulseLoading by remember { mutableStateOf(true) }
     var pulseExpanded by rememberSaveable { mutableStateOf(false) }
+    var pulseShowVideos by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = pulseExpanded) { pulseExpanded = false }
     LaunchedEffect(Unit) {
         pulseArticles = InkShelf2PulseFeed.cached(context)
@@ -155,6 +156,8 @@ internal fun InkShelf2HomeScreen(
             padding = padding,
             articles = pulseArticles,
             loading = pulseLoading,
+            showVideos = pulseShowVideos,
+            onShowVideos = { pulseShowVideos = it },
             onBack = { pulseExpanded = false },
             onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
         )
@@ -461,6 +464,8 @@ internal fun InkShelf2HomeScreen(
             InkShelf2PulsePreview(
                 articles = pulseArticles,
                 loading = pulseLoading,
+                showVideos = pulseShowVideos,
+                onShowVideos = { pulseShowVideos = it },
                 onSeeAll = { pulseExpanded = true },
                 onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
             )
