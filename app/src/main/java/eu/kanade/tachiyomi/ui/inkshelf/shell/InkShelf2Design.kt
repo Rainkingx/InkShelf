@@ -180,7 +180,15 @@ internal fun InkShelf2SectionHeading(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, color = InkShelf2Colors.Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f).padding(end = 8.dp),
+            color = InkShelf2Colors.Text,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
         if (onClick != null) {
             if (showSeeAll) {
                 Row(
@@ -195,6 +203,8 @@ internal fun InkShelf2SectionHeading(
                         color = InkShelf2Colors.AccentLight,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        softWrap = false,
                     )
                     Spacer(Modifier.width(3.dp))
                     Icon(
