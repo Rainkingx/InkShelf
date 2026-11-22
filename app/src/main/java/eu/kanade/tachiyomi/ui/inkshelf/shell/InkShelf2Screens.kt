@@ -157,7 +157,7 @@ internal fun InkShelf2HomeScreen(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            InkShelf2SectionHeading("Continue Reading", onClick = onLibrary)
+            InkShelf2SectionHeading("Continue Reading", onClick = onLibrary, showSeeAll = true)
             Spacer(Modifier.height(13.dp))
             val books = home?.history.orEmpty()
             if (books.isEmpty()) {
@@ -323,7 +323,7 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item(key = "unread-library") {
-            InkShelf2SectionHeading("Issues Waiting for You", onClick = onLibrary)
+            InkShelf2SectionHeading("Issues Waiting for You", onClick = onLibrary, showSeeAll = true)
             if (unreadIssues > 0) {
                 Text(
                     "$unreadIssues unread issues across comics you're reading",
@@ -368,7 +368,7 @@ internal fun InkShelf2HomeScreen(
         }
         if (suggestions.isNotEmpty()) {
             item(key = "home-personal-picks") {
-                InkShelf2SectionHeading("Picked for You", onClick = onDiscover)
+                InkShelf2SectionHeading("Picked for You", onClick = onDiscover, showSeeAll = true)
                 Text(
                     "Based on your library and reading activity",
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
@@ -407,7 +407,7 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item(key = "recently-saved") {
-            InkShelf2SectionHeading("Recently Added to Your Library", onClick = onLibrary)
+            InkShelf2SectionHeading("Recently Added to Your Library", onClick = onLibrary, showSeeAll = true)
             Spacer(Modifier.height(12.dp))
             val recent = library.sortedByDescending { it.manga.date_added }.take(12)
             if (recent.isEmpty()) {
