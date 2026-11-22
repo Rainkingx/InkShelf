@@ -431,8 +431,8 @@ internal object InkShelf2PulseFeed {
 }
 
 /**
- * Shared segmented selector for Home and the full Pulse destination.
- * The selected state is owned by Home so See all opens the same category.
+ * Category selector on the full Pulse destination only.
+ * Home remains a simpler news preview with a single large See all action.
  */
 @Composable
 private fun InkShelf2PulseTabs(
@@ -484,126 +484,80 @@ private fun InkShelf2PulseTabs(
 internal fun InkShelf2PulsePreview(
     articles: List<InkShelf2PulseArticle>,
     loading: Boolean,
-    showVideos: Boolean,
-    onShowVideos: (Boolean) -> Unit,
     onSeeAll: () -> Unit,
     onOpenArticle: (String) -> Unit,
 ) {
-    val news = articles.filterNot { it.isVideo }
-    val videos = articles.filter { it.isVideo }
-    InkShelf2SectionHeading("The Pulse", onClick = onSeeAll, showSeeAll = true)
+    // Home stays a simple editorial teaser. The Articles and Videos selector
+    // belongs only to the full Pulse destination behind the large CTA.
+    val news = articles.filterNot { it.isVideo }.take(2)
+    InkShelf2SectionHeading("The Pulse", onClick = null)
     Text(
         "Comic-book news, reviews & videos",
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
         color = InkShelf2Colors.Muted,
         fontSize = 12.sp,
     )
-    InkShelf2PulseTabs(showVideos, onShowVideos)
-    Spacer(Modifier.height(14.dp))
-
-    if (!showVideos) {
-        if (news.isEmpty()) {
-            Text(
-                if (loading) "Finding the latest comic-book news…"
-                else "Comic-book news is unavailable right now. Tap See all to try again.",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                color = InkShelf2Colors.Muted,
-                fontSize = 12.sp,
-            )
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                news.take(2).forEach { article ->
-                    Column(
-                        modifier = Modifier.weight(1f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
-                            .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
-                            .clickable { onOpenArticle(article.url) }
-                            .padding(9.dp),
-                    ) {
-                        InkShelf2PulseArtwork(article, height = 105)
-                        Spacer(Modifier.height(9.dp))
-                        Text(
-                            article.publisher.uppercase(Locale.UK),
-                            color = InkShelf2Colors.AccentLight,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            article.title,
-                            color = InkShelf2Colors.Text,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.sp,
-                            maxLines = 3,
-                            minLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                            lineHeight = 15.sp,
-                        )
-                        if (article.publishedAt > 0) {
-                            Spacer(Modifier.height(5.dp))
-                            Text(
-                                SimpleDateFormat("d MMM", Locale.UK).format(Date(article.publishedAt)),
-                                color = InkShelf2Colors.Muted,
-                                fontSize = 10.sp,
-                            )
-                        }
-                    }
-                }
-            }
-        }
+    if (news.isEmpty()) {
+        Text(
+            if (loading) "Finding the latest comic-book news…"
+            else "Comic-book news is unavailable right now. Open The Pulse to try again.",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            color = InkShelf2Colors.Muted,
+            fontSize = 12.sp,
+        )
     } else {
-        if (videos.isEmpty()) {
-            Text(
-                if (loading) "Finding comic-book news and review videos…"
-                else "No videos available right now. Tap See all to check again.",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                color = InkShelf2Colors.Muted,
-                fontSize = 12.sp,
-            )
-        } else {
-            androidx.compose.foundation.lazy.LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(videos.take(8), key = { it.url }) { video ->
-                    Column(
-                        modifier = Modifier.width(218.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
-                            .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
-                            .clickable { onOpenArticle(video.url) }
-                            .padding(9.dp),
-                    ) {
-                        InkShelf2PulseArtwork(video, height = 116)
-                        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            news.forEach { article ->
+                Column(
+                    modifier = Modifier.weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.75f))
+                        .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
+                        .clickable { onOpenArticle(article.url) }
+                        .padding(9.dp),
+                ) {
+                    InkShelf2PulseArtwork(article, height = 105)
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        article.publisher.uppercase(Locale.UK),
+                        color = InkShelf2Colors.AccentLight,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        article.title,
+                        color = InkShelf2Colors.Text,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        maxLines = 3,
+                        minLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 15.sp,
+                    )
+                    if (article.publishedAt > 0) {
+                        Spacer(Modifier.height(5.dp))
                         Text(
-                            video.publisher.uppercase(Locale.UK),
-                            color = InkShelf2Colors.AccentLight,
+                            SimpleDateFormat("d MMM", Locale.UK).format(Date(article.publishedAt)),
+                            color = InkShelf2Colors.Muted,
                             fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            video.title,
-                            color = InkShelf2Colors.Text,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
-                            minLines = 2,
-                            lineHeight = 15.sp,
-                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
         }
     }
+    Spacer(Modifier.height(15.dp))
+    InkShelf2ActionButton(
+        label = "See All News & Videos",
+        onClick = onSeeAll,
+        leadingIcon = Icons.Outlined.AutoStories,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+    )
 }
 
 @Composable
