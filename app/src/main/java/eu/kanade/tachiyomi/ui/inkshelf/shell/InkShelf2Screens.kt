@@ -130,8 +130,11 @@ internal fun InkShelf2HomeScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
-        contentPadding = padding,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(
+            top = padding.calculateTopPadding() + 8.dp,
+            bottom = padding.calculateBottomPadding() + 22.dp,
+        ),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item(key = "continue-reading") {
             // A low-key, personal greeting rather than an oversized profile
@@ -147,7 +150,7 @@ internal fun InkShelf2HomeScreen(
             Text(
                 text = if (name == null) greeting else "$greeting, $name",
                 modifier = Modifier.fillMaxWidth()
-                    .padding(start = 18.dp, end = 18.dp, top = 9.dp, bottom = 9.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
@@ -155,18 +158,18 @@ internal fun InkShelf2HomeScreen(
                 overflow = TextOverflow.Ellipsis,
             )
             InkShelf2SectionHeading("Continue Reading", onClick = onLibrary)
-            Spacer(Modifier.height(9.dp))
+            Spacer(Modifier.height(13.dp))
             val books = home?.history.orEmpty()
             if (books.isEmpty()) {
                 InkShelf2EmptyShelf("Your reading progress will appear here.")
             } else {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    // Exact three-column Library sizing: 14dp outer gutters,
-                    // 9dp gaps, and a 0.71 comic-cover aspect ratio.
-                    val libraryCoverWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    // Match Discover's 16dp outer gutters and 10dp cover gaps.
+                    // Keep the existing three-column comic-cover aspect ratio.
+                    val libraryCoverWidth = (maxWidth - 32.dp - 20.dp) / 3
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         items(books) { item ->
                             ComicCoverCard(
@@ -185,7 +188,7 @@ internal fun InkShelf2HomeScreen(
                 val lastRead = books.first()
                 Row(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                         .clickable { onRead(lastRead.manga) },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(9.dp),
@@ -212,13 +215,14 @@ internal fun InkShelf2HomeScreen(
                 HorizontalPager(
                     state = pager,
                     modifier = Modifier.fillMaxWidth(),
+                    pageSpacing = 10.dp,
                 ) { index ->
                     val day = slides[index]
                     val pick = day.picks.firstOrNull()
                     Box(
                         modifier = Modifier.fillMaxWidth()
                             .height(295.dp)
-                            .padding(horizontal = 14.dp)
+                            .padding(horizontal = 16.dp)
                             .clip(RoundedCornerShape(19.dp))
                             .background(InkShelf2Colors.Surface)
                             // Tapping the hero opens all daily picks; nested
@@ -296,7 +300,7 @@ internal fun InkShelf2HomeScreen(
                     }
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 5.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     slides.indices.forEach { index ->
@@ -328,7 +332,7 @@ internal fun InkShelf2HomeScreen(
                     fontSize = 11.sp,
                 )
             }
-            Spacer(Modifier.height(7.dp))
+            Spacer(Modifier.height(12.dp))
             // These are ACTUAL unread chapters from the original J2K
             // Library database. Do not label them newly published.
             val waiting = library
@@ -342,10 +346,10 @@ internal fun InkShelf2HomeScreen(
                 InkShelf2EmptyShelf("Unread issues from comics you're reading will appear here.")
             } else {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val cardWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    val cardWidth = (maxWidth - 32.dp - 20.dp) / 3
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         items(waiting, key = { "${it.manga.source}:${it.manga.url}" }) { item ->
                             ComicCoverCard(
@@ -367,15 +371,15 @@ internal fun InkShelf2HomeScreen(
                 InkShelf2SectionHeading("Picked for You", onClick = onDiscover)
                 Text(
                     "Based on your library and reading activity",
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                     color = InkShelf2Colors.Muted,
                     fontSize = 11.sp,
                 )
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val cardWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    val cardWidth = (maxWidth - 32.dp - 20.dp) / 3
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         items(suggestions, key = { "${it.manga.source}:${it.manga.url}" }) { pick ->
                             Column(modifier = Modifier.width(cardWidth)) {
@@ -404,16 +408,16 @@ internal fun InkShelf2HomeScreen(
         }
         item(key = "recently-saved") {
             InkShelf2SectionHeading("Recently Added to Your Library", onClick = onLibrary)
-            Spacer(Modifier.height(7.dp))
+            Spacer(Modifier.height(12.dp))
             val recent = library.sortedByDescending { it.manga.date_added }.take(12)
             if (recent.isEmpty()) {
                 InkShelf2EmptyShelf("Save a comic to start your personal collection.")
             } else {
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val cardWidth = (maxWidth - 28.dp - 18.dp) / 3
+                    val cardWidth = (maxWidth - 32.dp - 20.dp) / 3
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(9.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         items(recent, key = { "${it.manga.source}:${it.manga.url}" }) { item ->
                             ComicCoverCard(
@@ -428,7 +432,7 @@ internal fun InkShelf2HomeScreen(
                 }
             }
         }
-        item { Spacer(Modifier.height(14.dp)) }
+        item { Spacer(Modifier.height(18.dp)) }
     }
 }
 
