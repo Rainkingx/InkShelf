@@ -21,15 +21,14 @@ import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.appwidget.ContainerModifier
 import eu.kanade.tachiyomi.appwidget.util.calculateRowAndColumnCount
 import eu.kanade.tachiyomi.appwidget.util.stringResource
-import eu.kanade.tachiyomi.ui.main.MainActivity
-import eu.kanade.tachiyomi.ui.main.SearchActivity
+import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2Activity
 
 @Composable
 fun UpdatesWidget(data: List<Pair<Long, Bitmap?>>?) {
     val (rowCount, columnCount) = LocalSize.current.calculateRowAndColumnCount()
     val mainIntent =
-        Intent(LocalContext.current, MainActivity::class.java)
-            .setAction(MainActivity.SHORTCUT_RECENTS)
+        Intent(LocalContext.current, InkShelf2Activity::class.java)
+            .setAction(InkShelf2Activity.ACTION_SHOW_UPDATES)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     Column(
         modifier = ContainerModifier.clickable(actionStartActivity(mainIntent)),
@@ -63,8 +62,9 @@ fun UpdatesWidget(data: List<Pair<Long, Bitmap?>>?) {
                                 contentAlignment = Alignment.Center,
                             ) {
                                 val intent =
-                                    SearchActivity
-                                        .openMangaIntent(LocalContext.current, mangaId, true)
+                                    Intent(LocalContext.current, InkShelf2Activity::class.java)
+                                        .setAction(InkShelf2Activity.ACTION_SHOW_MANGA)
+                                        .putExtra("manga", mangaId)
                                         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                                         // https://issuetracker.google.com/issues/238793260
                                         .addCategory(mangaId.toString())

@@ -3,6 +3,10 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 import android.content.Intent
 import android.app.SearchManager
 import android.net.Uri
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import eu.kanade.tachiyomi.data.updater.AppDownloadInstallJob
 import android.os.Bundle
 import android.os.SystemClock
 import android.widget.Toast
@@ -448,6 +452,37 @@ class InkShelf2Activity : AppCompatActivity() {
                         }
                     }
                 }
+            }
+            updateNotes?.let { (notes, url) ->
+                val parsed = Uri.parse(url)
+                val isTrustedApk = parsed.scheme == "https" &&
+                    parsed.host.equals("github.com", ignoreCase = true) &&
+                    parsed.path?.startsWith("/Rainkingx/InkShelf/releases/download/") == true &&
+                    parsed.path?.endsWith(".apk", ignoreCase = true) == true
+                AlertDialog(
+                    onDismissRequest = { updateNotes = null },
+                    title = { Text("InkShelf Update") },
+                    text = {
+                        Text(
+                            if (notes.isBlank()) "A new version of InkShelf is available."
+                            else notes.take(2_500),
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            enabled = isTrustedApk,
+                            onClick = {
+                                updateNotes = null
+                                AppDownloadInstallJob.start(
+                                    this@InkShelf2Activity, url, notifyOnInstall = false,
+                                )
+                            },
+                        ) { Text("Download & Install") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { updateNotes = null }) { Text("Later") }
+                    },
+                )
             }
             InkShelf2Shell(
                 currentTab = tab,

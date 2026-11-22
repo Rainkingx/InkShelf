@@ -35,8 +35,10 @@ data class GithubRelease(
                     else -> ""
                 }
 
-            return assets.find { it.downloadLink.contains("tachiyomij2k$apkVariant-") }?.downloadLink
-                ?: assets[0].downloadLink
+            return assets.firstOrNull { it.downloadLink.endsWith("/InkShelf.apk") }?.downloadLink
+                ?: assets.firstOrNull { it.downloadLink.contains("InkShelf$apkVariant") && it.downloadLink.endsWith(".apk") }?.downloadLink
+                ?: assets.firstOrNull { it.downloadLink.endsWith(".apk", ignoreCase = true) }?.downloadLink
+                .orEmpty()
         }
 
     /**

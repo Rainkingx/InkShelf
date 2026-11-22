@@ -17,6 +17,7 @@ import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.data.updater.AppDownloadInstallJob
 import eu.kanade.tachiyomi.extension.ExtensionInstallerJob
 import eu.kanade.tachiyomi.source.SourceManager
+import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2Activity
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaDetailsController
 import eu.kanade.tachiyomi.ui.more.AboutController
@@ -495,8 +496,8 @@ class NotificationReceiver : BroadcastReceiver() {
             downloadLink: String,
         ): PendingIntent {
             val newIntent =
-                Intent(context, MainActivity::class.java)
-                    .setAction(MainActivity.SHORTCUT_UPDATE_NOTES)
+                Intent(context, InkShelf2Activity::class.java)
+                    .setAction(InkShelf2Activity.ACTION_SHOW_APP_UPDATE)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                     .putExtra(AboutController.NewUpdateDialogController.BODY_KEY, notes)
                     .putExtra(AboutController.NewUpdateDialogController.URL_KEY, downloadLink)
@@ -520,8 +521,8 @@ class NotificationReceiver : BroadcastReceiver() {
             groupId: Int,
         ): PendingIntent {
             val newIntent =
-                Intent(context, MainActivity::class.java)
-                    .setAction(MainActivity.SHORTCUT_MANGA)
+                Intent(context, InkShelf2Activity::class.java)
+                    .setAction(InkShelf2Activity.ACTION_SHOW_MANGA)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                     .putExtra(MangaDetailsController.MANGA_EXTRA, manga.id)
                     .putExtra("notificationId", manga.id.hashCode())
@@ -562,8 +563,8 @@ class NotificationReceiver : BroadcastReceiver() {
          */
         internal fun openExtensionsPendingActivity(context: Context): PendingIntent {
             val newIntent =
-                Intent(context, MainActivity::class.java)
-                    .setAction(MainActivity.SHORTCUT_EXTENSIONS)
+                Intent(context, InkShelf2Activity::class.java)
+                    .setAction(InkShelf2Activity.ACTION_SHOW_EXTENSIONS)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             return PendingIntent.getActivity(
                 context,
@@ -641,8 +642,8 @@ class NotificationReceiver : BroadcastReceiver() {
          */
         internal fun openExtensionsAndUpdateAllPendingActivity(context: Context): PendingIntent {
             val newIntent =
-                Intent(context, MainActivity::class.java)
-                    .setAction(MainActivity.SHORTCUT_EXTENSIONS)
+                Intent(context, InkShelf2Activity::class.java)
+                    .setAction(InkShelf2Activity.ACTION_SHOW_EXTENSIONS)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                     .putExtra(MainActivity.EXTRA_UPDATE_ALL_EXTENSIONS, true)
             return PendingIntent.getActivity(
