@@ -91,7 +91,6 @@ internal fun InkShelf2HomeScreen(
     home: InkShelf2Engine.Home?,
     library: List<InkShelf2LibraryItem>,
     profileName: String,
-    onProfile: () -> Unit,
     padding: PaddingValues,
     onOpen: (Manga) -> Unit,
     onRead: (Manga) -> Unit,
@@ -128,24 +127,14 @@ internal fun InkShelf2HomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 17.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (name == null) "$greeting!" else "$greeting, $name!",
-                        modifier = Modifier.weight(1f),
-                        fontSize = 23.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = InkShelf2Colors.Text,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    TextButton(onClick = onProfile) {
-                        Text(
-                            if (name == null) "Set up" else "Profile",
-                            color = InkShelf2Colors.AccentLight,
-                            fontSize = 11.sp,
-                        )
-                    }
-                }
+                Text(
+                    if (name == null) "$greeting!" else "$greeting, $name!",
+                    fontSize = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = InkShelf2Colors.Text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(
                     "Your comics, your reading, your space.",
                     color = InkShelf2Colors.Muted,
