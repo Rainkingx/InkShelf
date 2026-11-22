@@ -50,6 +50,7 @@ internal fun InkShelf2WelcomeScreen(
     onNameChange: (String) -> Unit,
     onFinish: () -> Unit,
     onBrowseSources: () -> Unit,
+    onSourcesChanged: () -> Unit,
     onBackupTools: () -> Unit,
     onImportComics: () -> Unit,
 ) {
@@ -134,30 +135,10 @@ internal fun InkShelf2WelcomeScreen(
                         )
                     }
                     1 -> {
-                        GuideText(
-                            "Connect your comic sources",
-                            "Extensions power Discover, series details, issues and reading. Your current installed sources remain untouched.",
-                        )
-                        GuidePanel {
-                            Text(
-                                if (installedSourceCount > 0)
-                                    "${installedSourceCount} installed sources available"
-                                else "No enabled comic sources detected",
-                                color = InkShelf2Colors.Text,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                            )
-                            Spacer(Modifier.height(10.dp))
-                            InkShelf2ActionButton(
-                                label = "Manage Comic Sources",
-                                onClick = onBrowseSources,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        Text(
-                            "Install or enable a source if you need one, then return here. Existing favourites, extensions and reader progress are preserved.",
-                            color = InkShelf2Colors.Muted,
-                            fontSize = 12.sp,
+                        InkShelf2RecommendedSourcesSetup(
+                            installedSourceCount = installedSourceCount,
+                            onManageSources = onBrowseSources,
+                            onSourcesChanged = onSourcesChanged,
                         )
                     }
                     2 -> {
