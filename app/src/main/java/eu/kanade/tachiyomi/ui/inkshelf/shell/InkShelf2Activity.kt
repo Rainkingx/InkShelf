@@ -53,6 +53,9 @@ import uy.kohesive.injekt.api.get
  * remain shared with existing app data and Android background integrations.
  */
 class InkShelf2Activity : AppCompatActivity() {
+    companion object {
+        const val ACTION_SHOW_DOWNLOADS = "eu.kanade.tachiyomi.inkshelf2.SHOW_DOWNLOADS"
+    }
     private val engine by lazy { InkShelf2Engine(applicationContext) }
     private val sourcesEngine by lazy { InkShelf2SourcesEngine() }
     private val downloadManager: DownloadManager by lazy { Injekt.get() }
@@ -78,7 +81,10 @@ class InkShelf2Activity : AppCompatActivity() {
         }
 
         setContent {
-            var tab by rememberSaveable { mutableStateOf(InkShelf2Tab.HOME) }
+            val openedFromDownloadNotice = intent.action == ACTION_SHOW_DOWNLOADS
+            var tab by rememberSaveable {
+                mutableStateOf(if (openedFromDownloadNotice) InkShelf2Tab.ACCOUNT else InkShelf2Tab.HOME)
+            }
             var profileName by remember { mutableStateOf(profileStore.displayName()) }
             var welcomeOpen by rememberSaveable {
                 mutableStateOf(!profileStore.hasCompletedWelcome())
@@ -86,13 +92,15 @@ class InkShelf2Activity : AppCompatActivity() {
             var welcomeStep by rememberSaveable { mutableIntStateOf(0) }
             // Persist visited main tabs rather than relying on Activity.finish().
             // Store only enum names, which are safe for Android saved state.
-            var tabTrail by rememberSaveable { mutableStateOf("HOME") }
+            var tabTrail by rememberSaveable {
+                mutableStateOf(if (openedFromDownloadNotice) "ACCOUNT" else "HOME")
+            }
             var searchFocusEpoch by remember { mutableIntStateOf(0) }
             var discoverSearchPreset by remember { mutableStateOf("") }
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
             var metronOpen by rememberSaveable { mutableStateOf(false) }
             var themesOpen by rememberSaveable { mutableStateOf(false) }
-            var downloadsOpen by rememberSaveable { mutableStateOf(false) }
+            var downloadsOpen by rememberSaveable { mutableStateOf(openedFromDownloadNotice) }
             var historyOpen by rememberSaveable { mutableStateOf(false) }
             var backupOpen by rememberSaveable { mutableStateOf(false) }
             var importOpen by rememberSaveable { mutableStateOf(false) }
