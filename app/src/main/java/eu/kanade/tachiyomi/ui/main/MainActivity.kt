@@ -116,6 +116,7 @@ import eu.kanade.tachiyomi.ui.recents.RecentsController
 import eu.kanade.tachiyomi.ui.recents.RecentsViewType
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.setting.SettingsController
+import eu.kanade.tachiyomi.ui.setting.SettingsBackupController
 import eu.kanade.tachiyomi.ui.setting.SettingsMainController
 import eu.kanade.tachiyomi.ui.source.BrowseController
 import eu.kanade.tachiyomi.ui.source.browse.BrowseSourceController
@@ -418,7 +419,9 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
         // nested Activities so Back returns to the new Compose shell.
         val fromInkShelf2Menu = intent.action == SHORTCUT_DOWNLOADS ||
             intent.action == SHORTCUT_RECENTLY_READ ||
-            intent.action == SHORTCUT_MENU_SETTINGS
+            intent.action == SHORTCUT_MENU_SETTINGS ||
+            intent.action == SHORTCUT_BACKUP_TOOLS ||
+            intent.action == SHORTCUT_LOCAL_COMIC_IMPORT
         if (!isTaskRoot && this !is SearchActivity && !fromInkShelf2Menu) {
             finish()
             return
@@ -1554,6 +1557,20 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
                 if (!router.hasRootController()) goToStartingTab()
                 showSettings()
             }
+            SHORTCUT_BACKUP_TOOLS -> {
+                if (!router.hasRootController()) goToStartingTab()
+                // Existing restore validator, backup creator, and scheduling
+                // remain owned by the trusted J2K backup implementation.
+                router.pushController(SettingsBackupController().withFadeTransaction())
+            }
+            SHORTCUT_LOCAL_COMIC_IMPORT -> {
+                if (!router.hasRootController()) goToStartingTab()
+                val settings = SettingsMainController()
+                router.pushController(settings.withFadeTransaction())
+                // The importer is a controller-scoped ActivityResult flow;
+                // launch only after the controller is attached.
+                nav.post { settings.beginLocalComicImportFromInkShelf2() }
+            }
             SHORTCUT_DOWNLOADS -> {
                 nav.selectedItemId = R.id.nav_recents
                 router.popToRoot()
@@ -2540,6 +2557,8 @@ open class MainActivity : BaseActivity<MainActivityBinding>() {
         const val SHORTCUT_BROWSE = "eu.kanade.tachiyomi.SHOW_BROWSE"
         const val SHORTCUT_DOWNLOADS = "eu.kanade.tachiyomi.SHOW_DOWNLOADS"
         const val SHORTCUT_MENU_SETTINGS = "eu.kanade.tachiyomi.SHOW_MENU_SETTINGS"
+        const val SHORTCUT_BACKUP_TOOLS = "eu.kanade.tachiyomi.SHOW_BACKUP_TOOLS"
+        const val SHORTCUT_LOCAL_COMIC_IMPORT = "eu.kanade.tachiyomi.IMPORT_LOCAL_COMICS"
         const val SHORTCUT_MANGA = "eu.kanade.tachiyomi.SHOW_MANGA"
         const val SHORTCUT_MANGA_BACK = "eu.kanade.tachiyomi.SHOW_MANGA_BACK"
         const val SHORTCUT_UPDATE_NOTES = "eu.kanade.tachiyomi.SHOW_UPDATE_NOTES"
