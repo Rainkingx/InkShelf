@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.content.Intent
+import android.app.SearchManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.widget.Toast
@@ -26,6 +28,7 @@ import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadJob
+import eu.kanade.tachiyomi.data.notification.NotificationReceiver
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.extension.ExtensionManager
@@ -34,6 +37,10 @@ import eu.kanade.tachiyomi.source.LocalSource
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
+import eu.kanade.tachiyomi.ui.main.MainActivity
+import eu.kanade.tachiyomi.ui.manga.MangaDetailsController
+import eu.kanade.tachiyomi.ui.source.browse.BrowseSourceController
+import eu.kanade.tachiyomi.ui.more.AboutController
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverRefreshWorker
 import eu.kanade.tachiyomi.util.system.isConnectedToWifi
@@ -55,6 +62,18 @@ import uy.kohesive.injekt.api.get
 class InkShelf2Activity : AppCompatActivity() {
     companion object {
         const val ACTION_SHOW_DOWNLOADS = "eu.kanade.tachiyomi.inkshelf2.SHOW_DOWNLOADS"
+        const val ACTION_SHOW_MANGA = "eu.kanade.tachiyomi.inkshelf2.SHOW_MANGA"
+        const val ACTION_SHOW_EXTENSIONS = "eu.kanade.tachiyomi.inkshelf2.SHOW_EXTENSIONS"
+        const val ACTION_SHOW_LIBRARY = "eu.kanade.tachiyomi.inkshelf2.SHOW_LIBRARY"
+        const val ACTION_SHOW_UPDATES = "eu.kanade.tachiyomi.inkshelf2.SHOW_UPDATES"
+        const val ACTION_SHOW_APP_UPDATE = "eu.kanade.tachiyomi.inkshelf2.APP_UPDATE"
+    }
+    private var pendingEntryIntent by mutableStateOf<Intent?>(null)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingEntryIntent = intent
     }
     private val engine by lazy { InkShelf2Engine(applicationContext) }
     private val sourcesEngine by lazy { InkShelf2SourcesEngine() }
@@ -68,6 +87,7 @@ class InkShelf2Activity : AppCompatActivity() {
     private var readerOpenInProgress by mutableStateOf(false)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingEntryIntent = intent
         SecureActivityDelegate.setSecure(this)
         // Restore the selected 2.0 palette before first composition (no purple flash).
         InkShelf2Themes.restore(this)
@@ -107,6 +127,8 @@ class InkShelf2Activity : AppCompatActivity() {
             var settingsOpen by rememberSaveable { mutableStateOf(false) }
             var notificationsOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
+            var externalRepoDraft by rememberSaveable { mutableStateOf("") }
+            var updateNotes by remember { mutableStateOf<Pair<String, String>?>(null) }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
             var selectedDiscoverShelf by rememberSaveable { mutableStateOf<String?>(null) }
@@ -277,6 +299,98 @@ class InkShelf2Activity : AppCompatActivity() {
                 issuesError = null
                 loadingIssues = true
                 selected = manga
+            }
+            // All external intents navigate into 2.0; no old Conductor screen is mounted.
+            LaunchedEffect(pendingEntryIntent) {
+                val entry = pendingEntryIntent ?: return@LaunchedEffect
+                pendingEntryIntent = null
+                val action = entry.action
+                if (action != null && action != Intent.ACTION_MAIN) {
+                    welcomeOpen = false // Leave setup available next time.
+                }
+                val notificationId = entry.getIntExtra("notificationId", -1)
+                if (notificationId >= 0) {
+                    NotificationReceiver.dismissNotification(
+                        applicationContext, notificationId, entry.getIntExtra("groupId", 0),
+                    )
+                }
+                when (action) {
+                    ACTION_SHOW_DOWNLOADS, MainActivity.SHORTCUT_DOWNLOADS -> {
+                        openTab(InkShelf2Tab.ACCOUNT)
+                        downloadsOpen = true
+                    }
+                    MainActivity.SHORTCUT_RECENTLY_READ -> {
+                        openTab(InkShelf2Tab.ACCOUNT)
+                        historyOpen = true
+                    }
+                    ACTION_SHOW_LIBRARY, ACTION_SHOW_UPDATES,
+                    MainActivity.SHORTCUT_LIBRARY, MainActivity.SHORTCUT_RECENTS,
+                    MainActivity.SHORTCUT_RECENTLY_UPDATED -> openTab(InkShelf2Tab.LIBRARY)
+                    ACTION_SHOW_EXTENSIONS, MainActivity.SHORTCUT_EXTENSIONS -> {
+                        openTab(InkShelf2Tab.ACCOUNT)
+                        sourceHubMode = "Extensions"
+                        sourceHubOpen = true
+                    }
+                    MainActivity.SHORTCUT_SOURCE -> {
+                        val sourceId = entry.getLongExtra(BrowseSourceController.SOURCE_ID_KEY, 0L)
+                        if (sourceId > 0L) {
+                            openTab(InkShelf2Tab.ACCOUNT)
+                            sourceHubMode = "Sources"
+                            sourceHubOpen = true
+                            activeSourceId = sourceId
+                        }
+                    }
+                    ACTION_SHOW_MANGA, MainActivity.SHORTCUT_MANGA, MainActivity.SHORTCUT_MANGA_BACK -> {
+                        val mangaId = entry.getLongExtra(MangaDetailsController.MANGA_EXTRA, 0L)
+                        val manga = engine.mangaById(mangaId)
+                        if (manga != null) openComicDetails(manga)
+                        else Toast.makeText(this@InkShelf2Activity, "Comic not found", Toast.LENGTH_SHORT).show()
+                    }
+                    ACTION_SHOW_APP_UPDATE, MainActivity.SHORTCUT_UPDATE_NOTES -> {
+                        val body = entry.getStringExtra(AboutController.NewUpdateDialogController.BODY_KEY).orEmpty()
+                        val downloadUrl = entry.getStringExtra(AboutController.NewUpdateDialogController.URL_KEY).orEmpty()
+                        updateNotes = body.take(12_000) to downloadUrl
+                    }
+                    Intent.ACTION_SEARCH, "com.google.android.gms.actions.SEARCH_ACTION",
+                    Intent.ACTION_SEND, MainActivity.INTENT_SEARCH -> {
+                        openTab(InkShelf2Tab.DISCOVER)
+                        discoverSearchPreset = (
+                            entry.getStringExtra(SearchManager.QUERY)
+                                ?: entry.getStringExtra(MainActivity.INTENT_SEARCH_QUERY)
+                                ?: entry.getStringExtra(Intent.EXTRA_TEXT)
+                        ).orEmpty().take(300)
+                        searchFocusEpoch += 1
+                    }
+                    MainActivity.SHORTCUT_BROWSE -> openTab(InkShelf2Tab.DISCOVER)
+                    MainActivity.SHORTCUT_READER_SETTINGS, MainActivity.SHORTCUT_MENU_SETTINGS,
+                    Intent.ACTION_APPLICATION_PREFERENCES -> {
+                        openTab(InkShelf2Tab.ACCOUNT)
+                        settingsOpen = true
+                    }
+                    MainActivity.SHORTCUT_BACKUP_TOOLS -> {
+                        openTab(InkShelf2Tab.ACCOUNT)
+                        backupOpen = true
+                    }
+                    MainActivity.SHORTCUT_LOCAL_COMIC_IMPORT -> {
+                        openTab(InkShelf2Tab.ACCOUNT)
+                        importOpen = true
+                    }
+                    Intent.ACTION_VIEW -> {
+                        val link = entry.data
+                        if ((link?.scheme == "tachiyomi" && link.host == "add-repo") ||
+                            (link?.scheme == "mihon" && link.host == "extension-store")
+                        ) {
+                            val candidate = link?.getQueryParameter("url").orEmpty().take(1024)
+                            val url = Uri.parse(candidate)
+                            if (url.scheme == "https" && !url.host.isNullOrBlank()) {
+                                openTab(InkShelf2Tab.ACCOUNT)
+                                externalRepoDraft = candidate
+                                sourceHubMode = "Repos"
+                                sourceHubOpen = true
+                            }
+                        }
+                    }
+                }
             }
             fun backFromComicDetails() {
                 val previousComic = comicBackStack.lastOrNull()
@@ -602,6 +716,7 @@ class InkShelf2Activity : AppCompatActivity() {
                             sourceHubOpen = false
                         },
                         initialMode = sourceHubMode,
+                        initialRepoUrl = externalRepoDraft,
                         onOpenComic = openComicDetails,
                     )
                     tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(
