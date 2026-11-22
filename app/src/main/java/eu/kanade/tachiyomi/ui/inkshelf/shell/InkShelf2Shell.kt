@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -114,6 +116,7 @@ fun InkShelf2Shell(
     onTabSelected: (InkShelf2Tab) -> Unit,
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
+    notificationCount: Int = 0,
     modifier: Modifier = Modifier,
     showHeader: Boolean = true,
     showBottomNav: Boolean = true,
@@ -129,6 +132,7 @@ fun InkShelf2Shell(
                     InkShelf2Header(
                         onSearch = onSearch,
                         onNotifications = onNotifications,
+                        notificationCount = notificationCount,
                     )
                 }
             },
@@ -149,6 +153,7 @@ fun InkShelf2Shell(
 private fun InkShelf2Header(
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
+    notificationCount: Int,
 ) {
     Row(
         modifier = Modifier
@@ -170,11 +175,31 @@ private fun InkShelf2Header(
             letterSpacing = (-1).sp,
         )
         IconButton(onClick = onNotifications) {
-            Icon(
-                imageVector = Icons.Outlined.NotificationsNone,
-                contentDescription = "Notifications",
-                tint = InkShelf2Colors.Text,
-            )
+            Box(modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = Icons.Outlined.NotificationsNone,
+                    contentDescription = if (notificationCount > 0) {
+                        "Notifications, " + notificationCount + " extension updates"
+                    } else {
+                        "Notifications"
+                    },
+                    modifier = Modifier.align(Alignment.Center),
+                    tint = InkShelf2Colors.Text,
+                )
+                if (notificationCount > 0) {
+                    Text(
+                        text = if (notificationCount > 99) "99+" else notificationCount.toString(),
+                        modifier = Modifier.align(Alignment.TopEnd)
+                            .offset(x = 9.dp, y = (-6).dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(InkShelf2Colors.Accent)
+                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         }
         IconButton(onClick = onSearch) {
             Icon(

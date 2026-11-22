@@ -16,6 +16,7 @@ import androidx.compose.runtime.referentialEqualityPolicy
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
@@ -97,6 +98,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var backupOpen by rememberSaveable { mutableStateOf(false) }
             var importOpen by rememberSaveable { mutableStateOf(false) }
             var settingsOpen by rememberSaveable { mutableStateOf(false) }
+            var notificationsOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
@@ -115,6 +117,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 backupOpen = false
                 importOpen = false
                 settingsOpen = false
+                notificationsOpen = false
                 activeSourceId = null
                 selectedDay = null
                 selectedDiscoverShelf = null
@@ -122,6 +125,30 @@ class InkShelf2Activity : AppCompatActivity() {
             val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
             val availableExtensions by extensionManager.availableExtensionsFlow.collectAsState()
             val untrustedExtensions by extensionManager.untrustedExtensionsFlow.collectAsState()
+            val extensionUpdates = installedExtensions.mapNotNull { installed ->
+                availableExtensions.firstOrNull { available ->
+                    available.pkgName == installed.pkgName &&
+                        (available.versionCode > installed.versionCode || available.libVersion > installed.libVersion)
+                }?.let { installed to it }
+            }.sortedBy { it.first.name.lowercase() }
+            var checkingExtensionUpdates by remember { mutableStateOf(false) }
+            val notificationScope = rememberCoroutineScope()
+            // Populate the 2.0 bell when the app starts; use the existing
+            // extension repository manager, not a duplicate HTTP client.
+            LaunchedEffect(Unit) {
+                if (preferences.extensionRepos().get().isNotEmpty()) {
+                    checkingExtensionUpdates = true
+                    try {
+                        extensionManager.findAvailableExtensions()
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        // An unavailable repository should not block Home.
+                    } finally {
+                        checkingExtensionUpdates = false
+                    }
+                }
+            }
             val catalogueSources by sourceManager.catalogueSources.collectAsState(initial = emptyList())
             val enabledLanguages = preferences.enabledLanguages().get()
             val hiddenSources = preferences.hiddenSources().get()
@@ -270,6 +297,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     backupOpen -> backupOpen = false
                     importOpen -> importOpen = false
                     settingsOpen -> settingsOpen = false
+                    notificationsOpen -> notificationsOpen = false
                     welcomeOpen -> {
                         welcomeStep = 0
                         profileStore.completeWelcome()
@@ -310,13 +338,8 @@ class InkShelf2Activity : AppCompatActivity() {
                     discoverSearchPreset = ""
                     searchFocusEpoch += 1
                 },
-                onNotifications = {
-                    Toast.makeText(
-                        this@InkShelf2Activity,
-                        "Notifications are still in the original InkShelf app",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                },
+                onNotifications = { notificationsOpen = true },
+                notificationCount = extensionUpdates.size,
             ) { padding ->
                 val comic = selected
                 val curatedShelves = remember(discover, library, enabledSourceIds) {
@@ -508,6 +531,39 @@ class InkShelf2Activity : AppCompatActivity() {
                             importOpen = true
                         },
                     )
+                    notificationsOpen -> InkShelf2NotificationsScreen(
+                        padding = padding,
+                        updates = extensionUpdates,
+                        checking = checkingExtensionUpdates,
+                        hasRepositories = preferences.extensionRepos().get().isNotEmpty(),
+                        onBack = { notificationsOpen = false },
+                        onExtensions = {
+                            openTab(InkShelf2Tab.ACCOUNT)
+                            sourceHubMode = "Extensions"
+                            sourceHubOpen = true
+                            activeSourceId = null
+                        },
+                        onRefresh = {
+                            if (!checkingExtensionUpdates) {
+                                notificationScope.launch {
+                                    checkingExtensionUpdates = true
+                                    try {
+                                        extensionManager.findAvailableExtensions()
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        Toast.makeText(
+                                            this@InkShelf2Activity,
+                                            "Could not check extensions. Try again later.",
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    } finally {
+                                        checkingExtensionUpdates = false
+                                    }
+                                }
+                            }
+                        },
+                    )
                     tab == InkShelf2Tab.HOME -> InkShelf2HomeScreen(
                         home = home,
                         library = library,
@@ -636,6 +692,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         onMetron = { metronOpen = true },
                         onThemes = { themesOpen = true },
+                        extensionUpdateCount = extensionUpdates.size,
                         profileName = profileName,
                         onProfile = {
                             welcomeStep = 0

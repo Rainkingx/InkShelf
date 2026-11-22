@@ -57,6 +57,7 @@ internal fun InkShelf2MenuScreen(
     onRepositories: () -> Unit,
     onMetron: () -> Unit,
     onThemes: () -> Unit,
+    extensionUpdateCount: Int,
     onProfile: () -> Unit,
     onImportComics: () -> Unit,
     onBackupTools: () -> Unit,
@@ -116,7 +117,17 @@ internal fun InkShelf2MenuScreen(
         item {
             MenuSection("SOURCES & EXTENSIONS") {
                 MenuEntry("Browse Sources", "Explore your installed comic catalogues", Icons.Outlined.AutoStories, onBrowseSources)
-                MenuEntry("Manage Extensions", "Install, update and trust extensions", Icons.Outlined.Extension, onExtensions)
+                MenuEntry(
+                    "Manage Extensions",
+                    if (extensionUpdateCount > 0) {
+                        extensionUpdateCount.toString() + " update" +
+                            (if (extensionUpdateCount == 1) "" else "s") + " available"
+                    } else {
+                        "Install, update and trust extensions"
+                    },
+                    Icons.Outlined.Extension,
+                    onExtensions,
+                )
                 MenuEntry("Extension Repositories", "Manage extension catalogue repositories", Icons.Outlined.Storage, onRepositories)
             }
         }
