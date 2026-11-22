@@ -81,6 +81,14 @@ internal fun InkShelf2BackupScreen(
     ) { uri ->
         if (uri != null) {
             try {
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                    )
+                } catch (_: SecurityException) {
+                    // A document provider may grant access without persistence.
+                }
                 BackupCreatorJob.startNow(appContext, uri, fullBackupFlags)
                 Toast.makeText(context, "Backup started. Check the notification for the result.", Toast.LENGTH_LONG).show()
             } catch (_: Exception) {
@@ -260,7 +268,10 @@ internal fun InkShelf2BackupScreen(
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Text("AUTOMATIC BACKUPS", color = InkShelf2Colors.AccentLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(9.dp))
-                val choices = listOf(0 to "Off", 24 to "Daily", 48 to "Every 2 days", 168 to "Weekly")
+                val choices = listOf(
+                    0 to "Off", 6 to "Every 6 hours", 12 to "Every 12 hours",
+                    24 to "Daily", 48 to "Every 2 days", 168 to "Weekly",
+                )
                 choices.forEach { (hours, label) ->
                     Row(
                         modifier = Modifier.fillMaxWidth()
