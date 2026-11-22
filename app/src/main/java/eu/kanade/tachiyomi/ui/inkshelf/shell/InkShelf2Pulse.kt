@@ -113,9 +113,11 @@ internal object InkShelf2PulseFeed {
         val now = System.currentTimeMillis()
         val existing = readCached(context)
         val checkedAt = prefs.getLong("checked_at", 0L)
-        if (now - checkedAt in 0L until TTL_MS &&
-            (existing.any { !it.isVideo } && existing.any { it.isVideo })
-        ) return@withContext existing
+        // A feed-version bump makes the first update fetch YouTube once, even
+        // if the previous news-only version cached articles minutes ago.
+        // Afterward, respect the TTL even when a channel is unavailable.
+        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 2)
+            return@withContext existing
 
         // Pull each independent feed concurrently so a slow/blocked source
         // does not delay every other publisher or video channel.
@@ -139,7 +141,7 @@ internal object InkShelf2PulseFeed {
             (if (videos.isNotEmpty()) videos else existing.filter { it.isVideo })
         ).distinctBy { it.url }
 
-        prefs.edit().putLong("checked_at", now).apply()
+        prefs.edit().putLong("checked_at", now).putInt("feed_version", 2).apply()
         if (entries.isNotEmpty()) {
             val output = JSONArray()
             entries.forEach { article ->
