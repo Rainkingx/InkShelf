@@ -759,9 +759,9 @@ private fun InkShelf2PulseListCard(
  */
 internal object InkShelf2PulseMatcher {
     private val publishingYearSuffix =
-        Regex("""\\s*\\((?:19|20)\\d{2}(?:\\s*[-–—]\\s*(?:(?:19|20)\\d{2})?)?\\)\\s*$""")
-    private val punctuation = Regex("""[^\\p{L}\\p{N}]+""")
-    private val extraSpaces = Regex("""\\s+""")
+        Regex("""\s*\((?:19|20)\d{2}(?:\s*[-–—]\s*(?:(?:19|20)\d{2})?)?\)\s*$""")
+    private val punctuation = Regex("""[^\p{L}\p{N}]+""")
+    private val extraSpaces = Regex("""\s+""")
 
     private fun normalise(text: String): String =
         text.lowercase(Locale.ROOT)
