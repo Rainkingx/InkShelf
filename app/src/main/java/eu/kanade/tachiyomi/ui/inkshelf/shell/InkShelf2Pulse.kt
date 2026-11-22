@@ -632,6 +632,142 @@ private fun InkShelf2PulseArtwork(article: InkShelf2PulseArticle, height: Int) {
     }
 }
 
+
+/**
+ * Original comic-newspaper front page: masthead, edition rule and a live
+ * publisher headline. Editorial styling only; no Daily Bugle branding.
+ */
+@Composable
+private fun InkShelf2PulseNewsHero(
+    featured: InkShelf2PulseArticle?,
+    onBack: () -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    val ink = Color(0xFF17111F)
+    val paper = Color(0xFFF1E6D7)
+    val accent = Color(0xFF5E276F)
+    val shape = RoundedCornerShape(14.dp)
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFFFF6E7), paper, Color(0xFFE2D1C1)),
+                ),
+            )
+            .border(1.dp, InkShelf2Colors.AccentLight.copy(alpha = 0.6f), shape)
+            .padding(horizontal = 16.dp, vertical = 11.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.ArrowBack,
+                    contentDescription = "Back to Home",
+                    tint = ink,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Text(
+                "THE INKSHELF EDITION",
+                color = accent,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                modifier = Modifier.weight(1f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Text("VOL. 02", color = ink, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        }
+        androidx.compose.material3.HorizontalDivider(thickness = 2.dp, color = ink)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "THE PULSE",
+            color = ink,
+            fontSize = 41.sp,
+            fontWeight = FontWeight.ExtraBold,
+            lineHeight = 43.sp,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            letterSpacing = (-1.4).sp,
+        )
+        androidx.compose.material3.HorizontalDivider(thickness = 1.dp, color = ink)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                java.text.SimpleDateFormat("EEE, d MMM yyyy", Locale.UK)
+                    .format(Date()).uppercase(Locale.UK),
+                color = ink,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text("COMICS  •  REVIEWS  •  VIDEO", color = ink, fontSize = 9.sp)
+        }
+        androidx.compose.material3.HorizontalDivider(thickness = 3.dp, color = ink)
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "LATEST HEADLINE",
+            color = accent,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.2.sp,
+        )
+        Spacer(Modifier.height(5.dp))
+        Text(
+            featured?.title ?: "STORIES FROM ACROSS THE COMIC UNIVERSE",
+            color = ink,
+            fontSize = 19.sp,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = if (featured == null) Modifier else Modifier.clickable { onOpen(featured.url) },
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (featured != null && featured.imageUrl != null) {
+                Box(modifier = Modifier.width(99.dp)) {
+                    InkShelf2PulseArtwork(featured, height = 76)
+                }
+            }
+            Text(
+                if (featured == null) "Latest verified publisher stories appear here when the news feed connects."
+                else "From " + featured.publisher +
+                    "  •  Tap the headline to read the full story at its original source.",
+                color = ink.copy(alpha = 0.8f),
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                modifier = Modifier.weight(1f),
+                maxLines = 4,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.material3.HorizontalDivider(
+            thickness = 1.dp,
+            color = ink.copy(alpha = 0.45f),
+        )
+        Text(
+            "ALL THE STORIES BEHIND THE PANELS",
+            modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
+            color = accent,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.7.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+    }
+}
+
 @Composable
 internal fun InkShelf2PulseScreen(
     padding: PaddingValues,
@@ -651,34 +787,15 @@ internal fun InkShelf2PulseScreen(
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.Outlined.ArrowBack,
-                        contentDescription = "Back to Home",
-                        tint = InkShelf2Colors.Text,
-                    )
-                }
-                Column {
-                    Text(
-                        "The Pulse",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        color = InkShelf2Colors.Text,
-                    )
-                    Text(
-                        "Comic-book news, reviews & videos",
-                        color = InkShelf2Colors.Muted,
-                        fontSize = 12.sp,
-                    )
-                }
-            }
+        item(key = "pulse-front-page") {
+            InkShelf2PulseNewsHero(
+                featured = articles.filterNot { it.isVideo }
+                    .maxByOrNull { it.publishedAt },
+                onBack = onBack,
+                onOpen = onOpenArticle,
+            )
         }
-        item {
+        item(key = "pulse-tabs") {
             InkShelf2PulseTabs(showVideos, onShowVideos)
         }
         if (selected.isEmpty()) {
