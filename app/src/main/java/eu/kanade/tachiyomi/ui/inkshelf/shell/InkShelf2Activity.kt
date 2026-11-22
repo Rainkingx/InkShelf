@@ -92,6 +92,8 @@ class InkShelf2Activity : AppCompatActivity() {
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
             var metronOpen by rememberSaveable { mutableStateOf(false) }
             var themesOpen by rememberSaveable { mutableStateOf(false) }
+            var downloadsOpen by rememberSaveable { mutableStateOf(false) }
+            var historyOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
@@ -105,6 +107,8 @@ class InkShelf2Activity : AppCompatActivity() {
                 sourceHubOpen = false
                 metronOpen = false
                 themesOpen = false
+                downloadsOpen = false
+                historyOpen = false
                 activeSourceId = null
                 selectedDay = null
                 selectedDiscoverShelf = null
@@ -137,6 +141,40 @@ class InkShelf2Activity : AppCompatActivity() {
             var issuesError by remember { mutableStateOf<String?>(null) }
             var sourceLinkError by remember { mutableStateOf<String?>(null) }
             var detailsRevision by remember { mutableIntStateOf(0) }
+            var downloadQueue by remember { mutableStateOf<List<InkShelf2QueueEntry>>(emptyList()) }
+            var offlineSeries by remember { mutableStateOf<List<InkShelf2SavedSeries>>(emptyList()) }
+            var downloadsWifiRequired by remember { mutableStateOf(false) }
+            var downloadsPaused by remember { mutableStateOf(false) }
+            var readingHistory by remember { mutableStateOf<List<InkShelf2HistoryEntry>>(emptyList()) }
+
+            LaunchedEffect(downloadsOpen, library) {
+                if (downloadsOpen) {
+                    downloadManager.awaitDownloadCacheReady()
+                    while (true) {
+                        downloadQueue = downloadManager.queue.map { job ->
+                            InkShelf2QueueEntry(
+                                manga = job.manga,
+                                chapter = job.chapter,
+                                status = job.status,
+                                percent = job.progress.coerceIn(0, 100),
+                            )
+                        }
+                        offlineSeries = withContext(Dispatchers.IO) {
+                            library.mapNotNull { item ->
+                                val count = downloadManager.getDownloadCount(item.manga)
+                                if (count > 0) InkShelf2SavedSeries(item.manga, count) else null
+                            }.sortedBy { it.manga.title.lowercase() }
+                        }
+                        downloadsWifiRequired = preferences.downloadOnlyOverWifi() &&
+                            !applicationContext.isConnectedToWifi()
+                        downloadsPaused = downloadManager.isPaused()
+                        delay(1_500)
+                    }
+                }
+            }
+            LaunchedEffect(historyOpen, refreshEpoch) {
+                if (historyOpen) readingHistory = engine.loadHistory()
+            }
 
             LaunchedEffect(refreshEpoch, enabledSourceIds) {
                 // Wait for real installed-source registration. A source
@@ -221,6 +259,8 @@ class InkShelf2Activity : AppCompatActivity() {
                     sourceHubOpen -> sourceHubOpen = false
                     metronOpen -> metronOpen = false
                     themesOpen -> themesOpen = false
+                    downloadsOpen -> downloadsOpen = false
+                    historyOpen -> historyOpen = false
                     welcomeOpen -> {
                         welcomeStep = 0
                         profileStore.completeWelcome()
@@ -524,6 +564,29 @@ class InkShelf2Activity : AppCompatActivity() {
                             manageComic(manga, removeFromLibrary, deleteDownloads)
                         },
                     )
+                    tab == InkShelf2Tab.ACCOUNT && downloadsOpen -> InkShelf2DownloadsScreen(
+                        padding = padding,
+                        queued = downloadQueue,
+                        saved = offlineSeries,
+                        wifiRequired = downloadsWifiRequired,
+                        paused = downloadsPaused,
+                        onBack = { downloadsOpen = false },
+                        onPause = { downloadManager.pauseDownloads() },
+                        onResume = { resumeDownloads() },
+                        onCancel = { entry ->
+                            downloadManager.getChapterDownloadOrNull(entry.chapter)?.let {
+                                downloadManager.deletePendingDownloads(it)
+                            }
+                        },
+                        onOpen = openComicDetails,
+                    )
+                    tab == InkShelf2Tab.ACCOUNT && historyOpen -> InkShelf2HistoryScreen(
+                        padding = padding,
+                        history = readingHistory,
+                        onBack = { historyOpen = false },
+                        onOpen = openComicDetails,
+                        onRead = { manga, chapter -> openChapter(manga, chapter) },
+                    )
                     tab == InkShelf2Tab.ACCOUNT && metronOpen -> InkShelf2MenuMetronScreen(
                         padding = padding,
                         onBack = { metronOpen = false },
@@ -569,16 +632,12 @@ class InkShelf2Activity : AppCompatActivity() {
                             )
                         },
                         onDownloads = {
-                            startActivity(
-                                Intent(this@InkShelf2Activity, MainActivity::class.java)
-                                    .setAction(MainActivity.SHORTCUT_DOWNLOADS),
-                            )
+                            historyOpen = false
+                            downloadsOpen = true
                         },
                         onHistory = {
-                            startActivity(
-                                Intent(this@InkShelf2Activity, MainActivity::class.java)
-                                    .setAction(MainActivity.SHORTCUT_RECENTLY_READ),
-                            )
+                            downloadsOpen = false
+                            historyOpen = true
                         },
                         onSettings = {
                             startActivity(
