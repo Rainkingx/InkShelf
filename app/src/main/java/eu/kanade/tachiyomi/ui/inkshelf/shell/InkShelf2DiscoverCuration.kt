@@ -16,7 +16,10 @@ internal object InkShelf2DiscoverCuration {
         val reasons: Map<String, String> = emptyMap(),
     )
 
-    private val yearTag = Regex("""\s*[\(\[](?:19|20)\d{2}(?:\s*[-–]\s*(?:19|20)\d{2})?\s*[\)\]]""")
+    private val yearTag = Regex(
+        """\s*[\(\[]((?:19|20)\d{2})(?:\s*[-–—]\s*(?:(?:19|20)\d{2}|ongoing|present)?)?\s*[\)\]]""",
+        RegexOption.IGNORE_CASE,
+    )
     private val punctuation = Regex("""[^\p{L}\p{N}]+""")
     private val acclaimedTitles = listOf(
         "watchmen", "the sandman", "saga", "maus", "the dark knight returns",
@@ -112,6 +115,9 @@ internal object InkShelf2DiscoverCuration {
         text.lowercase(Locale.ROOT).replace(punctuation, " ").trim()
     private fun titleKey(comic: Manga): String =
         normalized(comic.title.replace(yearTag, " "))
+    private fun editionKey(comic: Manga): String = normalized(comic.title)
+    private fun seriesYear(comic: Manga): Int =
+        yearTag.find(comic.title)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: Int.MAX_VALUE
     private fun matchesPhrase(text: String, term: String): Boolean =
         " ${normalized(term)} " in " ${normalized(text)} "
     private fun matchCategory(comic: Manga, category: Category): Boolean {
@@ -135,15 +141,19 @@ internal object InkShelf2DiscoverCuration {
         val pool = (personal + trending + newest + saved).asSequence()
             .filter { it.source in enabledSourceIds && it.url.isNotBlank() }
             .filter { !it.thumbnail_url.isNullOrBlank() && it.title.isNotBlank() }
-            .distinctBy(::titleKey)
+            // Different publication years are distinct editions and must
+            // remain individually accessible on Browse All.
+            .distinctBy(::editionKey)
             .toList()
         val acclaimed = acclaimedTitles.mapNotNull { title ->
-            pool.firstOrNull { titleKey(it) == normalized(title) }
+            // Prefer the original/earlier publication run when several
+            // editions share an otherwise identical series name.
+            pool.filter { titleKey(it) == normalized(title) }.minByOrNull(::seriesYear)
         }.distinctBy(::titleKey)
         val acclaimedKeys = acclaimed.map(::titleKey).toSet()
         val trendingKeys = trending.map(::titleKey).toSet()
         val editorialGems = gemTitles.mapNotNull { title ->
-            pool.firstOrNull { titleKey(it) == normalized(title) }
+            pool.filter { titleKey(it) == normalized(title) }.minByOrNull(::seriesYear)
         }.filterNot { titleKey(it) in acclaimedKeys }
         val indie = categories.first { it.title == "Indie Spotlight" }
         val deeperPicks = personal.asSequence()
