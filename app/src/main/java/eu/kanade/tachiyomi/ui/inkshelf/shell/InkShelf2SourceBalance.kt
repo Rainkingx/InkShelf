@@ -37,7 +37,7 @@ internal object InkShelf2SourceBalance {
         val unique = comics
             .filter { it.title.isNotBlank() && it.url.isNotBlank() }
             .groupBy {
-                InkShelf2ComicIdentity.editionKey(it).ifBlank { "\${it.source}:\${it.url}" }
+                InkShelf2ComicIdentity.editionKey(it).ifBlank { "${it.source}:${it.url}" }
             }.values.mapNotNull { choices ->
                 val linkedSavedIds = savedByEdition[InkShelf2ComicIdentity.editionKey(choices.first())]
                     .orEmpty().map { it.source to it.url }.toSet()
