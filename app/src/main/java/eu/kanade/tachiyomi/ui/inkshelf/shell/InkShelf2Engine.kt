@@ -105,6 +105,17 @@ internal class InkShelf2Engine(private val context: Context) {
     suspend fun loadLibrary(): List<InkShelf2LibraryItem> =
         loadInkShelf2Library(database)
 
+    /** Reading History uses the same J2K history query as the classic Recents screen. */
+    suspend fun loadHistory(): List<InkShelf2HistoryEntry> = withContext(Dispatchers.IO) {
+        runCatching {
+            database.getHistoryUngrouped("", 0, false).executeAsBlocking()
+                .filter { it.history.last_read > 0L }
+                .distinctBy { it.chapter.id ?: it.chapter.url }
+                .take(50)
+                .map { InkShelf2HistoryEntry(it.manga, it.chapter, it.history.last_read) }
+        }.getOrDefault(emptyList())
+    }
+
     suspend fun loadDiscover(): Discover = withContext(Dispatchers.IO) { loadDiscoverDirect() }
 
     private fun loadDiscoverDirect(): Discover {
