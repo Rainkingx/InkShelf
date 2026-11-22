@@ -105,6 +105,10 @@ internal class InkShelf2Engine(private val context: Context) {
     suspend fun loadLibrary(): List<InkShelf2LibraryItem> =
         loadInkShelf2Library(database)
 
+    suspend fun mangaById(id: Long): Manga? = withContext(Dispatchers.IO) {
+        if (id <= 0) null else runCatching { database.getManga(id).executeAsBlocking() }.getOrNull()
+    }
+
     /** Reading History uses the same J2K history query as the classic Recents screen. */
     suspend fun loadHistory(): List<InkShelf2HistoryEntry> = withContext(Dispatchers.IO) {
         runCatching {

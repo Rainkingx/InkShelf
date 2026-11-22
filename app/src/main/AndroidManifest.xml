@@ -67,6 +67,34 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- InkShelf 2.0 also handles OS search, shared text, settings and repo links. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH" />
+                <action android:name="com.google.android.gms.actions.SEARCH_ACTION" />
+                <action android:name="eu.kanade.tachiyomi.SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter android:label="@string/action_add_repo">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tachiyomi" android:host="add-repo" />
+            </intent-filter>
+            <intent-filter android:label="@string/action_add_repo">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mihon" android:host="extension-store" />
+            </intent-filter>
         </activity-alias>
         <activity
             android:name=".ui.main.MainActivity"
@@ -76,52 +104,14 @@
             android:exported="true">
             <!-- Kept for existing deep links, notification intents and background integrations.
                  No launcher entry: InkShelf 2.0 owns the app icon. -->
-            <!-- Legacy deep link to add extension store -->
-            <intent-filter android:label="@string/action_add_repo">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="tachiyomi" />
-                <data android:host="add-repo" />
-            </intent-filter>
-            <!-- Deep link to add extension store -->
-            <intent-filter android:label="@string/action_add_repo">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="mihon" />
-                <data android:host="extension-store" />
-            </intent-filter>
             <meta-data android:name="android.app.searchable" android:resource="@xml/searchable"/>
         </activity>
+        <!-- Kept internally for legacy controller callbacks; public routes use 2.0. -->
         <activity
             android:name=".ui.main.SearchActivity"
             android:theme="@style/Theme.Splash"
             android:label="@string/label_global_search"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.SEARCH" />
-                <action android:name="com.google.android.gms.actions.SEARCH_ACTION"/>
-
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-            <intent-filter>
-                <action android:name="eu.kanade.tachiyomi.SEARCH" />
-                <category android:name="android.intent.category.DEFAULT"/>
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-            <intent-filter android:label="@string/app_settings">
-                <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
+            android:exported="false">
             <meta-data android:name="android.app.searchable" android:resource="@xml/searchable"/>
         </activity>
         <activity android:name=".ui.reader.ReaderActivity"

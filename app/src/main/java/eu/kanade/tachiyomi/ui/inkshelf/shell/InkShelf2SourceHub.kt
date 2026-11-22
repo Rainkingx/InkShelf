@@ -76,6 +76,7 @@ internal fun InkShelf2SourceHub(
     onOpenComic: (Manga) -> Unit,
     onClose: () -> Unit,
     initialMode: String,
+    initialRepoUrl: String = "",
 ) {
     val manager: ExtensionManager = remember { Injekt.get() }
     val prefs: PreferencesHelper = remember { Injekt.get() }
@@ -105,7 +106,7 @@ internal fun InkShelf2SourceHub(
         tab = hubTrail.substringAfterLast('|')
     }
     var search by rememberSaveable { mutableStateOf("") }
-    var repoUrl by rememberSaveable { mutableStateOf("") }
+    var repoUrl by rememberSaveable(initialRepoUrl) { mutableStateOf(initialRepoUrl) }
     var info by remember { mutableStateOf<String?>(null) }
     var repoBusy by remember { mutableStateOf(false) }
     var revision by remember { mutableIntStateOf(0) }
