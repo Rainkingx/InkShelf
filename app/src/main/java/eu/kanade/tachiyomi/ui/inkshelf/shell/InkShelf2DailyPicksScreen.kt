@@ -122,7 +122,7 @@ internal fun InkShelf2DailyPicksScreen(
                 )
                 Spacer(Modifier.height(3.dp))
                 Text(
-                    "Choose a comic to see its details and available issues.",
+                    "Themed picks rotate daily when more matching comics are available.",
                     color = InkShelf2Colors.Muted,
                     fontSize = 12.sp,
                 )
@@ -177,6 +177,18 @@ internal fun InkShelf2DailyPicksScreen(
                             genres.joinToString("  •  "),
                             color = InkShelf2Colors.Muted,
                             fontSize = 11.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    val reason = day.pickReasons["${comic.source}:${comic.url}"]
+                    if (!reason.isNullOrBlank()) {
+                        Spacer(Modifier.height(7.dp))
+                        Text(
+                            "WHY THIS • $reason",
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 10.sp,
+                            lineHeight = 13.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
