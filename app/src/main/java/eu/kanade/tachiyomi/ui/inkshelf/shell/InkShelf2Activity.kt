@@ -250,6 +250,19 @@ class InkShelf2Activity : AppCompatActivity() {
                 },
             ) { padding ->
                 val comic = selected
+                val curatedShelves = remember(discover, library, enabledSourceIds) {
+                    // All curated cards reuse real J2K Manga entries from
+                    // installed sources. No separate Details/reader flow.
+                    InkShelf2DiscoverCuration.build(discover, library, enabledSourceIds)
+                }
+                val trendingRank = remember(discover, enabledSourceIds) {
+                    discover?.trending.orEmpty()
+                        .filter { it.source in enabledSourceIds }
+                        .mapIndexed { index, manga ->
+                            "${manga.source}:${manga.url}" to index
+                        }
+                        .toMap()
+                }
                 when {
                     comic != null -> key(detailsRevision, comic.source, comic.url) {
                         val similarPicks = remember(detailsRevision, comic.source, comic.url, discover, library, enabledSources) {
@@ -308,16 +321,25 @@ class InkShelf2Activity : AppCompatActivity() {
                         title = selectedDiscoverShelf!!,
                         comics = when (selectedDiscoverShelf) {
                             "New This Week" -> discover?.newest.orEmpty()
+                                .filter { it.source in enabledSourceIds }
                             "Recommended for You" -> discover?.recommendationDetails.orEmpty()
-                                .map { it.manga }
-                                .filter { manga -> enabledSources.any { it.id == manga.source } }
-                            else -> discover?.trending.orEmpty()
+                                .map { it.manga }.filter { it.source in enabledSourceIds }
+                            "Trending Right Now" -> discover?.trending.orEmpty()
+                                .filter { it.source in enabledSourceIds }
+                            else -> curatedShelves.firstOrNull {
+                                it.title == selectedDiscoverShelf
+                            }?.comics.orEmpty()
                         },
-                        recommendationReasons = if (selectedDiscoverShelf == "Recommended for You") {
-                            discover?.recommendationDetails.orEmpty().associate {
-                                "${it.manga.source}:${it.manga.url}" to it.reason
-                            }
-                        } else emptyMap(),
+                        recommendationReasons = when (selectedDiscoverShelf) {
+                            "Recommended for You" ->
+                                discover?.recommendationDetails.orEmpty().associate {
+                                    "${it.manga.source}:${it.manga.url}" to it.reason
+                                }
+                            else -> curatedShelves.firstOrNull {
+                                it.title == selectedDiscoverShelf
+                            }?.reasons.orEmpty()
+                        },
+                        trendingRanks = trendingRank,
                         padding = padding,
                         onBack = { selectedDiscoverShelf = null },
                         onOpen = openComicDetails,
@@ -356,6 +378,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     )
                     tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(
                         discover = discover,
+                        curatedShelves = curatedShelves,
                         padding = padding,
                         onOpen = openComicDetails,
                         sources = enabledSources,
