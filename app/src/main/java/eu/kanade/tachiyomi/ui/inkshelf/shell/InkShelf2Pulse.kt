@@ -693,7 +693,7 @@ private fun InkShelf2PulseNewsHero(
             lineHeight = 43.sp,
             modifier = Modifier.fillMaxWidth(),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            letterSpacing = (-1.4).sp,
+            letterSpacing = (-1.4f).sp,
         )
         androidx.compose.material3.HorizontalDivider(thickness = 1.dp, color = ink)
         Row(
