@@ -74,7 +74,7 @@ internal fun InkShelf2NotificationsScreen(
                         updates.isNotEmpty() -> updates.size.toString() + " extension update" +
                             (if (updates.size == 1) "" else "s") + " available"
                         !hasRepositories -> "No extension repositories configured"
-                        else -> "You're all caught up",
+                        else -> "You're all caught up"
                     },
                     color = InkShelf2Colors.Text,
                     fontSize = 16.sp,
@@ -84,7 +84,7 @@ internal fun InkShelf2NotificationsScreen(
                     when {
                         updates.isNotEmpty() -> "Updates stay here until you've installed them."
                         !hasRepositories -> "Add a repository to receive extension update notices."
-                        else -> "New extension updates will appear here when detected.",
+                        else -> "New extension updates will appear here when detected."
                     },
                     modifier = Modifier.padding(top = 5.dp),
                     color = InkShelf2Colors.Muted,
