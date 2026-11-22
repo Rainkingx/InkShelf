@@ -157,7 +157,9 @@ internal fun InkShelf2MoreLikeThisShelf(
     onOpen: (Manga) -> Unit,
 ) {
     if (picks.isEmpty()) return
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 20.dp)) {
+    // Keep extra bottom breathing room for gesture/navigation curves on
+    // smaller phones; only the cover artwork itself should be rounded/clipped.
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 40.dp)) {
         Column(Modifier.padding(horizontal = 16.dp)) {
             InkShelf2PageHeading("More Like This")
             Spacer(Modifier.height(4.dp))
@@ -175,8 +177,8 @@ internal fun InkShelf2MoreLikeThisShelf(
             items(picks, key = { "${it.manga.source}:${it.manga.url}" }) { pick ->
                 Column(
                     modifier = Modifier.width(112.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { onOpen(pick.manga) },
+                        .clickable { onOpen(pick.manga) }
+                        .padding(bottom = 8.dp),
                 ) {
                     AsyncImage(
                         model = pick.manga,
