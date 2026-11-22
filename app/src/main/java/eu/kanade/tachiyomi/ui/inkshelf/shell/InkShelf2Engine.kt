@@ -4,6 +4,7 @@ import android.content.Context
 import eu.kanade.tachiyomi.data.database.DatabaseHelper
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.ui.home.InkShelfDailyHeroArt
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverCache
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverCache.Section
@@ -21,6 +22,7 @@ import kotlin.math.roundToInt
  */
 internal class InkShelf2Engine(private val context: Context) {
     private val database: DatabaseHelper = Injekt.get()
+    private val sourceManager: SourceManager = Injekt.get()
 
     data class Reading(val manga: Manga, val percent: Int?)
     data class Day(
@@ -142,12 +144,16 @@ internal class InkShelf2Engine(private val context: Context) {
         }.getOrDefault(emptyList())
         val personalPicks = personal.distinctBy { it.manga.source.toString() + ":" + it.manga.url }
             .map { PersonalPick(it.manga, it.reason) }
-        return Discover(
+        val raw = Discover(
             trending = cached(Section.TRENDING),
             newest = cached(Section.NEW_THIS_WEEK),
             recommended = personalPicks.map { it.manga },
             recommendationDetails = personalPicks,
         )
+        val sourceNames = sourceManager.getCatalogueSources().associate { it.id to it.name }
+        val saved = runCatching { database.getLibraryMangas().executeAsBlocking() }
+            .getOrDefault(emptyList()).filter { it.favorite }
+        return InkShelf2SourceBalance.balanceDiscover(raw, sourceNames, saved)
     }
 
     suspend fun chapters(manga: Manga): List<Chapter> = withContext(Dispatchers.IO) {
@@ -166,24 +172,32 @@ internal class InkShelf2Engine(private val context: Context) {
         }.getOrNull()
     }
 
-    /** Save through J2K's own database. No parallel store or data migration. */
-    suspend fun addToLibrary(manga: Manga): Boolean = withContext(Dispatchers.IO) {
+    data class LibrarySaveResult(val saved: Boolean, val existing: Manga? = null)
+
+    /** Save through the J2K database; refuse a second favourite for the same edition. */
+    suspend fun addToLibrary(manga: Manga): LibrarySaveResult = withContext(Dispatchers.IO) {
         runCatching {
             val item = database.getManga(manga.url, manga.source).executeAsBlocking() ?: manga
-            if (!item.favorite) {
-                item.favorite = true
-                item.date_added = System.currentTimeMillis()
-                if (item.id == null) {
-                    item.id = database.insertManga(item).executeAsBlocking().insertedId()
-                } else {
-                    database.updateMangaFavorite(item).executeAsBlocking()
-                    database.updateMangaAdded(item).executeAsBlocking()
+            if (item.favorite) return@runCatching LibrarySaveResult(true)
+            // Only a matching publication edition can block another library entry.
+            val existing = database.getLibraryMangas().executeAsBlocking()
+                .firstOrNull { other ->
+                    other.favorite && InkShelf2ComicIdentity.isSameEdition(other, item) &&
+                        (other.source != item.source || other.url != item.url)
                 }
+            if (existing != null) return@runCatching LibrarySaveResult(false, existing)
+            item.favorite = true
+            item.date_added = System.currentTimeMillis()
+            if (item.id == null) {
+                item.id = database.insertManga(item).executeAsBlocking().insertedId()
+            } else {
+                database.updateMangaFavorite(item).executeAsBlocking()
+                database.updateMangaAdded(item).executeAsBlocking()
             }
             manga.favorite = true
             manga.id = item.id
-            true
-        }.getOrDefault(false)
+            LibrarySaveResult(true)
+        }.getOrDefault(LibrarySaveResult(false))
     }
 
     /** Remove Library membership without discarding reading history or files. */

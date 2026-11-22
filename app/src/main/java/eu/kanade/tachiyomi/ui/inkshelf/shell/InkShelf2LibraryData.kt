@@ -76,7 +76,7 @@ internal suspend fun loadInkShelf2Library(database: DatabaseHelper): List<InkShe
                 }
             }
 
-        representative.map { manga: LibraryManga ->
+        val entries = representative.map { manga: LibraryManga ->
             val id = manga.id!!
             val membershipTypes = memberships[id].orEmpty()
                 .mapNotNull { categoryTypes[it.category] }
@@ -105,5 +105,14 @@ internal suspend fun loadInkShelf2Library(database: DatabaseHelper): List<InkShe
                 readChapters = read,
                 totalChapters = total,
             )
+        }
+        // Two J2K favourites can represent the same published edition from
+        // different extension sources. Display one item in 2.0; NEVER delete
+        // either underlying row, reading history, categories or downloads.
+        entries.groupBy { item ->
+            InkShelf2ComicIdentity.editionKey(item.manga)
+                .ifBlank { "${item.manga.source}:${item.manga.url}" }
+        }.values.map { copies ->
+            copies.reduce { best, next -> InkShelf2ComicIdentity.preferLibraryRecord(best, next) }
         }.sortedBy { it.manga.title.lowercase(Locale.ROOT) }
     }

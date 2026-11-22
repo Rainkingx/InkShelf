@@ -968,11 +968,16 @@ class InkShelf2Activity : AppCompatActivity() {
             try {
                 // Downloaded issues must remain reachable from the Library.
                 val newlySaved = !manga.favorite
-                if (newlySaved && !engine.addToLibrary(manga)) {
-                    Toast.makeText(
-                        this@InkShelf2Activity, "Could not add comic to your library", Toast.LENGTH_LONG,
-                    ).show()
-                    return@launch
+                if (newlySaved) {
+                    val save = engine.addToLibrary(manga)
+                    if (!save.saved && save.existing == null) {
+                        Toast.makeText(
+                            this@InkShelf2Activity, "Could not add comic to your library", Toast.LENGTH_LONG,
+                        ).show()
+                        return@launch
+                    }
+                    // An alternate source can still be downloaded without
+                    // becoming a second Library favourite.
                 }
                 // Restart failed jobs; simply re-queuing them is a no-op.
                 val retries = eligible.filter {
@@ -1055,11 +1060,15 @@ class InkShelf2Activity : AppCompatActivity() {
 
     private fun saveComic(manga: Manga) {
         lifecycleScope.launch {
-            val saved = engine.addToLibrary(manga)
-            if (saved) refreshEpoch += 1
+            val result = engine.addToLibrary(manga)
+            if (result.saved) refreshEpoch += 1
             Toast.makeText(
                 this@InkShelf2Activity,
-                if (saved) "Saved to library" else "Could not save comic",
+                when {
+                    result.saved -> "Saved to library"
+                    result.existing != null -> "Already in your library — no duplicate added"
+                    else -> "Could not save comic"
+                },
                 Toast.LENGTH_SHORT,
             ).show()
         }
