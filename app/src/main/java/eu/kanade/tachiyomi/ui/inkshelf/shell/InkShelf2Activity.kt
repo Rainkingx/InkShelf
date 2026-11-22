@@ -286,6 +286,7 @@ class InkShelf2Activity : AppCompatActivity() {
             BackHandler(enabled = true) {
                 when {
                     selected != null -> backFromComicDetails()
+                    notificationsOpen -> notificationsOpen = false
                     selectedDiscoverShelf != null -> selectedDiscoverShelf = null
                     selectedDay != null -> selectedDay = null
                     activeSourceId != null -> activeSourceId = null
@@ -297,7 +298,6 @@ class InkShelf2Activity : AppCompatActivity() {
                     backupOpen -> backupOpen = false
                     importOpen -> importOpen = false
                     settingsOpen -> settingsOpen = false
-                    notificationsOpen -> notificationsOpen = false
                     welcomeOpen -> {
                         welcomeStep = 0
                         profileStore.completeWelcome()
@@ -464,6 +464,39 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                     )
                     }
+                    notificationsOpen -> InkShelf2NotificationsScreen(
+                        padding = padding,
+                        updates = extensionUpdates,
+                        checking = checkingExtensionUpdates,
+                        hasRepositories = preferences.extensionRepos().get().isNotEmpty(),
+                        onBack = { notificationsOpen = false },
+                        onExtensions = {
+                            openTab(InkShelf2Tab.ACCOUNT)
+                            sourceHubMode = "Extensions"
+                            sourceHubOpen = true
+                            activeSourceId = null
+                        },
+                        onRefresh = {
+                            if (!checkingExtensionUpdates) {
+                                notificationScope.launch {
+                                    checkingExtensionUpdates = true
+                                    try {
+                                        extensionManager.findAvailableExtensions()
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        Toast.makeText(
+                                            this@InkShelf2Activity,
+                                            "Could not check extensions. Try again later.",
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    } finally {
+                                        checkingExtensionUpdates = false
+                                    }
+                                }
+                            }
+                        },
+                    )
                     selectedDiscoverShelf != null -> InkShelf2DiscoverShelfScreen(
                         title = selectedDiscoverShelf!!,
                         comics = when (selectedDiscoverShelf) {
@@ -529,39 +562,6 @@ class InkShelf2Activity : AppCompatActivity() {
                         onImportComics = {
                             openTab(InkShelf2Tab.ACCOUNT)
                             importOpen = true
-                        },
-                    )
-                    notificationsOpen -> InkShelf2NotificationsScreen(
-                        padding = padding,
-                        updates = extensionUpdates,
-                        checking = checkingExtensionUpdates,
-                        hasRepositories = preferences.extensionRepos().get().isNotEmpty(),
-                        onBack = { notificationsOpen = false },
-                        onExtensions = {
-                            openTab(InkShelf2Tab.ACCOUNT)
-                            sourceHubMode = "Extensions"
-                            sourceHubOpen = true
-                            activeSourceId = null
-                        },
-                        onRefresh = {
-                            if (!checkingExtensionUpdates) {
-                                notificationScope.launch {
-                                    checkingExtensionUpdates = true
-                                    try {
-                                        extensionManager.findAvailableExtensions()
-                                    } catch (cancel: CancellationException) {
-                                        throw cancel
-                                    } catch (_: Exception) {
-                                        Toast.makeText(
-                                            this@InkShelf2Activity,
-                                            "Could not check extensions. Try again later.",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
-                                    } finally {
-                                        checkingExtensionUpdates = false
-                                    }
-                                }
-                            }
                         },
                     )
                     tab == InkShelf2Tab.HOME -> InkShelf2HomeScreen(
