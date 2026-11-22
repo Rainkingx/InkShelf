@@ -139,7 +139,8 @@ internal object InkShelf2AlternativePages {
             val candidates = sourceManager.getCatalogueSources()
                 .filterIsInstance<HttpSource>()
                 .filter { it.id != manga.source && it.lang in enabledLanguages &&
-                    it.id.toString() !in hiddenSources }
+                    it.id.toString() !in hiddenSources &&
+                    !InkShelf2ExtensionPause.isPausedSource(it.id) }
                 .distinctBy { it.id }
                 .sortedWith(
                     compareBy<HttpSource> { InkShelf2SourceBalance.sourceOrder(it.name) }

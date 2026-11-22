@@ -189,9 +189,10 @@ class InkShelf2Activity : AppCompatActivity() {
             val catalogueSources by sourceManager.catalogueSources.collectAsState(initial = emptyList())
             val enabledLanguages = preferences.enabledLanguages().get()
             val hiddenSources = preferences.hiddenSources().get()
+            val pausedIds = InkShelf2ExtensionPause.pausedSourceIds()
             val enabledSources = catalogueSources.filter {
                 it.id != LocalSource.ID && it.lang in enabledLanguages &&
-                    it.id.toString() !in hiddenSources
+                    it.id.toString() !in hiddenSources && it.id !in pausedIds
             }
             val enabledSourceIds = enabledSources.map { it.id }.toSet()
             // MangaImpl.equals compares only URL and source, so an updated
@@ -776,6 +777,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         initialRepoUrl = externalRepoDraft,
                         updateAllOnOpen = updateAllExtensionsRequested,
                         onUpdateAllHandled = { updateAllExtensionsRequested = false },
+                        onExtensionStateChanged = { refreshEpoch += 1 },
                         onOpenComic = openComicDetails,
                     )
                     tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(

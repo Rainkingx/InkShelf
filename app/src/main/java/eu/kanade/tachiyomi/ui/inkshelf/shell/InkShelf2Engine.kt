@@ -151,9 +151,16 @@ internal class InkShelf2Engine(private val context: Context) {
             recommendationDetails = personalPicks,
         )
         val sourceNames = sourceManager.getCatalogueSources().associate { it.id to it.name }
+        val pausedIds = InkShelf2ExtensionPause.pausedSourceIds()
+        val active = raw.copy(
+            trending = raw.trending.filterNot { it.source in pausedIds },
+            newest = raw.newest.filterNot { it.source in pausedIds },
+            recommended = raw.recommended.filterNot { it.source in pausedIds },
+            recommendationDetails = raw.recommendationDetails.filterNot { it.manga.source in pausedIds },
+        )
         val saved = runCatching { database.getLibraryMangas().executeAsBlocking() }
             .getOrDefault(emptyList()).filter { it.favorite }
-        return InkShelf2SourceBalance.balanceDiscover(raw, sourceNames, saved)
+        return InkShelf2SourceBalance.balanceDiscover(active, sourceNames, saved)
     }
 
     suspend fun chapters(manga: Manga): List<Chapter> = withContext(Dispatchers.IO) {

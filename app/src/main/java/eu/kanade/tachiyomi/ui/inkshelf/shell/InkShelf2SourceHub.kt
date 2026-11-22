@@ -27,6 +27,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -80,6 +81,7 @@ internal fun InkShelf2SourceHub(
     initialRepoUrl: String = "",
     updateAllOnOpen: Boolean = false,
     onUpdateAllHandled: () -> Unit = {},
+    onExtensionStateChanged: () -> Unit = {},
 ) {
     val manager: ExtensionManager = remember { Injekt.get() }
     val prefs: PreferencesHelper = remember { Injekt.get() }
@@ -124,12 +126,17 @@ internal fun InkShelf2SourceHub(
     val repos = prefs.extensionRepos().get().sorted()
     val languages = prefs.enabledLanguages().get()
     val hidden = prefs.hiddenSources().get()
+    val pausedPackages = prefs.inkShelf2PausedExtensions().get()
+    val pausedIds = installed.filter { it.pkgName in pausedPackages }
+        .flatMap { extension -> extension.sources.map { it.id } }.toSet()
     val showNsfw = prefs.showNsfwSources().get()
     val catalogues = sources.filterNot { it.id == LocalSource.ID }
         .sortedWith(compareBy<CatalogueSource> {
-            it.lang !in languages || it.id.toString() in hidden
+            it.lang !in languages || it.id.toString() in hidden || it.id in pausedIds
         }.thenBy { it.name.lowercase() })
-    val enabled = catalogues.filter { it.lang in languages && it.id.toString() !in hidden }
+    val enabled = catalogues.filter {
+        it.lang in languages && it.id.toString() !in hidden && it.id !in pausedIds
+    }
     val pendingUpdates = installed.mapNotNull { installedExt ->
         available.firstOrNull { candidate ->
             candidate.pkgName == installedExt.pkgName &&
@@ -315,15 +322,26 @@ internal fun InkShelf2SourceHub(
                     val active = source in enabled
                     HubInfoRow(
                         title = source.name,
-                        subtitle = "${source.lang.uppercase()} • " +
-                            if (active) "Ready to browse" else "Disabled in source settings",
-                        action = if (active) "Browse" else "Enable",
+                        subtitle = "${source.lang.uppercase()} • " + when {
+                            source.id in pausedIds -> "Extension paused"
+                            active -> "Ready to browse"
+                            else -> "Disabled in source settings"
+                        },
+                        action = when {
+                            source.id in pausedIds -> "Extensions"
+                            active -> "Browse"
+                            else -> "Enable"
+                        },
                         onAction = {
-                            if (active) onSourceSelected(source.id)
-                            else {
-                                prefs.enabledLanguages().set(prefs.enabledLanguages().get() + source.lang)
-                                prefs.hiddenSources().set(prefs.hiddenSources().get() - source.id.toString())
-                                revision++
+                            when {
+                                source.id in pausedIds -> openHubTab("Extensions")
+                                active -> onSourceSelected(source.id)
+                                else -> {
+                                    prefs.enabledLanguages().set(prefs.enabledLanguages().get() + source.lang)
+                                    prefs.hiddenSources().set(prefs.hiddenSources().get() - source.id.toString())
+                                    revision++
+                                    onExtensionStateChanged()
+                                }
                             }
                         },
                     )
@@ -353,21 +371,61 @@ internal fun InkShelf2SourceHub(
                 }
                 items(installed.filter { showNsfw || !it.isNsfw }.sortedBy { it.name },
                     key = { "installed:" + it.pkgName }) { ext ->
+                    val paused = ext.pkgName in pausedPackages
                     val update = available.firstOrNull { it.pkgName == ext.pkgName }
                         ?.takeIf { it.versionCode > ext.versionCode || it.libVersion > ext.libVersion }
-                    HubInfoRow(
-                        title = ext.name,
-                        subtitle = "${ext.lang.uppercase()} • ${ext.sources.size} sources • " +
-                            if (update != null) "Update available" else "Installed ${ext.versionName}",
-                        action = if (update != null) "Update" else "Browse",
-                        onAction = {
-                            if (update != null) install(update)
-                            else {
-                                val first = ext.sources.filterIsInstance<CatalogueSource>().firstOrNull()
-                                if (first != null) onSourceSelected(first.id) else openHubTab("Sources")
-                            }
-                        },
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        HubInfoRow(
+                            title = ext.name,
+                            subtitle = "${ext.lang.uppercase()} • ${ext.sources.size} sources • " +
+                                when {
+                                    paused -> "Paused · ${ext.versionName}"
+                                    update != null -> "Update available"
+                                    else -> "Installed ${ext.versionName}"
+                                },
+                            action = when {
+                                paused -> "Resume"
+                                update != null -> "Update"
+                                else -> "Browse"
+                            },
+                            onAction = {
+                                if (paused) {
+                                    InkShelf2ExtensionPause.setPaused(ext, false)
+                                    revision++
+                                    onExtensionStateChanged()
+                                    info = "${ext.name} resumed."
+                                } else if (update != null) {
+                                    install(update)
+                                } else {
+                                    val first = ext.sources.filterIsInstance<CatalogueSource>().firstOrNull()
+                                    if (first != null) onSourceSelected(first.id) else openHubTab("Sources")
+                                }
+                            },
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 22.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                if (paused) "Paused — hidden from discovery and fallback"
+                                else "Enabled — discover and read from this source",
+                                modifier = Modifier.weight(1f),
+                                color = InkShelf2Colors.Muted,
+                                fontSize = 11.sp,
+                            )
+                            Switch(
+                                checked = !paused,
+                                onCheckedChange = { enabledNow ->
+                                    InkShelf2ExtensionPause.setPaused(ext, !enabledNow)
+                                    revision++
+                                    onExtensionStateChanged()
+                                    info = if (enabledNow) "${ext.name} resumed."
+                                        else "${ext.name} paused; saved comics and downloads are kept."
+                                },
+                            )
+                        }
+                    }
                 }
                 if (untrusted.isNotEmpty()) {
                     item { InkShelf2SectionHeading("Untrusted (${untrusted.size})", null) }

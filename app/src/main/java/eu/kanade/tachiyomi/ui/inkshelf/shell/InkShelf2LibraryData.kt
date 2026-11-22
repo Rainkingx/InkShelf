@@ -109,10 +109,16 @@ internal suspend fun loadInkShelf2Library(database: DatabaseHelper): List<InkShe
         // Two J2K favourites can represent the same published edition from
         // different extension sources. Display one item in 2.0; NEVER delete
         // either underlying row, reading history, categories or downloads.
+        val pausedSourceIds = InkShelf2ExtensionPause.pausedSourceIds()
         entries.groupBy { item ->
             InkShelf2ComicIdentity.editionKey(item.manga)
                 .ifBlank { "${item.manga.source}:${item.manga.url}" }
         }.values.map { copies ->
-            copies.reduce { best, next -> InkShelf2ComicIdentity.preferLibraryRecord(best, next) }
+            // Prefer a usable source if one favourite has been paused; retain
+            // all archived rows and their separate progress in J2K unchanged.
+            val activeCopies = copies.filterNot { it.manga.source in pausedSourceIds }
+            (activeCopies.ifEmpty { copies }).reduce { best, next ->
+                InkShelf2ComicIdentity.preferLibraryRecord(best, next)
+            }
         }.sortedBy { it.manga.title.lowercase(Locale.ROOT) }
     }

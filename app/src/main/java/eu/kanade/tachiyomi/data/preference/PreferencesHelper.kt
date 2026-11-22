@@ -181,6 +181,10 @@ class PreferencesHelper(
     fun panelFlowEnabled() = flowPrefs.getBoolean("inkshelf_panel_flow_enabled", false)
     /** Read-time image fallback only. Does not change the saved Manga or its progress. */
     fun inkShelfAutoSourceFallback() = flowPrefs.getBoolean("inkshelf2_smart_source_fallback", true)
+    /** Pause installed extension catalogues without uninstalling extension APKs. */
+    fun inkShelf2PausedExtensions() = flowPrefs.getStringSet("inkshelf2_paused_extension_packages", emptySet())
+    /** Tracks only sources hidden by Pause, preserving manually hidden sources on Resume. */
+    fun inkShelf2PauseHiddenSources() = flowPrefs.getStringSet("inkshelf2_pause_hidden_source_ids", emptySet())
 
     fun landscapeZoom() = flowPrefs.getBoolean("landscape_zoom", false)
 
