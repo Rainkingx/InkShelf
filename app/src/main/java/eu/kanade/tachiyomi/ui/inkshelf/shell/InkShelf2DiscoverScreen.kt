@@ -81,6 +81,7 @@ import java.util.concurrent.TimeUnit
 @Composable
 internal fun InkShelf2DiscoverScreen(
     discover: InkShelf2Engine.Discover?,
+    curatedShelves: List<InkShelf2DiscoverCuration.Shelf>,
     padding: PaddingValues,
     onOpen: (Manga) -> Unit,
     sources: List<CatalogueSource>,
@@ -101,24 +102,17 @@ internal fun InkShelf2DiscoverScreen(
     var searching by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var found by remember { mutableStateOf<InkShelf2SourcesEngine.GlobalSearchResults?>(null) }
-    var selectedCollection by rememberSaveable { mutableStateOf<String?>(null) }
     var refreshingPicks by remember { mutableStateOf(false) }
     var picksMessage by remember { mutableStateOf<String?>(null) }
     var autoAttempted by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // First Back leaves search or an open collection, not the entire app.
-    BackHandler(enabled = query.isNotBlank() || selectedCollection != null) {
-        when {
-            query.isNotBlank() -> {
-                query = ""
-                activeQuery = ""
-                found = null
-                error = null
-                keyboard?.hide()
-            }
-            selectedCollection != null -> selectedCollection = null
-        }
+    BackHandler(enabled = query.isNotBlank()) {
+        query = ""
+        activeQuery = ""
+        found = null
+        error = null
+        keyboard?.hide()
     }
 
     val sourceIds = sources.map { it.id }
@@ -163,33 +157,22 @@ internal fun InkShelf2DiscoverScreen(
         }
     }
 
-    val trending = discover?.trending.orEmpty().filter { !it.thumbnail_url.isNullOrBlank() }
-    val heroTrending = trending.take(5)
-    val newest = discover?.newest.orEmpty().filter { !it.thumbnail_url.isNullOrBlank() }
-    // Exclude recommendations from extensions that are not installed/enabled.
-    // Historical cache rows can survive an extension uninstall.
+    // Restrict every Discover card to enabled, installed source IDs.
     val enabledSourceIds = sources.map { it.id }.toSet()
+    val trending = discover?.trending.orEmpty()
+        .filter { it.source in enabledSourceIds && !it.thumbnail_url.isNullOrBlank() }
+        .distinctBy { "${it.source}:${it.url}" }
+    val heroTrending = trending.take(5)
+    val newest = discover?.newest.orEmpty()
+        .filter { it.source in enabledSourceIds && !it.thumbnail_url.isNullOrBlank() }
+        .distinctBy { "${it.source}:${it.url}" }
     val personalPicks = discover?.recommendationDetails.orEmpty()
         .filter { it.manga.source in enabledSourceIds && !it.manga.thumbnail_url.isNullOrBlank() }
         .distinctBy { "${it.manga.source}:${it.manga.url}" }
-    val recommended = personalPicks.map { it.manga }
-    val picks = (recommended + trending + newest)
-        .distinctBy { "${it.source}:${it.url}" }
-    val curated: List<Pair<String, List<Manga>>> = remember(picks) {
-        listOf(
-            "X-Men Essentials" to picks.filter { comic ->
-                listOf("x-men", "wolverine", "mutant", "deadpool", "uncanny")
-                    .any { comic.title.contains(it, ignoreCase = true) }
-            },
-            "Cosmic Epics" to picks.filter { comic ->
-                listOf("thanos", "silver surfer", "guardians", "cosmic", "nova", "galactus")
-                    .any { comic.title.contains(it, ignoreCase = true) }
-            },
-            "Indie Spotlight" to picks.filter { comic ->
-                listOf("spawn", "saga", "invincible", "walking dead", "radiant black", "monstress")
-                    .any { comic.title.contains(it, ignoreCase = true) }
-            },
-        ).filter { it.second.isNotEmpty() }
+    val acclaimed = curatedShelves.firstOrNull { it.title == "Critically Acclaimed" }
+    val hiddenGems = curatedShelves.firstOrNull { it.title == "Hidden Gems" }
+    val curated = curatedShelves.filterNot {
+        it.title in setOf("Critically Acclaimed", "Hidden Gems", "Browse All")
     }
     val heroPager = rememberPagerState(pageCount = { heroTrending.size.coerceAtLeast(1) })
     val highQualityHeroArt = remember { mutableStateMapOf<String, String>() }
@@ -488,9 +471,9 @@ internal fun InkShelf2DiscoverScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     val shortcuts = listOf(
-                        Triple("Trending", Icons.Outlined.LocalFireDepartment, 7),
-                        Triple("New This Week", Icons.Outlined.NewReleases, 6),
-                        Triple("Top Picks", Icons.Outlined.AutoAwesome, 5),
+                        Triple("Trending", Icons.Outlined.LocalFireDepartment, 6 + (if (acclaimed != null) 1 else 0) + (if (hiddenGems != null) 1 else 0)),
+                        Triple("New This Week", Icons.Outlined.NewReleases, 5 + (if (acclaimed != null) 1 else 0) + (if (hiddenGems != null) 1 else 0)),
+                        Triple("Top Picks", Icons.Outlined.AutoAwesome, 4 + (if (acclaimed != null) 1 else 0) + (if (hiddenGems != null) 1 else 0)),
                         Triple("Collections", Icons.Outlined.AutoStories, 3),
                     )
                     shortcuts.forEach { (label, image, index) ->
@@ -522,7 +505,7 @@ internal fun InkShelf2DiscoverScreen(
                 }
             }
             item(key = "collections") {
-                InkShelf2SectionHeading("Curated Collections", onClick = null)
+                InkShelf2SectionHeading("Curated Collections", onClick = { onSeeAll("Browse All") })
                 Spacer(Modifier.height(8.dp))
                 if (curated.isEmpty()) {
                     InkShelf2EmptyShelf("Collections will appear when suitable comics are available.")
@@ -531,14 +514,14 @@ internal fun InkShelf2DiscoverScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        items(curated, key = { it.first }) { (title, matches) ->
+                        items(curated, key = { it.title }) { collection ->
                             Box(
                                 modifier = Modifier.width(160.dp).height(112.dp)
                                     .clip(RoundedCornerShape(13.dp))
-                                    .clickable { selectedCollection = title },
+                                    .clickable { onSeeAll(collection.title) },
                             ) {
                                 AsyncImage(
-                                    model = matches.first(),
+                                    model = collection.comics.first(),
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop,
@@ -551,9 +534,9 @@ internal fun InkShelf2DiscoverScreen(
                                     ),
                                 )
                                 Column(modifier = Modifier.align(Alignment.BottomStart).padding(10.dp)) {
-                                    Text(title, color = Color.White, fontSize = 15.sp,
+                                    Text(collection.title, color = Color.White, fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold, maxLines = 2)
-                                    Text("${matches.size} comics", color = InkShelf2Colors.AccentLight,
+                                    Text("${collection.comics.size} comics", color = InkShelf2Colors.AccentLight,
                                         fontSize = 10.sp)
                                 }
                             }
@@ -561,20 +544,28 @@ internal fun InkShelf2DiscoverScreen(
                     }
                 }
             }
-            item(key = "selected-collection") {
-                val selection = curated.firstOrNull { it.first == selectedCollection }
-                if (selection != null) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(selection.first, color = InkShelf2Colors.Text, fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { selectedCollection = null }) {
-                            Text("Close", color = InkShelf2Colors.AccentLight)
-                        }
-                    }
-                    DiscoverShelf(selection.second, onOpen)
+            if (acclaimed != null) {
+                item(key = "critically-acclaimed") {
+                    DiscoverSeeAllHeading("Critically Acclaimed", onClick = { onSeeAll("Critically Acclaimed") })
+                    Text(
+                        acclaimed.description,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                    )
+                    DiscoverShelf(acclaimed.comics.take(12), onOpen)
+                }
+            }
+            if (hiddenGems != null) {
+                item(key = "hidden-gems") {
+                    DiscoverSeeAllHeading("Hidden Gems", onClick = { onSeeAll("Hidden Gems") })
+                    Text(
+                        hiddenGems.description,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                    )
+                    DiscoverShelf(hiddenGems.comics.take(12), onOpen)
                 }
             }
             item(key = "recommended") {
