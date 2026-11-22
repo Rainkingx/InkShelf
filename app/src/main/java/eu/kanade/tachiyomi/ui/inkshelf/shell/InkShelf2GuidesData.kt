@@ -22,6 +22,7 @@ internal data class InkShelf2Guide(
     val author: String,
     val attribution: String,
     val rating: Double,
+    val publisher: String = "",
 )
 
 internal data class InkShelf2GuideIssue(
@@ -69,13 +70,19 @@ internal object InkShelf2GuidesData {
         val secret = token(context) ?: return@withContext parseLists(cached ?: "[]")
         try {
             val fetched = listOf("marvel", "dc").flatMap { publisher ->
-                parseLists(
-                    get(
-                        "https://metron.cloud/api/reading_list/?is_private=false&list_type=EVENT&publisher=" +
-                            Uri.encode(publisher),
-                        secret,
-                    ),
-                )
+                try {
+                    parseLists(
+                        get(
+                            "https://metron.cloud/api/reading_list/?is_private=false&list_type=EVENT&publisher=" +
+                                Uri.encode(publisher),
+                            secret,
+                        ),
+                    ).map { it.copy(publisher = publisher) }
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    emptyList()
+                }
             }.distinctBy { it.id }
             if (fetched.isNotEmpty()) {
                 val rows = JSONArray()
@@ -87,6 +94,7 @@ internal object InkShelf2GuidesData {
                         put("author", guide.author)
                         put("attribution", guide.attribution)
                         put("rating", guide.rating)
+                        put("publisher", guide.publisher)
                     })
                 }
                 prefs.edit().putString("lists", rows.toString()).putLong("lists_time", now).apply()
@@ -166,7 +174,9 @@ internal object InkShelf2GuidesData {
                 author = row.optJSONObject("user")?.optString("username")
                     ?: row.optString("author"),
                 attribution = row.optString("attribution_source"),
-                rating = row.optDouble("average_rating", 0.0).takeUnless(Double::isNaN) ?: 0.0,
+                rating = (if (row.has("rating")) row.optDouble("rating", 0.0)
+                    else row.optDouble("average_rating", 0.0)).takeUnless(Double::isNaN) ?: 0.0,
+                publisher = row.optString("publisher"),
             )
         }
     } catch (_: Exception) { emptyList() }
