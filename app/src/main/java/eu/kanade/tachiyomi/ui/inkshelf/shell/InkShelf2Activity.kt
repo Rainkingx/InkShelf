@@ -262,9 +262,27 @@ class InkShelf2Activity : AppCompatActivity() {
                 // Wait for real installed-source registration. A source
                 // appearing or disappearing updates the themed picks without
                 // opening any extra external searches.
-                home = engine.loadHome(enabledSourceIds)
-                library = engine.loadLibrary()
-                discover = engine.loadDiscover()
+                try {
+                    home = engine.loadHome(enabledSourceIds)
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    android.util.Log.w("InkShelf2", "Home refresh failed", error)
+                }
+                try {
+                    library = engine.loadLibrary()
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    android.util.Log.w("InkShelf2", "Library refresh failed", error)
+                }
+                try {
+                    discover = engine.loadDiscover()
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    android.util.Log.w("InkShelf2", "Discover refresh failed", error)
+                }
             }
             // InkShelf 1's flow: show Comic Details immediately, then fetch
             // its metadata and issue list asynchronously. Do not block the
@@ -278,7 +296,16 @@ class InkShelf2Activity : AppCompatActivity() {
                     return@LaunchedEffect
                 }
 
-                val cached = engine.chapters(comic)
+                val cached = try {
+                    engine.chapters(comic)
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    android.util.Log.w("InkShelf2", "Cached issues unavailable", error)
+                    issuesError = "This comic's issues could not be loaded. Please try reopening it."
+                    loadingIssues = false
+                    return@LaunchedEffect
+                }
                 chapters = cached
                 // On return from the reader, refresh progress from J2K
                 // without repeatedly searching the network for a ready comic.
@@ -560,9 +587,14 @@ class InkShelf2Activity : AppCompatActivity() {
                             if (chapters.isNotEmpty()) {
                                 downloadManager.awaitDownloadCacheReady()
                                 while (true) {
-                                    downloadedIds = chapters.filter {
-                                        it.id != null && downloadManager.isChapterDownloaded(it, comic)
-                                    }.mapNotNull { it.id }.toSet()
+                                    // Checking local chapter files can touch disk;
+                                    // keep this work off the Compose/UI thread.
+                                    val snapshot = chapters.toList()
+                                    downloadedIds = withContext(Dispatchers.IO) {
+                                        snapshot.filter {
+                                            it.id != null && downloadManager.isChapterDownloaded(it, comic)
+                                        }.mapNotNull { it.id }.toSet()
+                                    }
                                     val queued = downloadManager.queue.filter {
                                         it.manga.source == comic.source && it.manga.url == comic.url
                                     }
@@ -581,7 +613,9 @@ class InkShelf2Activity : AppCompatActivity() {
                                     waitingForWifi = preferences.downloadOnlyOverWifi() &&
                                         !applicationContext.isConnectedToWifi()
                                     downloadsPaused = downloadManager.isPaused()
-                                    delay(1_000)
+                                    // Small delay keeps queue progress responsive
+                                    // without scanning every issue every second.
+                                    delay(2_500)
                                 }
                             } else {
                                 downloadedIds = emptySet()
