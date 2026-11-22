@@ -95,6 +95,12 @@ internal fun InkShelf2MenuScreen(
                     onProfile,
                 )
                 MenuEntry(
+                    "Appearance & Themes",
+                    "Comic colour themes and custom palettes",
+                    Icons.Outlined.Palette,
+                    onThemes,
+                )
+                MenuEntry(
                     "Import Local Comics",
                     "Add your own CBZ, CBR, ZIP, RAR or EPUB files",
                     Icons.Outlined.FileUpload,
@@ -133,7 +139,6 @@ internal fun InkShelf2MenuScreen(
         }
         item {
             MenuSection("METADATA & SETTINGS") {
-                MenuEntry("Appearance & Themes", "Comic colour themes and custom palettes", Icons.Outlined.Palette, onThemes)
                 MenuEntry("Metron", "Comic metadata connection and API token", Icons.Outlined.Key, onMetron)
                 MenuEntry("Advanced Settings", "Reader, appearance and download preferences", Icons.Outlined.Settings, onSettings)
             }
