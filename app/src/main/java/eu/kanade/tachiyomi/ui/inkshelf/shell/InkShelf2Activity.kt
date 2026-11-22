@@ -759,7 +759,6 @@ class InkShelf2Activity : AppCompatActivity() {
                         pulseExpanded = pulseExpanded,
                         onPulseExpandedChange = { pulseExpanded = it },
                         onOpen = openComicDetails,
-                        onRead = { openReader(it) },
                         onSave = { saveComic(it) },
                         onDiscover = { openTab(InkShelf2Tab.DISCOVER) },
                         onLibrary = { openTab(InkShelf2Tab.LIBRARY) },
@@ -808,7 +807,9 @@ class InkShelf2Activity : AppCompatActivity() {
                     )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
+                        readingHistory = home?.history.orEmpty(),
                         padding = padding,
+                        onRead = { openReader(it) },
                         onOpen = openComicDetails,
                         onComicAction = { manga, removeFromLibrary, deleteDownloads ->
                             manageComic(manga, removeFromLibrary, deleteDownloads)
