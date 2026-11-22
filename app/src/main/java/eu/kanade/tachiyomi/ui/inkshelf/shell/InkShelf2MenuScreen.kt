@@ -89,7 +89,7 @@ internal fun InkShelf2MenuScreen(
                 MenuEntry(
                     "Your Profile & Guided Setup",
                     if (profileName.isBlank()) "Choose a name and personalise your library"
-                    else "Signed in locally as $profileName · Edit profile and setup",
+                    else "Local profile: $profileName · Edit name and setup",
                     Icons.Outlined.PersonOutline,
                     onProfile,
                 )
