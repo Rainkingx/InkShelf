@@ -243,13 +243,17 @@ class HttpPageLoader(
             page.status = Page.State.READY
         } catch (e: Throwable) {
             if (e is CancellationException) throw e
-            // XOXO image URLs can expire or be served from transient mirrors.
-            // Ask its own extension for a fresh list ONCE before looking at
-            // another provider; this also works if the original cached URLs
-            // were populated by an older version of XOXO.
-            if (source.name.contains("xoxo", ignoreCase = true) &&
-                retryXoxoWithFreshPageList(page)
-            ) return
+            // XOXO's extension explicitly accepts image bytes from some HTTP 404
+            // responses. If its own fetch has failed, inspect that response with
+            // the installed source's client and headers, and accept it ONLY if
+            // the saved bytes are a recognized image. Never turn arbitrary 404
+            // pages, captcha HTML, or errors into successful reader pages.
+            if (source.name.contains("xoxo", ignoreCase = true)) {
+                Timber.w(e, "XOXO reader image failed at page %s", page.index + 1)
+                if (tryXoxoVerifiedImageResponse(page) ||
+                    retryXoxoWithFreshPageList(page)
+                ) return
+            }
             // ReaderPage keeps its original chapter, so progress and
             // favourites remain attached to the user's original source.
             val fallback = try {
@@ -289,6 +293,58 @@ class HttpPageLoader(
             } else {
                 page.status = Page.State.ERROR
             }
+        }
+    }
+
+    /**
+     * The upstream XOXO extension deliberately converts certain HTTP 404
+     * image responses to 200. Its image host may still return 404 through
+     * a different request path. Read the response without imposing a status
+     * success check, then validate the actual image signature before exposing
+     * it to the J2K reader. Uses original source cookies and headers.
+     */
+    private suspend fun tryXoxoVerifiedImageResponse(page: ReaderPage): Boolean {
+        val url = page.imageUrl?.takeIf { it.startsWith("https://", true) || it.startsWith("http://", true) }
+            ?: return false
+        return try {
+            withTimeout(20_000L) {
+                val request = okhttp3.Request.Builder()
+                    .url(url.substringBefore('#'))
+                    .headers(source.headers)
+                    .build()
+                val response = runInterruptible { source.client.newCall(request).execute() }
+                response.use {
+                    if (it.code != 200 && it.code != 206 && it.code != 404) {
+                        Timber.w("XOXO image response status %s on page %s", it.code, page.index + 1)
+                        return@withTimeout false
+                    }
+                    page.status = Page.State.DOWNLOAD_IMAGE
+                    chapterCache.putImageToCache(url, it)
+                }
+                val file = chapterCache.getImageFile(url)
+                if (file.length() <= 0L ||
+                    ImageUtil.findImageType { file.inputStream() } == null
+                ) {
+                    chapterCache.removeFileFromCache(file.name)
+                    Timber.w("XOXO response was not an image on page %s", page.index + 1)
+                    return@withTimeout false
+                }
+                page.imageUrl = url
+                page.stream = { file.inputStream() }
+                page.status = Page.State.READY
+                Timber.i("Recovered verified XOXO image bytes for page %s", page.index + 1)
+                true
+            }
+        } catch (cancel: CancellationException) {
+            if (cancel is kotlinx.coroutines.TimeoutCancellationException) {
+                Timber.w("XOXO verified image fallback timed out on page %s", page.index + 1)
+                false
+            } else {
+                throw cancel
+            }
+        } catch (error: Exception) {
+            Timber.w(error, "XOXO verified image fallback failed on page %s", page.index + 1)
+            false
         }
     }
 
