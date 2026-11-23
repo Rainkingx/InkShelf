@@ -94,6 +94,7 @@ internal fun InkShelf2DiscoverScreen(
     initialSearchQuery: String = "",
     guideIssueTarget: InkShelf2GuideIssue? = null,
     onClearGuideTarget: () -> Unit = {},
+    onAutoOpenGuideMatch: (Manga, InkShelf2GuideIssue) -> Unit,
 ) {
     val engine = remember { InkShelf2SourcesEngine() }
     val scroll = rememberLazyListState()
@@ -110,6 +111,8 @@ internal fun InkShelf2DiscoverScreen(
     var picksMessage by remember { mutableStateOf<String?>(null) }
     var autoAttempted by remember { mutableStateOf(false) }
     var showOtherGuideEditions by remember(guideIssueTarget?.id) { mutableStateOf(false) }
+    var attemptedAutoGuideMatch by remember(guideIssueTarget?.id) { mutableStateOf<String?>(null) }
+    var foundQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     BackHandler(enabled = query.isNotBlank()) {
@@ -152,6 +155,7 @@ internal fun InkShelf2DiscoverScreen(
         if (cleaned.length < 2) {
             activeQuery = ""
             found = null
+            foundQuery = ""
             error = null
         } else {
             delay(550L)
@@ -161,14 +165,19 @@ internal fun InkShelf2DiscoverScreen(
     LaunchedEffect(activeQuery, sourceIds) {
         if (activeQuery.isBlank()) {
             found = null
+            foundQuery = ""
             searching = false
             return@LaunchedEffect
         }
         searching = true
         found = null
+        foundQuery = ""
         error = null
         try {
-            found = engine.searchAcross(sources, activeQuery)
+            val completedQuery = activeQuery
+            val results = engine.searchAcross(sources, completedQuery)
+            found = results
+            foundQuery = completedQuery
         } catch (failure: Exception) {
             // Cancellation is managed by LaunchedEffect when a new query arrives.
             if (failure is kotlinx.coroutines.CancellationException) throw failure
@@ -176,6 +185,27 @@ internal fun InkShelf2DiscoverScreen(
         } finally {
             searching = false
         }
+    }
+
+    // A single known-year source result can navigate without another tap.
+    // Unknown years and multiple matches always retain the edition picker.
+    LaunchedEffect(found, foundQuery, guideIssueTarget?.id, query) {
+        val issue = guideIssueTarget ?: return@LaunchedEffect
+        val results = found ?: return@LaunchedEffect
+        if (foundQuery.isBlank() ||
+            !foundQuery.equals(InkShelf2GuideEdition.sourceSearchQuery(issue), ignoreCase = true) ||
+            !query.trim().equals(foundQuery, ignoreCase = true)
+        ) return@LaunchedEffect
+        val verified = results.results.filter {
+            InkShelf2GuideEdition.classify(issue, it.manga.title) ==
+                InkShelf2GuideEdition.Match.MATCHING
+        }
+        if (verified.size != 1) return@LaunchedEffect
+        val candidate = verified.single().manga
+        val key = issue.id.toString() + ":" + candidate.source + ":" + candidate.url
+        if (attemptedAutoGuideMatch == key) return@LaunchedEffect
+        attemptedAutoGuideMatch = key
+        onAutoOpenGuideMatch(candidate, issue)
     }
 
     // Restrict every Discover card to enabled, installed source IDs.

@@ -832,30 +832,40 @@ class InkShelf2Activity : AppCompatActivity() {
                         sources = enabledSources,
                         onOpenSearchResult = { candidate ->
                             val issue = guideIssueSearch
-                            if (issue == null) {
-                                openComicDetails(candidate)
-                            } else if (
+                            if (issue != null &&
                                 InkShelf2GuideEdition.classify(issue, candidate.title) !=
                                 InkShelf2GuideEdition.Match.MATCHING
                             ) {
-                                // Source titles without a verified year should
-                                // be inspected, never auto-read from the wrong run.
                                 Toast.makeText(
                                     this@InkShelf2Activity,
-                                    "Edition year unverified. Check this series before reading.",
+                                    "This edition is not verified for " + issue.displayName +
+                                        ". Check the year and issue list before reading.",
                                     Toast.LENGTH_LONG,
                                 ).show()
-                                openComicDetails(candidate)
-                            } else if (!guideIssueOpenInProgress) {
+                            }
+                            // Always use the established InkShelf 2.0 details
+                            // route. Selecting a series must never launch its
+                            // reader directly or add a second library favourite.
+                            guideIssueSearch = null
+                            openComicDetails(candidate)
+                        },
+                        onAutoOpenGuideMatch = { candidate, issue ->
+                            if (!guideIssueOpenInProgress) {
+                                guideIssueOpenInProgress = true
                                 lifecycleScope.launch {
-                                    guideIssueOpenInProgress = true
                                     try {
-                                        val opened = openGuideIssueFromSource(candidate, issue)
-                                        if (!opened) {
+                                        // A matching title/year is not enough:
+                                        // the requested issue must exist in this
+                                        // extension's real chapter list.
+                                        val (resolved, chapters) = sourcesEngine.ensureIssues(candidate)
+                                        if (InkShelf2GuideChapterFinder.find(issue, chapters) != null) {
+                                            guideIssueSearch = null
+                                            openComicDetails(resolved)
+                                        } else {
                                             Toast.makeText(
                                                 this@InkShelf2Activity,
-                                                "This source does not list " + issue.displayName +
-                                                    " as a readable issue. Try another source or View Series Issues.",
+                                                "The series matches, but issue #" + issue.number +
+                                                    " was not found. Choose a source below.",
                                                 Toast.LENGTH_LONG,
                                             ).show()
                                         }
@@ -864,7 +874,7 @@ class InkShelf2Activity : AppCompatActivity() {
                                     } catch (_: Exception) {
                                         Toast.makeText(
                                             this@InkShelf2Activity,
-                                            "Could not load issues from this source. Try another result.",
+                                            "Couldn't check this source's issue list. Select a result to inspect it.",
                                             Toast.LENGTH_LONG,
                                         ).show()
                                     } finally {
@@ -911,10 +921,21 @@ class InkShelf2Activity : AppCompatActivity() {
                                                     InkShelf2GuideEdition.Match.MATCHING
                                             }
                                             .distinctBy { it.source.toString() + ":" + it.url }
-                                        val opened = if (exactMatches.size == 1) {
-                                            try {
-                                                openGuideIssueFromSource(exactMatches.single(), issue)
-                                            } catch (cancel: CancellationException) {
+                                        if (exactMatches.size == 1) {
+                                            // A uniquely verified library edition opens
+                                            // its normal details page immediately.
+                                            guideIssueSearch = null
+                                            openComicDetails(exactMatches.single())
+                                        } else {
+                                            // No unique match in the library: use
+                                            // the source-backed edition picker.
+                                            guideIssueSearch = issue
+                                            discoverSearchPreset =
+                                                InkShelf2GuideEdition.sourceSearchQuery(issue)
+                                            openTab(InkShelf2Tab.DISCOVER)
+                                            searchFocusEpoch += 1
+                                        }
+                                    } catch (cancel: CancellationException) {
                                                 throw cancel
                                             } catch (_: Exception) {
                                                 false
@@ -1100,33 +1121,7 @@ class InkShelf2Activity : AppCompatActivity() {
         startActivity(ReaderActivity.newIntent(this, manga, chapter))
     }
 
-    /**
-     * Read Next uses the actual issues from InkShelf 1's installed extension,
-     * not just an initially empty chapter cache. For merged source entries
-     * (#21-#25), open the collection containing the requested issue.
-     *
-     * A missing/ambiguous chapter returns false: the guide remains in its
-     * source results picker and never silently opens the wrong issue.
-     */
-    private suspend fun openGuideIssueFromSource(
-        manga: Manga,
-        issue: InkShelf2GuideIssue,
-    ): Boolean {
-        val (resolved, chapters) = sourcesEngine.ensureIssues(manga)
-        val match = InkShelf2GuideChapterFinder.find(issue, chapters) ?: return false
-        if (match.grouped) {
-            Toast.makeText(
-                this,
-                "This source groups issues together. Opening the collection containing #" +
-                    issue.number + ".",
-                Toast.LENGTH_LONG,
-            ).show()
-        }
-        openChapter(resolved, match.chapter)
-        return true
-    }
-
-    /** Queue through InkShelf 1's existing source-backed offline download manager. */
+activity-remove-reader-route    /** Queue through InkShelf 1's existing source-backed offline download manager. */
     private fun downloadIssues(manga: Manga, chapters: List<Chapter>) {
         val eligible = chapters.filter { it.id != null }
         if (eligible.isEmpty()) {
