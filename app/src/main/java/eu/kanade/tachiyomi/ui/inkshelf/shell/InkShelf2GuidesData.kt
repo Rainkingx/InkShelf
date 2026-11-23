@@ -23,6 +23,7 @@ internal data class InkShelf2Guide(
     val attribution: String,
     val rating: Double,
     val publisher: String = "",
+    val imageUrl: String? = null,
 )
 
 internal data class InkShelf2GuideIssue(
@@ -49,7 +50,11 @@ internal object InkShelf2GuidesData {
     private const val LIST_CACHE_MS = 6 * 60 * 60 * 1000L
     private const val ISSUE_CACHE_MS = 24 * 60 * 60 * 1000L
     private const val MAX_BYTES = 450_000
+    private const val COVER_CACHE_MS = 7L * 24 * 60 * 60 * 1000
+    private const val COVER_MISS_CACHE_MS = 2L * 60 * 60 * 1000
+    private const val SEARCH_CACHE_MS = 30L * 60 * 1000
     private val networkMutex = Mutex()
+    private val coverMutex = Mutex()
 
     fun configured(context: Context): Boolean =
         InkShelf2MetronTokenStore(context).hasToken() ||
@@ -95,6 +100,7 @@ internal object InkShelf2GuidesData {
                         put("attribution", guide.attribution)
                         put("rating", guide.rating)
                         put("publisher", guide.publisher)
+                        put("image", guide.imageUrl ?: "")
                     })
                 }
                 prefs.edit().putString("lists", rows.toString()).putLong("lists_time", now).apply()
@@ -133,6 +139,119 @@ internal object InkShelf2GuidesData {
                 parseIssues(stored ?: "{}")
             }
         }
+
+    /**
+     * A real list-specific cover is preferred. If the creator did not upload
+     * one, try the first core issue (or first listed issue) once, then use
+     * the UI's decorative fallback. Every request is rate-limited and cached.
+     */
+    suspend fun coverUrl(context: Context, guide: InkShelf2Guide): String? =
+        withContext(Dispatchers.IO) {
+            guide.imageUrl?.let { imageUrl(it) }?.let { return@withContext it }
+            if (guide.id <= 0) return@withContext null
+            coverMutex.withLock {
+                val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                val key = "cover_" + guide.id
+                val cached = prefs.getString(key, null)
+                val updatedAt = prefs.getLong(key + "_time", 0L)
+                val age = System.currentTimeMillis() - updatedAt
+                val ttl = if (cached.isNullOrEmpty()) COVER_MISS_CACHE_MS else COVER_CACHE_MS
+                if (cached != null && age in 0L until ttl) {
+                    return@withLock imageUrl(cached)
+                }
+                val secret = token(context) ?: return@withLock imageUrl(cached)
+                try {
+                    val detail = JSONObject(
+                        get("https://metron.cloud/api/reading_list/" + guide.id + "/", secret),
+                    )
+                    var found = imageUrl(detail.optString("image"))
+                    if (found == null) {
+                        val page = issues(context, guide.id, 1).issues
+                        val first = page.firstOrNull { it.isEssential } ?: page.firstOrNull()
+                        if (first != null) {
+                            val issue = JSONObject(
+                                get("https://metron.cloud/api/issue/" + first.id + "/", secret),
+                            )
+                            found = imageUrl(issue.optString("image"))
+                        }
+                    }
+                    prefs.edit().putString(key, found ?: "")
+                        .putLong(key + "_time", System.currentTimeMillis()).apply()
+                    found
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    // Temporary outage or rate limit: retain a prior good URL.
+                    prefs.edit().putString(key, cached ?: "")
+                        .putLong(key + "_time", System.currentTimeMillis()).apply()
+                    imageUrl(cached)
+                }
+            }
+        }
+
+    /**
+     * Search Metron by name, not just the small initial Marvel/DC carousel
+     * snapshots. Remote search returns genuine public event list records.
+     * Failures fall back to a short-lived cached response.
+     */
+    suspend fun search(context: Context, text: String, publisher: String? = null): List<InkShelf2Guide> =
+        withContext(Dispatchers.IO) {
+            val query = text.trim().take(80)
+            if (query.length < 2) return@withContext emptyList()
+            val validPublisher = publisher?.lowercase(java.util.Locale.ROOT)
+                ?.takeIf { it == "marvel" || it == "dc" }
+            val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val key = "search_" + query.lowercase(java.util.Locale.ROOT).hashCode() +
+                "_" + (validPublisher ?: "all")
+            val cached = prefs.getString(key, null)
+            val time = prefs.getLong(key + "_time", 0L)
+            if (cached != null && System.currentTimeMillis() - time in 0L until SEARCH_CACHE_MS) {
+                return@withContext parseLists(cached)
+            }
+            val secret = token(context) ?: return@withContext parseLists(cached ?: "[]")
+            try {
+                val json = get(
+                    "https://metron.cloud/api/reading_list/?name=" + Uri.encode(query) +
+                        "&is_private=false&list_type=EVENT" +
+                        (validPublisher?.let { "&publisher=" + Uri.encode(it) } ?: ""),
+                    secret,
+                )
+                val found = parseLists(json).map { guide ->
+                    if (validPublisher != null) guide.copy(publisher = validPublisher) else guide
+                }
+                val rows = JSONArray()
+                found.forEach { guide ->
+                    rows.put(JSONObject().apply {
+                        put("id", guide.id)
+                        put("name", guide.name)
+                        put("type", guide.type)
+                        put("author", guide.author)
+                        put("attribution", guide.attribution)
+                        put("rating", guide.rating)
+                        put("publisher", guide.publisher)
+                        put("image", guide.imageUrl ?: "")
+                    })
+                }
+                prefs.edit().putString(key, rows.toString())
+                    .putLong(key + "_time", System.currentTimeMillis()).apply()
+                found
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                parseLists(cached ?: "[]")
+            }
+        }
+
+    // Never load arbitrary artwork URLs supplied by a third-party list.
+    private fun imageUrl(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        val uri = runCatching { Uri.parse(raw.trim()) }.getOrNull() ?: return null
+        val host = uri.host.orEmpty().lowercase(java.util.Locale.ROOT)
+        return raw.trim().takeIf {
+            uri.scheme.equals("https", true) &&
+                (host == "metron.cloud" || host.endsWith(".metron.cloud"))
+        }
+    }
 
     fun readIds(context: Context, guideId: Int): Set<String> =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -177,6 +296,7 @@ internal object InkShelf2GuidesData {
                 rating = (if (row.has("rating")) row.optDouble("rating", 0.0)
                     else row.optDouble("average_rating", 0.0)).takeUnless(Double::isNaN) ?: 0.0,
                 publisher = row.optString("publisher"),
+                imageUrl = imageUrl(row.optString("image")),
             )
         }
     } catch (_: Exception) { emptyList() }
@@ -206,7 +326,8 @@ internal object InkShelf2GuidesData {
 
     private suspend fun get(url: String, token: String): String = networkMutex.withLock {
         delay(850)
-        require(url.startsWith("https://metron.cloud/api/reading_list/"))
+        require(url.startsWith("https://metron.cloud/api/reading_list/") ||
+            url.startsWith("https://metron.cloud/api/issue/"))
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 8_000
             readTimeout = 10_000

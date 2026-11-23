@@ -40,18 +40,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -70,7 +74,39 @@ internal fun InkShelf2GuidesScreen(
     var loading by remember { mutableStateOf(true) }
     var chosen by remember { mutableStateOf<InkShelf2Guide?>(null) }
     var started by remember { mutableStateOf(InkShelf2GuidesData.startedGuides(context)) }
+    var guideSearch by rememberSaveable { mutableStateOf("") }
+    var guideFilter by rememberSaveable { mutableStateOf("All") }
+    var remoteResults by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
+    var searching by remember { mutableStateOf(false) }
     val connected = InkShelf2GuidesData.configured(context)
+    // Local hits appear immediately; server search extends beyond the first
+    // page of events. Cancellation prevents stale results replacing new ones.
+    LaunchedEffect(guideSearch, guideFilter) {
+        remoteResults = emptyList()
+        val query = guideSearch.trim()
+        if (query.length < 2 || !connected || guideFilter == "Started") {
+            searching = false
+        } else {
+            searching = true
+            try {
+                delay(450)
+                remoteResults = InkShelf2GuidesData.search(
+                    context, query,
+                    when (guideFilter) {
+                        "Marvel" -> "marvel"
+                        "DC" -> "dc"
+                        else -> null
+                    },
+                )
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                remoteResults = emptyList()
+            } finally {
+                searching = false
+            }
+        }
+    }
     BackHandler(enabled = chosen != null) { chosen = null }
     LaunchedEffect(Unit) {
         try {
@@ -105,6 +141,25 @@ internal fun InkShelf2GuidesScreen(
             .any { term -> it.name.contains(term, ignoreCase = true) }
     }.take(10)
     val continuation = guides.firstOrNull { it.id in started }
+    val finding = guideSearch.trim()
+    val matching = (guides + remoteResults).distinctBy { it.id }
+        .filter { guide ->
+            (finding.isBlank() || listOf(
+                guide.name, guide.publisher, guide.author, guide.attribution,
+            ).any { it.contains(finding, ignoreCase = true) }) &&
+                when (guideFilter) {
+                    "Marvel" -> guide.publisher.equals("marvel", ignoreCase = true)
+                    "DC" -> guide.publisher.equals("dc", ignoreCase = true)
+                    "Started" -> guide.id in started
+                    else -> true
+                }
+        }
+        .sortedWith(
+            compareByDescending<InkShelf2Guide> {
+                if (guideFilter == "Popular") it.rating else 0.0
+            }.thenBy { it.name },
+        )
+    val browsingResults = finding.isNotBlank() || guideFilter != "All"
     val openGuide: (InkShelf2Guide) -> Unit = { item ->
         InkShelf2GuidesData.start(context, item.id)
         started = InkShelf2GuidesData.startedGuides(context)
@@ -135,6 +190,55 @@ internal fun InkShelf2GuidesScreen(
                 },
             )
         }
+        item(key = "guides-search-and-filters") {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    InkShelf2SearchField(
+                        value = guideSearch,
+                        onValueChange = { guideSearch = it },
+                        placeholderText = "Search reading guides…",
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (guideSearch.isNotBlank()) {
+                        TextButton(onClick = { guideSearch = "" }) {
+                            Text("Clear", color = InkShelf2Colors.AccentLight, fontSize = 12.sp)
+                        }
+                    }
+                }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(listOf("All", "Marvel", "DC", "Started", "Popular")) { option ->
+                        val active = guideFilter == option
+                        val shape = RoundedCornerShape(22.dp)
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    if (active) InkShelf2Colors.Accent
+                                    else InkShelf2Colors.SurfaceRaised,
+                                    shape,
+                                )
+                                .border(
+                                    1.dp,
+                                    if (active) InkShelf2Colors.AccentLight
+                                    else InkShelf2Colors.Border,
+                                    shape,
+                                )
+                                .clickable { guideFilter = option }
+                                .padding(horizontal = 15.dp, vertical = 9.dp),
+                        ) {
+                            Text(
+                                option,
+                                color = InkShelf2Colors.Text,
+                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
+                }
+            }
+        }
         if (!connected) {
             item {
                 InkShelf2GuideNotice(
@@ -153,6 +257,38 @@ internal fun InkShelf2GuidesScreen(
                 )
             }
         }
+        if (browsingResults) {
+            item(key = "guide-filter-summary") {
+                Text(
+                    if (searching) "Searching Metron…"
+                    else "Reading Guides (" + matching.size + ")",
+                    modifier = Modifier.padding(horizontal = 17.dp),
+                    color = InkShelf2Colors.Text,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            if (matching.isEmpty() && !searching) {
+                item(key = "guide-no-results") {
+                    Text(
+                        if (finding.length == 1)
+                            "Type another letter to search Metron. No local matches yet."
+                        else "No guides found. Try another title or choose All.",
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 13.sp,
+                    )
+                }
+            }
+            items(matching, key = { "guide-result-" + it.id }) { guide ->
+                InkShelf2GuideFeatureCard(
+                    guide = guide,
+                    readCount = InkShelf2GuidesData.readIds(context, guide.id).size,
+                    started = guide.id in started,
+                    onClick = { openGuide(guide) },
+                )
+            }
+        } else {
         if (continuation != null) {
             item {
                 InkShelf2SectionHeading("Continue Your Guide", onClick = null)
@@ -195,6 +331,7 @@ internal fun InkShelf2GuidesScreen(
                 Spacer(Modifier.height(10.dp))
                 InkShelf2GuideShelf(crisis, openGuide, started)
             }
+        }
         }
         if (guides.isNotEmpty()) {
             item {
@@ -336,7 +473,7 @@ private fun InkShelf2GuideShelf(
                     .padding(10.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                InkShelf2GuideArt(guide.id, 102)
+                InkShelf2GuideArt(guide, 102)
                 Text(
                     guide.name,
                     color = InkShelf2Colors.Text,
@@ -377,8 +514,19 @@ private fun InkShelf2GuideShelf(
 
 /** Decorative abstract artwork, never passed off as an official comic cover. */
 @Composable
-private fun InkShelf2GuideArt(id: Int, height: Int) {
-    val first = if (id % 2 == 0) Color(0xFF332060) else Color(0xFF583077)
+private fun InkShelf2GuideArt(guide: InkShelf2Guide, height: Int) {
+    val context = LocalContext.current
+    var cover by remember(guide.id, guide.imageUrl) { mutableStateOf(guide.imageUrl) }
+    LaunchedEffect(guide.id, guide.imageUrl) {
+        cover = try {
+            InkShelf2GuidesData.coverUrl(context, guide)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            guide.imageUrl
+        }
+    }
+    val first = if (guide.id % 2 == 0) Color(0xFF332060) else Color(0xFF583077)
     Box(
         modifier = Modifier.fillMaxWidth().height(height.dp)
             .background(
@@ -407,6 +555,14 @@ private fun InkShelf2GuideArt(id: Int, height: Int) {
             tint = Color.White.copy(alpha = 0.85f),
             modifier = Modifier.size(34.dp),
         )
+        if (cover != null) {
+            AsyncImage(
+                model = cover,
+                contentDescription = "Cover for " + guide.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
     }
 }
 
@@ -415,6 +571,7 @@ private fun InkShelf2GuideFeatureCard(
     guide: InkShelf2Guide,
     readCount: Int,
     onClick: () -> Unit,
+    started: Boolean = true,
 ) {
     val shape = RoundedCornerShape(16.dp)
     Row(
@@ -425,15 +582,15 @@ private fun InkShelf2GuideFeatureCard(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(11.dp),
     ) {
-        Box(Modifier.width(94.dp)) { InkShelf2GuideArt(guide.id, 117) }
+        Box(Modifier.width(94.dp)) { InkShelf2GuideArt(guide, 117) }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text("CURRENT EVENT", color = InkShelf2Colors.AccentLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(if (started) "CURRENT EVENT" else "EVENT GUIDE", color = InkShelf2Colors.AccentLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Text(guide.name, color = InkShelf2Colors.Text, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
             Text(
                 if (readCount == 0) "Ready to start" else "$readCount issues marked read",
                 color = InkShelf2Colors.Muted, fontSize = 11.sp,
             )
-            Text("RESUME GUIDE  ›", color = InkShelf2Colors.AccentLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(if (started) "RESUME GUIDE  ›" else "START GUIDE  ›", color = InkShelf2Colors.AccentLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
