@@ -102,6 +102,10 @@ internal object InkShelf2PulseFeed {
     )
     private data class VideoChannel(val name: String, val id: String)
 
+    private val screenRantFallback = Publisher(
+        "Screen Rant", "screenrant.com", "https://screenrant.com/feed/",
+    )
+
     private val publishers = listOf(
         Publisher("AIPT Comics", "aiptcomics.com",
             "https://aiptcomics.com/category/comic-books/feed/", dedicatedComicsFeed = true),
@@ -111,6 +115,12 @@ internal object InkShelf2PulseFeed {
             "https://bleedingcool.com/comics/feed/", dedicatedComicsFeed = true),
         Publisher("ComicBook.com", "comicbook.com",
             "https://comicbook.com/category/comics/feed/", dedicatedComicsFeed = true),
+        // Screen Rant's separate Comics and Comics News sections. If a feed
+        // is blocked, all other publishers continue to load normally.
+        Publisher("Screen Rant", "screenrant.com",
+            "https://screenrant.com/feed/comics/", dedicatedComicsFeed = true),
+        Publisher("Screen Rant", "screenrant.com",
+            "https://screenrant.com/feed/comics-news/", dedicatedComicsFeed = true),
         // Supplement comic books with comic-adaptation film/TV coverage.
         // The classifier screens out unrelated entertainment and gaming.
         Publisher("Bleeding Cool", "bleedingcool.com",
@@ -139,7 +149,7 @@ internal object InkShelf2PulseFeed {
         val existing = readCached(context)
         val checkedAt = prefs.getLong("checked_at", 0L)
         // Version bump refreshes image metadata after installing the update.
-        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 4)
+        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 5)
             return@withLock existing
 
         // Pull each independent feed concurrently so a slow/blocked source
@@ -155,9 +165,21 @@ internal object InkShelf2PulseFeed {
             }.awaitAll()
         }
 
+        // Screen Rant category RSS can be blocked on some connections.
+        // Try its main feed only if neither comics feed returned stories,
+        // and filter that broad feed to comics-related headlines as usual.
+        val fallback = if (newsByPublisher.flatten().none { it.publisher == "Screen Rant" }) {
+            safeLoad { loadPublisher(screenRantFallback) }
+        } else emptyList()
+        // Treat each publication as ONE voice regardless of how many category
+        // feeds it supplies. Otherwise two Screen Rant feeds would overwhelm
+        // smaller comics publishers in the 36-story Pulse list.
+        val groupedNews = (newsByPublisher.flatten() + fallback)
+            .distinctBy { it.url.trimEnd('/') }
+            .groupBy { it.publisher }.values.toList()
+        val publisherNews = balance(groupedNews, 100)
         // Fetch only missing artwork metadata for a few real Bleeding Cool
         // articles. This is bounded and optional; never block other publishers.
-        val publisherNews = balance(newsByPublisher, 100)
         val hydratedNews = hydrateBleedingCoolArtwork(publisherNews)
         val news = InkShelf2PulseTopics.mix(hydratedNews, 36)
         val videos = balance(videosByChannel, 12)
@@ -166,7 +188,7 @@ internal object InkShelf2PulseFeed {
             (if (videos.isNotEmpty()) videos else existing.filter { it.isVideo })
         ).distinctBy { it.url }
 
-        prefs.edit().putLong("checked_at", now).putInt("feed_version", 4).apply()
+        prefs.edit().putLong("checked_at", now).putInt("feed_version", 5).apply()
         if (entries.isNotEmpty()) {
             val output = JSONArray()
             entries.forEach { article ->
@@ -864,7 +886,7 @@ internal fun InkShelf2PulseScreen(
                     if (showVideos)
                         "YouTube news and reviews from selected comic channels. Videos open in YouTube."
                     else
-                        "News from AIPT, The Beat, Bleeding Cool and ComicBook.com. " +
+                        "News from AIPT, The Beat, Bleeding Cool, ComicBook.com and Screen Rant. " +
                             "Stories open on the publishers' own websites.",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     color = InkShelf2Colors.Muted,
