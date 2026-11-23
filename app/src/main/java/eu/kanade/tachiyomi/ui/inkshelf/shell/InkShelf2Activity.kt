@@ -12,7 +12,10 @@ import android.os.SystemClock
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -123,6 +126,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var searchFocusEpoch by remember { mutableIntStateOf(0) }
             var discoverSearchPreset by remember { mutableStateOf("") }
             var guideIssueSearch by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
+            var guideIssuePicker by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
             // Start a fresh search whenever Discover is left; guide and
             // Find Source entries can still supply a new explicit query.
             var discoverSearchSession by remember { mutableIntStateOf(0) }
@@ -153,6 +157,9 @@ class InkShelf2Activity : AppCompatActivity() {
             // closes The Pulse instead of being ignored by bottom navigation.
             var pulseExpanded by rememberSaveable { mutableStateOf(false) }
             fun openTab(destination: InkShelf2Tab) {
+                if (tab == InkShelf2Tab.GUIDES && destination != InkShelf2Tab.GUIDES) {
+                    guideIssuePicker = null
+                }
                 if (tab == InkShelf2Tab.DISCOVER && destination != InkShelf2Tab.DISCOVER) {
                     clearDiscoverSearch()
                 }
@@ -915,54 +922,39 @@ class InkShelf2Activity : AppCompatActivity() {
                             home = engine.loadHome(enabledSourceIds)
                         },
                     )
-                    tab == InkShelf2Tab.GUIDES -> InkShelf2GuidesScreen(
-                        padding = padding,
-                        onMetronSettings = {
-                            openTab(InkShelf2Tab.ACCOUNT)
-                            metronOpen = true
-                        },
-                        onReadIssue = { requestedIssue ->
-                            if (!guideIssueOpenInProgress) {
-                                guideIssueOpenInProgress = true
-                                lifecycleScope.launch {
-                                    try {
-                                        // Resolve the authoritative Metron run first.
-                                        val issue = InkShelf2GuidesData.resolveIssueEdition(
-                                            applicationContext, requestedIssue,
-                                        )
-                                        val exactMatches = library.map { it.manga }
-                                            .filter {
-                                                InkShelf2GuideEdition.classify(issue, it.title) ==
-                                                    InkShelf2GuideEdition.Match.MATCHING
-                                            }
-                                            .distinctBy { it.source.toString() + ":" + it.url }
-                                        if (exactMatches.size == 1) {
-                                            // Existing unique edition: details, never reader.
-                                            guideIssueSearch = null
-                                            openComicDetails(exactMatches.single())
-                                        } else {
-                                            // Find a usable source-backed edition.
-                                            guideIssueSearch = issue
-                                            discoverSearchPreset =
-                                                InkShelf2GuideEdition.sourceSearchQuery(issue)
-                                            openTab(InkShelf2Tab.DISCOVER)
-                                            searchFocusEpoch += 1
-                                        }
-                                    } catch (cancel: CancellationException) {
-                                        throw cancel
-                                    } catch (_: Exception) {
-                                        Toast.makeText(
-                                            this@InkShelf2Activity,
-                                            "Guide issue lookup failed. Try again.",
-                                            Toast.LENGTH_LONG,
-                                        ).show()
-                                    } finally {
-                                        guideIssueOpenInProgress = false
-                                    }
-                                }
+                    tab == InkShelf2Tab.GUIDES -> Box(modifier = Modifier.fillMaxSize()) {
+                        // Keep the selected guide mounted beneath its
+                        // dedicated issue finder. Back returns to the same
+                        // reading order instead of dumping into Discover.
+                        InkShelf2GuidesScreen(
+                            padding = padding,
+                            onMetronSettings = {
+                                openTab(InkShelf2Tab.ACCOUNT)
+                                metronOpen = true
+                            },
+                            onReadIssue = { requestedIssue ->
+                                guideIssuePicker = requestedIssue
+                            },
+                        )
+                        val requested = guideIssuePicker
+                        if (requested != null) {
+                            Box(
+                                modifier = Modifier.fillMaxSize()
+                                    .background(InkShelf2Colors.Surface),
+                            ) {
+                                InkShelf2GuideIssuePickerScreen(
+                                    requestedIssue = requested,
+                                    sources = enabledSources,
+                                    padding = padding,
+                                    onBack = { guideIssuePicker = null },
+                                    onOpenComic = { comic ->
+                                        guideIssuePicker = null
+                                        openComicDetails(comic)
+                                    },
+                                )
                             }
-                        },
-                    )
+                        }
+                    }
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
                         readingHistory = home?.history.orEmpty(),
