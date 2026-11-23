@@ -927,9 +927,19 @@ internal fun InkShelf2PulseScreen(
                 Text(
                     if (showVideos)
                         "YouTube news and reviews from selected comic channels. Videos open in YouTube."
-                    else
-                        "News from Marvel Official, AIPT, The Beat, Bleeding Cool, ComicBook.com and Screen Rant. " +
-                            "Stories open on the publishers' own websites.",
+                    else {
+                        val activePublishers = articles.filterNot { it.isVideo }
+                            .map { it.publisher }.distinct()
+                        val current = if (activePublishers.isEmpty()) {
+                            "No publishers returned articles."
+                        } else {
+                            "Showing: " + activePublishers.joinToString(", ") + "."
+                        }
+                        val marvelNote = if ("Marvel Official" !in activePublishers) {
+                            " Marvel Official has not returned matching stories on this refresh."
+                        } else ""
+                        current + marvelNote + " Stories open on the original publisher websites."
+                    },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     color = InkShelf2Colors.Muted,
                     fontSize = 11.sp,
