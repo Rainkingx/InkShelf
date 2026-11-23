@@ -964,11 +964,6 @@ internal fun InkShelf2DetailsScreen(
                         )
                     }
                 }
-                // A voluntary, read-only DC reference. The user chooses
-                // whether to check the official site; J2K, downloads and
-                // Metron stay authoritative for reading and local data.
-                Spacer(Modifier.height(12.dp))
-                InkShelf2OfficialDcPanel(manga)
                 // Cached news and videos load independently of the reader and
                 // only appear for strict, real full-series headline matches.
                 InkShelf2RelatedPulse(comicTitle = manga.title)

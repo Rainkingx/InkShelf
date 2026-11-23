@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -125,7 +126,7 @@ internal fun InkShelf2SpotlightEventScreen(
             event.series.map { series ->
                 async {
                     limiter.withPermit {
-                        InkShelf2HeroArtwork.findCover(context, series.editionTitle)
+                        InkShelf2HeroArtwork.findCover(context, InkShelf2Spotlight.metronTitle(series))
                             ?.let { artwork[series.id] = it }
                     }
                 }
@@ -168,25 +169,34 @@ internal fun InkShelf2SpotlightEventScreen(
                 Spacer(Modifier.height(8.dp))
                 val lead = event.leadSeries
                 val leadCover = artwork[lead.id] ?: matches[lead.id]?.manga?.thumbnail_url
+                var officialFailed by remember(event.id, event.artworkUrl) { mutableStateOf(false) }
+                val bannerArt = if (!officialFailed && event.artworkUrl != null)
+                    event.artworkUrl else leadCover
                 Box(
                     modifier = Modifier.fillMaxWidth().height(224.dp)
                         .clip(RoundedCornerShape(17.dp))
                         .background(InkShelf2Colors.SurfaceRaised),
                 ) {
-                    if (!leadCover.isNullOrBlank()) {
+                    if (!bannerArt.isNullOrBlank()) {
                         AsyncImage(
-                            model = leadCover,
+                            model = bannerArt,
                             contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                                .fillMaxHeight()
+                                .fillMaxWidth(if (event.id == "dc-absolute") 0.88f else 0.66f),
+                            contentScale = ContentScale.Fit,
+                            alignment = Alignment.CenterEnd,
+                            onError = {
+                                if (!officialFailed && event.artworkUrl != null) officialFailed = true
+                            },
                         )
                     }
                     Box(
                         modifier = Modifier.fillMaxSize().background(
                             Brush.horizontalGradient(listOf(
-                                InkShelf2Colors.Background.copy(alpha = 0.95f),
-                                InkShelf2Colors.Background.copy(alpha = 0.7f),
-                                InkShelf2Colors.Background.copy(alpha = 0.14f),
+                                InkShelf2Colors.Background.copy(alpha = 0.97f),
+                                InkShelf2Colors.Background.copy(alpha = 0.86f),
+                                InkShelf2Colors.Background.copy(alpha = 0.12f),
                             )),
                         ),
                     )

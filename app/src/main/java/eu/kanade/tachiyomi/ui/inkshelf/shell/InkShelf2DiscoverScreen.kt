@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -242,7 +243,8 @@ internal fun InkShelf2DiscoverScreen(
     val heroKeys = heroSpotlight.map { it.id }
     LaunchedEffect(heroKeys) {
         heroSpotlight.forEach { feature ->
-            val cover = InkShelf2HeroArtwork.findCover(context, feature.leadSeries.editionTitle)
+            val cover = InkShelf2HeroArtwork.findCover(context,
+                InkShelf2Spotlight.metronTitle(feature.leadSeries))
             if (cover != null) highQualityHeroArt[feature.id] = cover
         }
     }
@@ -581,8 +583,15 @@ internal fun InkShelf2DiscoverScreen(
                         pageSpacing = 10.dp,
                     ) { index ->
                         val feature = heroSpotlight[index]
-                        val enhancedUrl = highQualityHeroArt[feature.id]
-                        var enhancedImageFailed by remember(enhancedUrl) { mutableStateOf(false) }
+                        val metronArt = highQualityHeroArt[feature.id]
+                        var officialFailed by remember(feature.id, feature.artworkUrl) {
+                            mutableStateOf(false)
+                        }
+                        var fallbackFailed by remember(feature.id, metronArt) {
+                            mutableStateOf(false)
+                        }
+                        val heroImage = if (!officialFailed && feature.artworkUrl != null)
+                            feature.artworkUrl else metronArt
                         Box(
                             modifier = Modifier.fillMaxWidth().height(194.dp)
                                 .clip(RoundedCornerShape(17.dp))
@@ -593,15 +602,22 @@ internal fun InkShelf2DiscoverScreen(
                                     keyboard?.hide()
                                 },
                         ) {
-                            // Metron cover art loads independently of extensions. A missing
-                            // issue #1 image leaves the designed dark feature card intact.
-                            if (enhancedUrl != null && !enhancedImageFailed) {
+                            // Show official publisher event art without cropping its characters
+                            // or wordmarks. Metron remains a safe image fallback.
+                            if (heroImage != null && !(officialFailed && fallbackFailed)) {
                                 AsyncImage(
-                                    model = enhancedUrl,
+                                    model = heroImage,
                                     contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop,
-                                    onError = { enhancedImageFailed = true },
+                                    modifier = Modifier.align(Alignment.CenterEnd)
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(if (feature.id == "dc-absolute") 0.87f else 0.61f),
+                                    alignment = Alignment.CenterEnd,
+                                    contentScale = ContentScale.Fit,
+                                    onError = {
+                                        if (!officialFailed && feature.artworkUrl != null)
+                                            officialFailed = true
+                                        else fallbackFailed = true
+                                    },
                                 )
                             }
                             Box(
@@ -610,17 +626,17 @@ internal fun InkShelf2DiscoverScreen(
                                         listOf(
                                             // Keep the left-hand title readable while allowing
                                             // much more of the comic artwork to show through.
-                                            InkShelf2Colors.Background.copy(alpha = 0.64f),
-                                            InkShelf2Colors.Background.copy(alpha = 0.32f),
-                                            InkShelf2Colors.SurfaceRaised.copy(alpha = 0.06f),
+                                            InkShelf2Colors.Background.copy(alpha = 0.95f),
+                                            InkShelf2Colors.Background.copy(alpha = 0.84f),
+                                            InkShelf2Colors.Background.copy(alpha = 0.12f),
                                         ),
                                     ),
                                 ),
                             )
                             Column(
                                 modifier = Modifier.align(Alignment.BottomStart)
-                                    .fillMaxWidth(0.88f)
-                                    .padding(17.dp),
+                                    .fillMaxWidth(0.78f)
+                                    .padding(16.dp),
                             ) {
                                 Text(feature.publisher.uppercase() + " · " + feature.label,
                                     color = InkShelf2Colors.AccentLight,
@@ -629,10 +645,10 @@ internal fun InkShelf2DiscoverScreen(
                                 Text(
                                     feature.title,
                                     color = Color.White,
-                                    fontSize = 23.sp,
-                                    lineHeight = 25.sp,
+                                    fontSize = 22.sp,
+                                    lineHeight = 24.sp,
                                     fontWeight = FontWeight.Black,
-                                    maxLines = 2,
+                                    maxLines = 3,
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 Spacer(Modifier.height(5.dp))

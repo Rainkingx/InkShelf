@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "updated_at": "2026-11-23",
-  "description": "Three editorial event spotlights. Change the event order, summary, or series lineup here without a new APK. Each series searches a single preferred extension (BatCave if installed).",
+  "description": "Exactly three event spotlights. Publisher artwork, series title/year and labels can be edited remotely; Metron and BatCave are used for covers and reading.",
   "events": [
     {
       "id": "marvel-midnight",
@@ -38,7 +38,8 @@
           "year": 2026,
           "tagline": "Marvel's First Family faces a twisted new reality."
         }
-      ]
+      ],
+      "artwork_url": "https://cdn.marvel.com/content/2x/20260504-midnight-alllogos_4x5-c.jpg"
     },
     {
       "id": "dc-absolute",
@@ -110,7 +111,8 @@
           "year": 2026,
           "tagline": "Selina Kyle joins the growing Absolute line."
         }
-      ]
+      ],
+      "artwork_url": "https://static.dc.com/2026-07/ABS_2026SDCC-FOIL.jpg"
     },
     {
       "id": "marvel-ultimate",
@@ -153,7 +155,7 @@
         },
         {
           "id": "ultimates",
-          "title": "Ultimates",
+          "title": "The Ultimates",
           "year": 2024,
           "tagline": "The heroes of this new universe assemble."
         },
@@ -175,7 +177,8 @@
           "year": 2026,
           "tagline": "The conclusion of the modern Ultimate saga."
         }
-      ]
+      ],
+      "artwork_url": "https://cdn.marvel.com/content/2x/ultimateendgame_teaser2.jpg"
     }
   ]
 }
