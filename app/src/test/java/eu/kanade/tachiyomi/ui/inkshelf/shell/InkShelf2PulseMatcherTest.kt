@@ -23,6 +23,29 @@ class InkShelf2PulseMatcherTest {
         )
 
     @Test
+    fun pulseHeaderDotOnlyShowsNewsNewerThanLastVisit() {
+        val entries = listOf(
+            item("Older comic", 1_000L),
+            item("Newer comic", 2_000L),
+            item("Video update", 3_000L, video = true),
+        )
+        assertTrue(InkShelf2PulseStatus.hasNewerArticles(entries, 0L))
+        assertTrue(InkShelf2PulseStatus.hasNewerArticles(entries, 1_500L))
+        assertFalse(InkShelf2PulseStatus.hasNewerArticles(entries, 2_000L))
+        assertFalse(InkShelf2PulseStatus.hasNewerArticles(entries, 5_000L))
+        assertFalse(
+            InkShelf2PulseStatus.hasNewerArticles(
+                listOf(item("Only video", 5_000L, video = true)), 0L,
+            ),
+        )
+        assertFalse(
+            InkShelf2PulseStatus.hasNewerArticles(
+                listOf(item("No publication date", 0L)), 0L,
+            ),
+        )
+    }
+
+    @Test
     fun pulseExtractsRealPublisherImagesWithoutPickingTrackers() {
         val feedHtml = """
             &lt;div&gt;
