@@ -110,6 +110,7 @@ internal fun InkShelf2HomeScreen(
     padding: PaddingValues,
     pulseExpanded: Boolean,
     onPulseExpandedChange: (Boolean) -> Unit,
+    onPulseArticlesUpdated: (List<InkShelf2PulseArticle>) -> Unit,
     onOpen: (Manga) -> Unit,
     onSave: (Manga) -> Unit,
     onDiscover: () -> Unit,
@@ -156,7 +157,9 @@ internal fun InkShelf2HomeScreen(
         // or leave the news section stuck with a loading indicator.
         try {
             pulseArticles = InkShelf2PulseFeed.cached(context)
+            onPulseArticlesUpdated(pulseArticles)
             pulseArticles = InkShelf2PulseFeed.refresh(context)
+            onPulseArticlesUpdated(pulseArticles)
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: Exception) {
