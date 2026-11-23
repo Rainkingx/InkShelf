@@ -330,7 +330,15 @@ private fun InkShelf2LibraryContinueReading(
                 maxLines = 1,
             )
         }
-        Spacer(Modifier.height(12.dp))
+        // The carousel tracks the last opened ISSUE. The Library grid tracks
+        // the whole SERIES; their percentages should not look contradictory.
+        Text(
+            "Last opened issue progress · Series progress on library covers",
+            modifier = Modifier.padding(horizontal = gutter, vertical = 4.dp),
+            color = InkShelf2Colors.Muted,
+            fontSize = 11.sp,
+        )
+        Spacer(Modifier.height(7.dp))
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val coverWidth = (maxWidth - gutter * 2 - 20.dp) / 3
             LazyRow(
@@ -344,6 +352,7 @@ private fun InkShelf2LibraryContinueReading(
                     ComicCoverCard(
                         manga = reading.manga,
                         percent = reading.percent,
+                        percentLabel = "Issue",
                         width = coverWidth,
                         showTitle = false,
                         libraryShape = true,
@@ -482,7 +491,7 @@ private fun ShelfStatus(item: InkShelf2LibraryItem, modifier: Modifier = Modifie
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Text(
-                    "${progress}%",
+                    "Series ${progress}%",
                     color = Color.White,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
