@@ -7,9 +7,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import eu.kanade.tachiyomi.data.updater.AppDownloadInstallJob
-import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.ViewTreeObserver
 import coil.imageLoader
 import coil.request.ImageRequest
 import android.widget.Toast
@@ -106,15 +106,29 @@ class InkShelf2Activity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         initialShellReady = false
         val splashStartedAt = SystemClock.elapsedRealtime()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Hold Android 12+'s already-configured branded launch window
-            // rather than exposing a half-filled Compose Home screen.
-            // Hard cap protects offline/slow-source launches from hanging.
-            splashScreen.setKeepOnScreenCondition {
-                !initialShellReady &&
-                    SystemClock.elapsedRealtime() - splashStartedAt < 8_000L
-            }
-        }
+        // Prevent the first Activity draw until initial Home content is
+        // hydrated. On Android 12+ the system launch splash remains visible;
+        // older Android keeps its normal starting window. No extra library or
+        // simulated full-screen screen is needed.
+        val splashRoot = window.decorView
+        splashRoot.viewTreeObserver.addOnPreDrawListener(
+            object : ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    val keepSplash = !initialShellReady &&
+                        SystemClock.elapsedRealtime() - splashStartedAt < 8_000L
+                    if (keepSplash) return false
+                    if (splashRoot.viewTreeObserver.isAlive) {
+                        splashRoot.viewTreeObserver.removeOnPreDrawListener(this)
+                    }
+                    return true
+                }
+            },
+        )
+        // The timeout needs a draw request even if a broken source never
+        // finishes loading. Never leave the opening screen stuck forever.
+        splashRoot.postDelayed({
+            splashRoot.postInvalidateOnAnimation()
+        }, 8_000L)
         pendingEntryIntent = intent
         SecureActivityDelegate.setSecure(this)
         // Restore the selected 2.0 palette before first composition (no purple flash).
@@ -377,6 +391,9 @@ class InkShelf2Activity : AppCompatActivity() {
                     }
                     withFrameNanos { }
                     initialShellReady = true
+                    // A plain readiness flag does not recompose on its own.
+                    // Schedule the frame that releases the pre-draw gate.
+                    window.decorView.postInvalidateOnAnimation()
                 }
             }
             // InkShelf 1's flow: show Comic Details immediately, then fetch
