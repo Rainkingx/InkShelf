@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,13 +39,20 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import eu.kanade.tachiyomi.R
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -167,6 +175,8 @@ fun InkShelf2Shell(
     onTabSelected: (InkShelf2Tab) -> Unit,
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
+    onPulse: () -> Unit,
+    pulseHasNewStories: Boolean = false,
     notificationCount: Int = 0,
     modifier: Modifier = Modifier,
     showHeader: Boolean = true,
@@ -183,6 +193,8 @@ fun InkShelf2Shell(
                     InkShelf2Header(
                         onSearch = onSearch,
                         onNotifications = onNotifications,
+                        onPulse = onPulse,
+                        pulseHasNewStories = pulseHasNewStories,
                         notificationCount = notificationCount,
                     )
                 }
@@ -204,6 +216,8 @@ fun InkShelf2Shell(
 private fun InkShelf2Header(
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
+    onPulse: () -> Unit,
+    pulseHasNewStories: Boolean,
     notificationCount: Int,
 ) {
     Row(
@@ -244,6 +258,49 @@ private fun InkShelf2Header(
                 letterSpacing = (-0.7).sp,
                 maxLines = 1,
             )
+        }
+        IconButton(
+            onClick = onPulse,
+            modifier = Modifier.semantics {
+                contentDescription = if (pulseHasNewStories) {
+                    "Open The Pulse, new stories available"
+                } else {
+                    "Open The Pulse"
+                }
+            },
+        ) {
+            Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                // Distinct ECG zigzag: not a comics/library symbol.
+                Canvas(modifier = Modifier.size(23.dp)) {
+                    val shape = Path().apply {
+                        moveTo(size.width * 0.04f, size.height * 0.55f)
+                        lineTo(size.width * 0.26f, size.height * 0.55f)
+                        lineTo(size.width * 0.39f, size.height * 0.32f)
+                        lineTo(size.width * 0.50f, size.height * 0.76f)
+                        lineTo(size.width * 0.62f, size.height * 0.16f)
+                        lineTo(size.width * 0.75f, size.height * 0.55f)
+                        lineTo(size.width * 0.96f, size.height * 0.55f)
+                    }
+                    drawPath(
+                        path = shape,
+                        color = InkShelf2Colors.Text,
+                        style = Stroke(
+                            width = 2.1.dp.toPx(),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round,
+                        ),
+                    )
+                }
+                if (pulseHasNewStories) {
+                    Box(
+                        modifier = Modifier.align(Alignment.TopEnd)
+                            .offset(x = (-1).dp, y = 1.dp)
+                            .size(7.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(InkShelf2Colors.AccentLight),
+                    )
+                }
+            }
         }
         IconButton(onClick = onNotifications) {
             Box(modifier = Modifier.size(32.dp)) {
