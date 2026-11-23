@@ -154,7 +154,7 @@ class InkShelf2PulseMatcherTest {
         assertEquals(
             listOf(
                 "Amazing Spider-Man (1999) #529–531",
-                "Fantastic Four #536–537",
+                "Fantastic Four (1998) #536–537",
                 "New Avengers: Illuminati #1",
             ),
             collection.included.map { it.label },
@@ -208,6 +208,85 @@ class InkShelf2PulseMatcherTest {
                 collection,
                 "Collects Amazing Spider-Man (1999) #529-531, " +
                     "Fantastic Four (1997) #536-537 and New Avengers: Illuminati One-Shot.",
+            ),
+        )
+    }
+
+
+    @Test
+    fun collectedEditionsExpandToNamedModernEventsButNotOtherRuns() {
+        fun guide(name: String, publisher: String) = InkShelf2Guide(
+            id = name.hashCode(),
+            name = name,
+            type = "EVENT",
+            author = "test",
+            attribution = "",
+            rating = 1.0,
+            publisher = publisher,
+        )
+        assertEquals(
+            2,
+            InkShelf2GuideCollections.forGuide(guide("Civil War (2006)", "marvel")).size,
+        )
+        val expected = listOf(
+            Triple("Secret Wars (2015)", "marvel", 9),
+            Triple("House of M", "marvel", 8),
+            Triple("Absolute Power", "dc", 5),
+            Triple("Flashpoint", "dc", 5),
+            Triple("Blackest Night", "dc", 9),
+            Triple("Crisis on Infinite Earths", "dc", 12),
+            Triple("Infinite Crisis", "dc", 7),
+        )
+        expected.forEach { (event, publisher, count) ->
+            val found = InkShelf2GuideCollections.forGuide(guide(event, publisher))
+            assertEquals("Expected one published collection for $event", 1, found.size)
+            assertEquals("Unexpected core issues for $event", count, found.single().issueCount)
+        }
+        assertTrue(InkShelf2GuideCollections.forGuide(guide("Secret Wars", "marvel")).isEmpty())
+        assertTrue(InkShelf2GuideCollections.forGuide(guide("Secret Wars (1984)", "marvel")).isEmpty())
+        assertTrue(InkShelf2GuideCollections.forGuide(guide("Civil War II", "marvel")).isEmpty())
+    }
+
+    @Test
+    fun collectedEditionSearchDoesNotConfuseDifferentYearsAndTieIns() {
+        fun guide(name: String, publisher: String) = InkShelf2Guide(
+            id = name.hashCode(), name = name, type = "EVENT", author = "test",
+            attribution = "", rating = 1.0, publisher = publisher,
+        )
+        val wars = InkShelf2GuideCollections.forGuide(
+            guide("Secret Wars (2015)", "marvel"),
+        ).single()
+        assertEquals(
+            InkShelf2GuideCollections.SourceMatch.OTHER,
+            InkShelf2GuideCollections.classifySourceTitle(wars, "Secret Wars (1984)"),
+        )
+        assertEquals(
+            InkShelf2GuideCollections.SourceMatch.POSSIBLE,
+            InkShelf2GuideCollections.classifySourceTitle(wars, "Secret Wars (2015)"),
+        )
+        assertEquals(
+            InkShelf2GuideCollections.SourceMatch.TITLE_MATCH,
+            InkShelf2GuideCollections.classifySourceTitle(
+                wars, "Secret Wars by Jonathan Hickman TPB (2016)",
+            ),
+        )
+        val house = InkShelf2GuideCollections.forGuide(guide("House of M", "marvel")).single()
+        assertEquals(
+            InkShelf2GuideCollections.SourceMatch.OTHER,
+            InkShelf2GuideCollections.classifySourceTitle(house, "House of M: Iron Man"),
+        )
+        assertTrue(
+            InkShelf2GuideCollections.sourceDescriptionConfirmsContents(
+                house, "Collects House of M (2005) #1-8.",
+            ),
+        )
+        val civilWar = InkShelf2GuideCollections.forGuide(
+            guide("Civil War", "marvel"),
+        ).last()
+        assertEquals(
+            InkShelf2GuideCollections.SourceMatch.OTHER,
+            InkShelf2GuideCollections.classifySourceTitle(
+                civilWar, "Civil War: The Road to Civil War",
             ),
         )
     }
