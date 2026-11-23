@@ -71,6 +71,34 @@ internal object InkShelf2PulseTopics {
         return result
     }
 
+    /**
+     * Give Screen Rant slightly more visibility without creating articles,
+     * dropping other publishers or changing the comic/film/industry mix.
+     *
+     * Prefer one Screen Rant headline in the first two news cards (including
+     * Home's Pulse preview), and a second within the first eight if available.
+     * Preserve the relative order of every other publisher's stories.
+     */
+    fun promoteScreenRant(news: List<InkShelf2PulseArticle>): List<InkShelf2PulseArticle> {
+        if (news.size < 2 || news.none { it.publisher == "Screen Rant" }) return news
+        val reordered = news.toMutableList()
+        listOf(1, 7).forEachIndexed { ordinal, target ->
+            if (target >= reordered.size) return@forEachIndexed
+            val alreadyVisible = reordered.take(target + 1)
+                .count { it.publisher == "Screen Rant" }
+            if (alreadyVisible > ordinal) return@forEachIndexed
+            val next = reordered.indexOfFirst { article ->
+                article.publisher == "Screen Rant" &&
+                    reordered.indexOf(article) > target
+            }
+            if (next > target) {
+                val featured = reordered.removeAt(next)
+                reordered.add(target, featured)
+            }
+        }
+        return reordered
+    }
+
     fun label(topic: InkShelf2PulseTopic): String = when (topic) {
         InkShelf2PulseTopic.COMICS -> "Comics"
         InkShelf2PulseTopic.FILM_TV -> "Film & TV"
