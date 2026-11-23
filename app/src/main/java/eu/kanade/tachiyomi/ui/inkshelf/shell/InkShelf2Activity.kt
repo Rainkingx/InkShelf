@@ -1103,7 +1103,7 @@ class InkShelf2Activity : AppCompatActivity() {
         startActivity(ReaderActivity.newIntent(this, manga, chapter))
     }
 
-activity-remove-reader-route    /** Queue through InkShelf 1's existing source-backed offline download manager. */
+    /** Queue through InkShelf 1's existing source-backed offline download manager. */
     private fun downloadIssues(manga: Manga, chapters: List<Chapter>) {
         val eligible = chapters.filter { it.id != null }
         if (eligible.isEmpty()) {
