@@ -241,8 +241,14 @@ internal object InkShelf2GuideCollections {
             return spiderMan && fantasticFour && illuminati
         }
         return collection.included.all { group ->
-            val name = group.series.replace(Regex("""\s*\(\d{4}\)"""), "")
-                .lowercase(Locale.ROOT).replace(Regex("""[^a-z0-9]+"""), """[\s:–-]+""")
+            // Build the regex from escaped title words. Passing regex syntax
+            // through Regex.replace as a replacement string can strip its
+            // backslashes, incorrectly turning whitespace into the letter s.
+            val words = group.series.replace(Regex("""\s*\(\d{4}\)"""), "")
+                .lowercase(Locale.ROOT)
+                .split(Regex("""[^a-z0-9]+"""))
+                .filter { it.isNotBlank() }
+            val name = words.joinToString("""[\s:–-]+""") { Regex.escape(it) }
             val numbers = Regex.escape(group.first.toString()) +
                 if (group.last != group.first) """\s*[-–—]\s*#?\s*""" +
                     Regex.escape(group.last.toString()) else ""
