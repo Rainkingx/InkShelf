@@ -43,13 +43,15 @@ internal object InkShelf2PulseTopics {
      * the brand, but does not make every headline comic news.
      */
     fun classifyOfficialMarvel(title: String, rssCategories: String = ""): InkShelf2PulseTopic? {
-        val normal = classify(title, rssCategories)
-        if (normal != null) return normal
         val lower = title.lowercase(Locale.ROOT)
+        // Marvel-branded shopping and merchandise headlines can otherwise
+        // pass the general "Marvel" comics keyword test.
         if (unrelated.containsMatchIn(lower) ||
-            Regex("""\b(?:merch|toys?|collectibles?|shopping|store|sale|giveaway)\b""")
+            Regex("""\b(?:merch(?:andise)?|toys?|collectibles?|shopping|shop|store|sale|giveaway)\b""")
                 .containsMatchIn(lower)
         ) return null
+        val normal = classify(title, rssCategories)
+        if (normal != null) return normal
         return if (screenContext.containsMatchIn(lower) ||
             Regex("""\b(?:visionquest|wandavision|agatha all along|moon knight|loki|what if|echo)\b""")
                 .containsMatchIn(lower)
