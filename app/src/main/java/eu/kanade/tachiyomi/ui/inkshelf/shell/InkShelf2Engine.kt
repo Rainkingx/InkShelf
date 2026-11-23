@@ -67,7 +67,7 @@ internal class InkShelf2Engine(private val context: Context) {
                 }.toList()
         }.getOrDefault(emptyList())
 
-        val discover = loadDiscoverDirect()
+        val discover = loadDiscoverDirect(enabledSourceIds)
         val saved = runCatching {
             database.getLibraryMangas().executeAsBlocking().filter { it.favorite }
         }.getOrDefault(emptyList())
@@ -132,15 +132,22 @@ internal class InkShelf2Engine(private val context: Context) {
         }.getOrDefault(emptyList())
     }
 
-    suspend fun loadDiscover(): Discover = withContext(Dispatchers.IO) { loadDiscoverDirect() }
+    suspend fun loadDiscover(enabledSourceIds: Set<Long>? = null): Discover =
+        withContext(Dispatchers.IO) { loadDiscoverDirect(enabledSourceIds) }
 
-    private fun loadDiscoverDirect(): Discover {
+    private fun loadDiscoverDirect(enabledSourceIds: Set<Long>? = null): Discover {
+        val pausedIds = InkShelf2ExtensionPause.pausedSourceIds()
+        // Only restore rows backed by currently enabled extensions. Filtering
+        // inside the cache loader prevents disabled XOXO entries from being
+        // reinserted into J2K while Home/Discover load their saved cards.
+        val availableIds = enabledSourceIds?.minus(pausedIds)
         fun cached(section: Section): List<Manga> =
-            runCatching { InkShelfDiscoverCache.load(context, section, database).map { it.manga } }
-                .getOrDefault(emptyList())
+            runCatching {
+                InkShelfDiscoverCache.load(context, section, database, availableIds).map { it.manga }
+            }.getOrDefault(emptyList())
                 .distinctBy { it.source.toString() + ":" + it.url }
         val personal = runCatching {
-            InkShelfDiscoverCache.load(context, Section.PICKED_FOR_YOU, database)
+            InkShelfDiscoverCache.load(context, Section.PICKED_FOR_YOU, database, availableIds)
         }.getOrDefault(emptyList())
         val personalPicks = personal.distinctBy { it.manga.source.toString() + ":" + it.manga.url }
             .map { PersonalPick(it.manga, it.reason) }
@@ -151,7 +158,6 @@ internal class InkShelf2Engine(private val context: Context) {
             recommendationDetails = personalPicks,
         )
         val sourceNames = sourceManager.getCatalogueSources().associate { it.id to it.name }
-        val pausedIds = InkShelf2ExtensionPause.pausedSourceIds()
         val active = raw.copy(
             trending = raw.trending.filterNot { it.source in pausedIds },
             newest = raw.newest.filterNot { it.source in pausedIds },
