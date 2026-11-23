@@ -355,8 +355,10 @@ internal fun InkShelf2HomeScreen(
                                     // all three daily selections.
                                     label = if (pick?.favorite == true) "First Saved" else "Save First",
                                     leadingIcon = if (pick?.favorite == true) Icons.Outlined.CheckCircleOutline else Icons.Outlined.Add,
-                                    enabled = pick != null,
-                                    onClick = { pick?.let(onSave) },
+                                    enabled = pick != null && pick.favorite != true,
+                                    onClick = {
+                                        pick?.takeIf { !it.favorite }?.let(onSave)
+                                    },
                                     outlined = true,
                                     modifier = Modifier.weight(1f),
                                 )
