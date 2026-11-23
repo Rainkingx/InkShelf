@@ -7,8 +7,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import eu.kanade.tachiyomi.data.updater.AppDownloadInstallJob
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import coil.imageLoader
+import coil.request.ImageRequest
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -55,6 +59,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.CancellationException
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -93,8 +98,23 @@ class InkShelf2Activity : AppCompatActivity() {
     private var lastBackAtMillis = 0L
     private var readerOpenInProgress by mutableStateOf(false)
     private var guideIssueOpenInProgress = false
+    // Read from Android's native splash condition on the UI thread. The splash
+    // remains until the initial Home, Library and Discover snapshot is ready.
+    @Volatile private var initialShellReady = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        initialShellReady = false
+        val splashStartedAt = SystemClock.elapsedRealtime()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Hold Android 12+'s already-configured branded launch window
+            // rather than exposing a half-filled Compose Home screen.
+            // Hard cap protects offline/slow-source launches from hanging.
+            splashScreen.setKeepOnScreenCondition {
+                !initialShellReady &&
+                    SystemClock.elapsedRealtime() - splashStartedAt < 8_000L
+            }
+        }
         pendingEntryIntent = intent
         SecureActivityDelegate.setSecure(this)
         // Restore the selected 2.0 palette before first composition (no purple flash).
@@ -296,29 +316,62 @@ class InkShelf2Activity : AppCompatActivity() {
             }
 
             LaunchedEffect(refreshEpoch, enabledSourceIds) {
-                // Wait for real installed-source registration. A source
-                // appearing or disappearing updates the themed picks without
-                // opening any extra external searches.
-                try {
-                    home = engine.loadHome(enabledSourceIds)
+                // Stage a complete startup snapshot before publishing it.
+                // Previously Home painted its heading while the database and
+                // Discover source cache were still loading, causing a jump.
+                val refreshedHome = try {
+                    engine.loadHome(enabledSourceIds)
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (error: Exception) {
                     android.util.Log.w("InkShelf2", "Home refresh failed", error)
+                    null
                 }
-                try {
-                    library = engine.loadLibrary()
+                val refreshedLibrary = try {
+                    engine.loadLibrary()
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (error: Exception) {
                     android.util.Log.w("InkShelf2", "Library refresh failed", error)
+                    null
                 }
-                try {
-                    discover = engine.loadDiscover()
+                val refreshedDiscover = try {
+                    engine.loadDiscover()
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (error: Exception) {
                     android.util.Log.w("InkShelf2", "Discover refresh failed", error)
+                    null
+                }
+
+                if (refreshedHome != null) home = refreshedHome
+                if (refreshedLibrary != null) library = refreshedLibrary
+                if (refreshedDiscover != null) discover = refreshedDiscover
+
+                if (!initialShellReady) {
+                    // Warm today's first visible artwork so we don't replace
+                    // an empty hero with a cover moments after the splash.
+                    // Cached images return quickly; network loads have a short
+                    // timeout and must never delay entry indefinitely.
+                    val todaysHeroUrl = refreshedHome?.days?.firstOrNull {
+                        it.calendarDay == java.util.Calendar.getInstance()
+                            .get(java.util.Calendar.DAY_OF_WEEK)
+                    }?.artwork?.imageUrl
+                    if (!todaysHeroUrl.isNullOrBlank()) {
+                        withTimeoutOrNull(2_500L) {
+                            withContext(Dispatchers.IO) {
+                                applicationContext.imageLoader.execute(
+                                    ImageRequest.Builder(applicationContext)
+                                        .data(todaysHeroUrl)
+                                        .build(),
+                                )
+                            }
+                        }
+                    }
+                    // Give the loaded Compose state a frame to settle before
+                    // releasing the Android launch splash on its next draw.
+                    withFrameNanos { }
+                    initialShellReady = true
                 }
             }
             // InkShelf 1's flow: show Comic Details immediately, then fetch
@@ -589,10 +642,21 @@ class InkShelf2Activity : AppCompatActivity() {
             InkShelf2Shell(
                 currentTab = tab,
                 showHeader = selected == null && !welcomeOpen,
-                showBottomNav = selected == null && !welcomeOpen,
-                onTabSelected = {
-                    if (it == InkShelf2Tab.DISCOVER) guideIssueSearch = null
-                    openTab(it)
+                // Comic details keeps the same four-tab bar. The original
+                // full-screen reader still runs in its separate Activity.
+                showBottomNav = !welcomeOpen,
+                onTabSelected = { destination ->
+                    if (selected != null) {
+                        // A tab switch must dismiss the details route; merely
+                        // changing tab underneath would leave Details on top.
+                        selected = null
+                        comicBackStack = emptyList()
+                        sourceLinkError = null
+                        issuesError = null
+                        loadingIssues = false
+                    }
+                    if (destination == InkShelf2Tab.DISCOVER) guideIssueSearch = null
+                    openTab(destination)
                 },
                 onSearch = {
                     // Header search always starts a genuinely new search.
