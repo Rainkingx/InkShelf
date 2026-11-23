@@ -23,6 +23,66 @@ class InkShelf2PulseMatcherTest {
         )
 
     @Test
+    fun pulseSelectsComicNewsAndRelevantFilmTvButRejectsGeneralEntertainment() {
+        assertEquals(
+            InkShelf2PulseTopic.COMICS,
+            InkShelf2PulseTopics.classify(
+                "Absolute Batman #23 preview", dedicatedComicsFeed = true,
+            ),
+        )
+        assertEquals(
+            InkShelf2PulseTopic.FILM_TV,
+            InkShelf2PulseTopics.classify(
+                "Marvel Daredevil Season 3 trailer released",
+            ),
+        )
+        assertEquals(
+            InkShelf2PulseTopic.INDUSTRY,
+            InkShelf2PulseTopics.classify(
+                "Marvel and DC comic book retailers report rising sales",
+            ),
+        )
+        assertEquals(
+            null,
+            InkShelf2PulseTopics.classify(
+                "Upcoming PlayStation video games revealed",
+            ),
+        )
+        assertEquals(
+            null,
+            InkShelf2PulseTopics.classify(
+                "New celebrity dating series on Netflix",
+            ),
+        )
+    }
+
+    @Test
+    fun pulseMixedNewsFollowsTargetSplitWithEnoughPublisherContent() {
+        val entries = buildList {
+            repeat(15) { index ->
+                add(item("Comics $index", index.toLong())
+                    .copy(topic = InkShelf2PulseTopic.COMICS))
+            }
+            repeat(10) { index ->
+                add(item("Film $index", (index + 20).toLong())
+                    .copy(topic = InkShelf2PulseTopic.FILM_TV))
+            }
+            repeat(10) { index ->
+                add(item("Industry $index", (index + 40).toLong())
+                    .copy(topic = InkShelf2PulseTopic.INDUSTRY))
+            }
+        }
+        val mixed = InkShelf2PulseTopics.mix(entries, 20)
+        assertEquals(20, mixed.size)
+        assertEquals(12, mixed.count { it.topic == InkShelf2PulseTopic.COMICS })
+        assertEquals(5, mixed.count { it.topic == InkShelf2PulseTopic.FILM_TV })
+        assertEquals(3, mixed.count { it.topic == InkShelf2PulseTopic.INDUSTRY })
+        assertEquals(5, InkShelf2PulseTopics.mix(
+            entries.filter { it.topic == InkShelf2PulseTopic.COMICS }, 5,
+        ).size)
+    }
+
+    @Test
     fun multiwordSeriesMatchesItsWholeNameOnly() {
         assertTrue(
             InkShelf2PulseMatcher.isMatch(
