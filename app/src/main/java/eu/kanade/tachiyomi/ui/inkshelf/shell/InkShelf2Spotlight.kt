@@ -50,7 +50,7 @@ internal object InkShelf2Spotlight {
 
     private const val URL =
         "https://raw.githubusercontent.com/Rainkingx/InkShelf/inkshelf-2.0/editorial/spotlight.json"
-    private const val CACHE = "inkshelf2_editorial_events_v2"
+    private const val CACHE = "inkshelf2_editorial_events_v3"
     private const val TTL_MS = 6L * 60L * 60L * 1000L
     private val client = OkHttpClient.Builder()
         .connectTimeout(6, TimeUnit.SECONDS)
