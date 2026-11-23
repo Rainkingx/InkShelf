@@ -292,6 +292,47 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun officialMarvelFeedSupportsComicsAndAdaptationsButNotMerchandise() {
+        assertEquals(
+            InkShelf2PulseTopic.COMICS,
+            InkShelf2PulseTopics.classifyOfficialMarvel(
+                "November 18's New Marvel Comics: The Full List",
+            ),
+        )
+        assertEquals(
+            InkShelf2PulseTopic.FILM_TV,
+            InkShelf2PulseTopics.classifyOfficialMarvel(
+                "Meet the Cast of VisionQuest in a New TV Series",
+            ),
+        )
+        assertEquals(
+            null,
+            InkShelf2PulseTopics.classifyOfficialMarvel(
+                "Shop Marvel Must Haves: Official Doctor Doom Toys and Merchandise",
+            ),
+        )
+    }
+
+    @Test
+    fun officialMarvelAppearsEarlyWithoutRemovingScreenRantOrDuplicatingHeadlines() {
+        val stories = (0..17).map { i ->
+            item("Another publisher article $i").copy(publisher = "The Beat")
+        }.toMutableList()
+        stories[15] = stories[15].copy(publisher = "Marvel Official")
+        stories[13] = stories[13].copy(publisher = "Screen Rant")
+        stories[17] = stories[17].copy(publisher = "Screen Rant")
+        val promoted = InkShelf2PulseTopics.promoteOfficialNews(stories)
+        assertEquals(stories.size, promoted.size)
+        assertTrue(promoted.take(2).any { it.publisher == "Screen Rant" })
+        assertTrue(promoted.take(5).any { it.publisher == "Marvel Official" })
+        assertEquals(stories.map { it.url }.toSet(), promoted.map { it.url }.toSet())
+        assertEquals(
+            stories.filter { it.publisher == "The Beat" }.map { it.url },
+            promoted.filter { it.publisher == "The Beat" }.map { it.url },
+        )
+    }
+
+    @Test
     fun officialMarvelNewsClassifiesComicsAndRelevantFilmTv() {
         assertEquals(
             InkShelf2PulseTopic.COMICS,
