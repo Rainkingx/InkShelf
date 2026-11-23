@@ -60,6 +60,7 @@ internal object InkShelfDiscoverCache {
         context: Context,
         section: Section,
         db: DatabaseHelper,
+        allowedSourceIds: Set<Long>? = null,
     ): List<DiscoverRecommendation> {
         val raw =
             context.applicationContext
@@ -78,6 +79,10 @@ internal object InkShelfDiscoverCache {
                     val cover = json.optString("cover").trim().takeIf(String::isNotBlank)
                     val reason = json.optString("reason").trim()
                     if (sourceId < 0L || url.isBlank() || title.isBlank()) continue
+                    // Ignore paused/hidden sources BEFORE resolving cache rows.
+                    // Displaying recommendations must never recreate stale
+                    // disabled-source manga in the underlying J2K database.
+                    if (allowedSourceIds != null && sourceId !in allowedSourceIds) continue
 
                     var manga = db.getManga(url, sourceId).executeAsBlocking()
                     if (manga == null) {
