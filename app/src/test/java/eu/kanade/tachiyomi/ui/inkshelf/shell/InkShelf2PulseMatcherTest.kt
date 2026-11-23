@@ -24,6 +24,29 @@ class InkShelf2PulseMatcherTest {
         )
 
     @Test
+    fun moreLikeThisDoesNotTreatTmntAsXMenBecauseBothAreMutants() {
+        fun comic(title: String) =
+            eu.kanade.tachiyomi.data.database.models.Manga.create(
+                "/comics/${title.hashCode()}", title, 2002L,
+            ).apply {
+                thumbnail_url = "https://images.example.org/cover.jpg"
+                genre = "Mutant, Action, Adventure"
+            }
+
+        val focus = comic("Teenage Mutant Ninja Turtles (2011)")
+        val lastRonin = comic("Teenage Mutant Ninja Turtles: The Last Ronin (2020)")
+        val xMen = comic("Midnight X-Men (2026)")
+        val wolverine = comic("Ultimate Wolverine (2025)")
+        val picks = InkShelf2MoreLikeThis.select(
+            focus = focus,
+            candidates = listOf(xMen, lastRonin, wolverine),
+            enabledSources = setOf(2002L),
+        )
+        assertEquals(listOf(lastRonin.title), picks.map { it.manga.title })
+        assertEquals("TMNT universe", picks.single().reason)
+    }
+
+    @Test
     fun manualRefreshUsesOlderHistoryOnlyAfterAllFreshChoices() {
         val pool = InkShelfRecommendationRotation.eligible(
             candidates = listOf("Batman", "Superman", "Daredevil", "X-Men"),
