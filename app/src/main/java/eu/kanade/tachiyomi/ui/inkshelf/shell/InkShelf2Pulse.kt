@@ -647,7 +647,9 @@ internal fun InkShelf2PulsePreview(
 ) {
     // Home stays a simple editorial teaser. The Articles and Videos selector
     // belongs only to the full Pulse destination behind the large CTA.
-    val news = articles.filterNot { it.isVideo }.take(2)
+    val news = InkShelf2PulseTopics.promoteScreenRant(
+        articles.filterNot { it.isVideo },
+    ).take(2)
     InkShelf2SectionHeading("The Pulse", onClick = null)
     Text(
         "Comic-book news, reviews & videos",
@@ -841,9 +843,10 @@ internal fun InkShelf2PulseScreen(
     onBack: () -> Unit,
     onOpenArticle: (String) -> Unit,
 ) {
-    val selected = articles.filter {
+    val filtered = articles.filter {
         it.isVideo == showVideos && (showVideos || topicFilter == null || it.topic == topicFilter)
     }
+    val selected = if (showVideos) filtered else InkShelf2PulseTopics.promoteScreenRant(filtered)
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = PaddingValues(
