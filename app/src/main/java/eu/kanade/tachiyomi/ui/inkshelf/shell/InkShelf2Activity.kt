@@ -123,6 +123,15 @@ class InkShelf2Activity : AppCompatActivity() {
             var searchFocusEpoch by remember { mutableIntStateOf(0) }
             var discoverSearchPreset by remember { mutableStateOf("") }
             var guideIssueSearch by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
+            // Start a fresh search whenever Discover is left; guide and
+            // Find Source entries can still supply a new explicit query.
+            var discoverSearchSession by remember { mutableIntStateOf(0) }
+            fun clearDiscoverSearch() {
+                discoverSearchPreset = ""
+                guideIssueSearch = null
+                searchFocusEpoch = 0
+                discoverSearchSession += 1
+            }
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
             var metronOpen by rememberSaveable { mutableStateOf(false) }
             var themesOpen by rememberSaveable { mutableStateOf(false) }
@@ -144,6 +153,9 @@ class InkShelf2Activity : AppCompatActivity() {
             // closes The Pulse instead of being ignored by bottom navigation.
             var pulseExpanded by rememberSaveable { mutableStateOf(false) }
             fun openTab(destination: InkShelf2Tab) {
+                if (tab == InkShelf2Tab.DISCOVER && destination != InkShelf2Tab.DISCOVER) {
+                    clearDiscoverSearch()
+                }
                 if (tab != destination) {
                     tabTrail = (tabTrail.split('|').takeLast(20) + destination.name)
                         .joinToString("|")
@@ -343,6 +355,9 @@ class InkShelf2Activity : AppCompatActivity() {
 
             // One immediate route for EVERY comic card, just like InkShelf 1.
             val openComicDetails: (Manga) -> Unit = { manga ->
+                // Opening details leaves Discover even though its tab stays
+                // selected underneath. Back must not restore stale results.
+                if (tab == InkShelf2Tab.DISCOVER) clearDiscoverSearch()
                 comicBackStack = emptyList()
                 sourceLinkError = null
                 issuesError = null
@@ -552,9 +567,9 @@ class InkShelf2Activity : AppCompatActivity() {
                     openTab(it)
                 },
                 onSearch = {
-                    guideIssueSearch = null
+                    // Header search always starts a genuinely new search.
+                    clearDiscoverSearch()
                     openTab(InkShelf2Tab.DISCOVER)
-                    discoverSearchPreset = ""
                     searchFocusEpoch += 1
                 },
                 onNotifications = { notificationsOpen = true },
@@ -825,6 +840,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         onOpenComic = openComicDetails,
                     )
                     tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(
+                        searchSession = discoverSearchSession,
                         discover = discover,
                         curatedShelves = curatedShelves,
                         padding = padding,
