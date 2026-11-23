@@ -141,6 +141,78 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun roadToCivilWarCollectionHasSixVerifiedOriginalIssues() {
+        fun guide(name: String) = InkShelf2Guide(
+            id = 2006, name = name, type = "EVENT", author = "Metron",
+            attribution = "", rating = 0.0, publisher = "marvel",
+        )
+        val collection = InkShelf2GuideCollections.forGuide(
+            guide("Civil War (2006)"),
+        ).single()
+        assertEquals("Road to Civil War", collection.query)
+        assertEquals(6, collection.issueCount)
+        assertEquals(
+            listOf(
+                "Amazing Spider-Man (1999) #529–531",
+                "Fantastic Four #536–537",
+                "New Avengers: Illuminati #1",
+            ),
+            collection.included.map { it.label },
+        )
+        assertTrue(InkShelf2GuideCollections.forGuide(guide("Civil War II")).isEmpty())
+        assertTrue(InkShelf2GuideCollections.forGuide(guide("Secret Wars (2015)")).isEmpty())
+    }
+
+    @Test
+    fun collectedBookTitleDoesNotProveSourceContents() {
+        val collection = InkShelf2GuideCollections.forGuide(
+            InkShelf2Guide(
+                id = 14, name = "Civil War (2006)", type = "EVENT",
+                author = "test", attribution = "", rating = 1.0, publisher = "marvel",
+            ),
+        ).single()
+        assertEquals(
+            InkShelf2GuideCollections.SourceMatch.TITLE_MATCH,
+            InkShelf2GuideCollections.classifySourceTitle(
+                collection, "Civil War: The Road to Civil War (2007)",
+            ),
+        )
+        assertEquals(
+            InkShelf2GuideCollections.SourceMatch.TITLE_MATCH,
+            InkShelf2GuideCollections.classifySourceTitle(
+                collection, "The Road to Civil War TPB",
+            ),
+        )
+        assertEquals(
+            InkShelf2GuideCollections.SourceMatch.POSSIBLE,
+            InkShelf2GuideCollections.classifySourceTitle(
+                collection, "Road to Civil War Complete Collection Vol 1",
+            ),
+        )
+        assertEquals(
+            InkShelf2GuideCollections.SourceMatch.OTHER,
+            InkShelf2GuideCollections.classifySourceTitle(
+                collection, "Civil War Omnibus",
+            ),
+        )
+        assertFalse(
+            InkShelf2GuideCollections.sourceDescriptionConfirmsContents(collection, null),
+        )
+        assertFalse(
+            InkShelf2GuideCollections.sourceDescriptionConfirmsContents(
+                collection, "Collects Amazing Spider-Man #529-531 only.",
+            ),
+        )
+        assertTrue(
+            InkShelf2GuideCollections.sourceDescriptionConfirmsContents(
+                collection,
+                "Collects Amazing Spider-Man (1999) #529-531, " +
+                    "Fantastic Four (1997) #536-537 and New Avengers: Illuminati One-Shot.",
+            ),
+        )
+    }
+
+    @Test
     fun guideIssueDoesNotConfuseDifferentNewAvengersRuns() {
         val issue = InkShelf2GuideIssue(
             id = 10024,
