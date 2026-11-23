@@ -160,7 +160,11 @@ class InkShelf2PulseMatcherTest {
             collection.included.map { it.label },
         )
         assertTrue(InkShelf2GuideCollections.forGuide(guide("Civil War II")).isEmpty())
-        assertTrue(InkShelf2GuideCollections.forGuide(guide("Secret Wars (2015)")).isEmpty())
+        assertEquals(
+            listOf("marvel-secret-wars-2015"),
+            InkShelf2GuideCollections.forGuide(guide("Secret Wars (2015)"))
+                .map { it.id },
+        )
     }
 
     @Test
