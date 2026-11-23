@@ -225,14 +225,12 @@ internal fun InkShelf2OfficialDcPanel(manga: Manga) {
     ) {
         Text("Official DC details", color = InkShelf2Colors.Text,
             fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        Text("Issue #1 · Additional publisher information, not your reading source",
+        Text("Verified issue #1 creator credits · Not your reading source",
             color = InkShelf2Colors.Muted, fontSize = 11.sp)
         if (info != null) {
             val issue = info!!
             issue.writers?.let { Text("Writer: $it", color = InkShelf2Colors.Text, fontSize = 12.sp) }
             issue.artists?.let { Text("Art: $it", color = InkShelf2Colors.Text, fontSize = 12.sp) }
-            issue.onSaleDate?.let { Text("On sale: $it", color = InkShelf2Colors.Text, fontSize = 12.sp) }
-            issue.pages?.let { Text("Pages: $it", color = InkShelf2Colors.Text, fontSize = 12.sp) }
         } else if (checked) {
             Text("No verified official issue details found for this edition.",
                 color = InkShelf2Colors.Muted, fontSize = 12.sp)
