@@ -251,12 +251,19 @@ internal fun InkShelf2DiscoverScreen(
         refreshingPicks = true
         picksMessage = null
         try {
-            val success = BrowseController.refreshPickedForYouForInkShelf2(context, force)
+            val success = BrowseController.refreshPickedForYouForInkShelf2(
+                context = context,
+                force = force,
+                // Include the currently rendered cards, not just cached picks.
+                // Source-recovery fallbacks should not be repeated immediately.
+                visibleTitles = if (force) personalPicks.map { it.manga.title }.toSet()
+                    else emptySet(),
+            )
             if (success) {
                 onRecommendationsUpdated()
             } else {
                 picksMessage = if (force) {
-                    "No new matches from your enabled sources. Your previous picks are still available."
+                    "No different picks available from your enabled sources right now. Your current recommendations remain."
                 } else {
                     "Personal picks are unavailable right now. Check your extensions or try Refresh Picks."
                 }
