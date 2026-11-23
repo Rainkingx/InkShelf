@@ -231,6 +231,28 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun doomReadingGuideRespectsStartDateAndIssueRanges() {
+        val doom = InkShelf2Spotlight.Event(
+            id = "doom-essential", title = "DOCTOR DOOM", publisher = "Marvel",
+            label = "ESSENTIAL READING", summary = "Ten Doom essentials for December.",
+            officialUrl = "https://share.marvel.com/comics/discover/2493/one-world-under-doom",
+            featuredFrom = "2026-12-01", expires = "2027-02-28",
+            pulseKeywords = listOf("doctor doom"),
+            series = listOf(InkShelf2Spotlight.Series("origin", "Books of Doom", 2005,
+                "Begin with Doom's early years.", "#1–6")),
+        )
+        assertEquals(emptyList<InkShelf2Spotlight.Event>(),
+            InkShelf2Spotlight.selectVisible(listOf(doom), "2026-11-30"))
+        assertEquals(listOf(doom),
+            InkShelf2Spotlight.selectVisible(listOf(doom), "2026-12-01"))
+        assertEquals(emptyList<InkShelf2Spotlight.Event>(),
+            InkShelf2Spotlight.selectVisible(listOf(doom), "2027-03-01"))
+        assertEquals("#1–6", doom.series.first().issues)
+        assertEquals(InkShelf2Spotlight.Edition.VERIFIED,
+            InkShelf2Spotlight.edition(doom.series.first(), "Books of Doom (2005)"))
+    }
+
+    @Test
     fun theUltimatesEditorialMatchHandlesBatCaveNameAndYear() {
         val series = InkShelf2Spotlight.Series("ultimates", "The Ultimates", 2024, "The team")
         assertEquals(InkShelf2Spotlight.Edition.VERIFIED,

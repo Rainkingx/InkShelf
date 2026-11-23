@@ -97,14 +97,22 @@ internal fun InkShelf2SpotlightEventScreen(
                 event.series.map { series ->
                     async {
                         limit.withPermit {
-                            val first = engine.searchAcross(listOf(preferred), series.title)
-                            var match = InkShelf2Spotlight.bestMatch(series, first.results)
+                            var match: InkShelf2Spotlight.Match? = null
+                            // Read-only searches: alternative titles are checked only
+                            // when the preferred source has no valid edition.
+                            for (term in series.searchTerms) {
+                                val result = engine.searchAcross(listOf(preferred), term)
+                                match = InkShelf2Spotlight.bestMatch(series, result.results)
+                                if (match != null) break
+                            }
                             if (match == null && tryOtherSources) {
-                                val other = engine.searchAcross(
-                                    sources.filterNot { it.id == preferred.id },
-                                    series.title,
-                                )
-                                match = InkShelf2Spotlight.bestMatch(series, other.results)
+                                for (term in series.searchTerms) {
+                                    val other = engine.searchAcross(
+                                        sources.filterNot { it.id == preferred.id }, term,
+                                    )
+                                    match = InkShelf2Spotlight.bestMatch(series, other.results)
+                                    if (match != null) break
+                                }
                             }
                             if (match != null) matches[series.id] = match
                         }
@@ -211,7 +219,9 @@ internal fun InkShelf2SpotlightEventScreen(
                             fontWeight = FontWeight.Black, fontSize = 27.sp,
                             lineHeight = 29.sp, maxLines = 3)
                         Spacer(Modifier.height(8.dp))
-                        Text(event.series.size.toString() + " CONNECTED SERIES",
+                        Text(if (event.id == "doom-essential")
+                            event.series.size.toString() + " ESSENTIAL READS · IN ORDER"
+                            else event.series.size.toString() + " CONNECTED SERIES",
                             color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp)
                     }
                 }
@@ -234,8 +244,14 @@ internal fun InkShelf2SpotlightEventScreen(
 
         item(key = "series-intro") {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text("Explore the series", color = InkShelf2Colors.Text,
+                Text(if (event.id == "doom-essential") "Essential reading order"
+                    else "Explore the series", color = InkShelf2Colors.Text,
                     fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                if (event.id == "doom-essential") {
+                    Spacer(Modifier.height(7.dp))
+                    Text("Read from top to bottom. Open each title to find the listed issues. The order is a curated starter route, not a confirmed film adaptation.",
+                        color = InkShelf2Colors.Muted, fontSize = 12.sp, lineHeight = 17.sp)
+                }
                 Spacer(Modifier.height(6.dp))
                 Text(
                     when {
@@ -250,6 +266,7 @@ internal fun InkShelf2SpotlightEventScreen(
         }
 
         items(event.series, key = { it.id }) { series ->
+            val readingNumber = event.series.indexOfFirst { it.id == series.id } + 1
             val resolved = matches[series.id]
             val coverUrl = artwork[series.id] ?: resolved?.manga?.thumbnail_url
             Column(
@@ -260,9 +277,21 @@ internal fun InkShelf2SpotlightEventScreen(
                     .border(1.dp, InkShelf2Colors.Border, RoundedCornerShape(15.dp))
                     .padding(13.dp),
             ) {
+                if (event.id == "doom-essential") {
+                    Text("READ " + readingNumber + " OF " + event.series.size,
+                        color = InkShelf2Colors.AccentLight, fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp)
+                    Spacer(Modifier.height(5.dp))
+                }
                 Text(series.title + " (" + series.year + ")",
                     color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold,
                     fontSize = 16.sp)
+                if (!series.issues.isNullOrBlank()) {
+                    Spacer(Modifier.height(5.dp))
+                    Text("Essential issues: " + series.issues,
+                        color = InkShelf2Colors.AccentLight,
+                        fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                }
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(13.dp),
                     verticalAlignment = Alignment.CenterVertically) {

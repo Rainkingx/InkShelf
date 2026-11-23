@@ -22,8 +22,16 @@ import java.util.concurrent.TimeUnit
  * reading always use the existing installed J2K sources and local library.
  */
 internal object InkShelf2Spotlight {
-    data class Series(val id: String, val title: String, val year: Int, val tagline: String) {
+    data class Series(
+        val id: String,
+        val title: String,
+        val year: Int,
+        val tagline: String,
+        val issues: String? = null,
+        val aliases: List<String> = emptyList(),
+    ) {
         val editionTitle: String get() = title + " (" + year + ")"
+        val searchTerms: List<String> get() = (listOf(title) + aliases).distinct()
     }
     data class Event(
         val id: String,
@@ -73,8 +81,9 @@ internal object InkShelf2Spotlight {
     fun edition(series: Series, sourceTitle: String): Edition {
         val target = InkShelf2GuideEdition.titleKey(series.title)
         val actual = InkShelf2GuideEdition.titleKey(sourceTitle)
+        val allowedTitles = series.searchTerms.map(InkShelf2GuideEdition::titleKey)
         val acceptsMarvelShortTitle = target == "the ultimates" && actual == "ultimates"
-        if (target != actual && !acceptsMarvelShortTitle) return Edition.DIFFERENT
+        if (actual !in allowedTitles && !acceptsMarvelShortTitle) return Edition.DIFFERENT
         return when (InkShelf2GuideEdition.year(sourceTitle)) {
             series.year -> Edition.VERIFIED
             null -> Edition.CHECK_YEAR
@@ -140,12 +149,37 @@ internal object InkShelf2Spotlight {
                 Series("endgame", "Ultimate Endgame", 2025, "The Maker returns."),
                 Series("finale", "Ultimate Universe: Finale", 2026, "The saga concludes."),
             ), artworkUrl = "https://cdn.marvel.com/content/2x/ultimateendgame_teaser2.jpg"),
+        Event("doom-essential", "DOCTOR DOOM", "Marvel", "DOOMSDAY · ESSENTIAL READING",
+            "Ahead of Avengers: Doomsday, explore the origins and major turning points of Victor von Doom. This curated comic reading path is not a confirmed film storyline.",
+            "https://share.marvel.com/comics/discover/2493/one-world-under-doom",
+            "2026-12-01", "2027-02-28",
+            listOf("doctor doom", "one world under doom", "avengers: doomsday", "books of doom"),
+            listOf(
+                Series("origin", "Books of Doom", 2005, "Doom tells his own origin in Latveria.", "#1–6"),
+                Series("debut", "Fantastic Four", 1961, "Doom's first appearance.", "#5"),
+                Series("classic-secret-wars", "Marvel Super-Heroes Secret Wars", 1984,
+                    "Doom seizes cosmic power.", "#1–12", listOf("Secret Wars", "Marvel Super Heroes Secret Wars")),
+                Series("emperor", "Emperor Doom", 1987, "Doom conquers the world.", "Graphic novel"),
+                Series("triumph", "Doctor Strange & Doctor Doom: Triumph and Torment", 1989,
+                    "Doom's mystical past.", "Graphic novel",
+                    listOf("Doctor Strange and Doctor Doom: Triumph and Torment", "Triumph and Torment")),
+                Series("doomwar", "Doomwar", 2010, "Doom challenges Wakanda.", "#1–6"),
+                Series("modern-secret-wars", "Secret Wars", 2015, "God Emperor Doom rules Battleworld.", "#1–9"),
+                Series("infamous", "Infamous Iron Man", 2016, "Doom attempts to be a hero.", "#1–12"),
+                Series("doctor-doom-solo", "Doctor Doom", 2019, "Doom's solo adventure.", "#1–10"),
+                Series("one-world", "One World Under Doom", 2025,
+                    "Doom conquers Earth as Sorcerer Supreme.", "#1–9"),
+            ), artworkUrl = "https://cdn.marvel.com/content/2x/oneworlddoom2025005_cover.jpg"),
     )
 
+    internal fun selectVisible(input: List<Event>, today: String): List<Event> =
+        input.filter { it.featuredFrom <= today && it.expires >= today }
+            .distinctBy { it.id }
+            .sortedWith(compareByDescending<Event> { it.id == "doom-essential" })
+            .take(4)
+
     private fun active(input: List<Event>): List<Event> {
-        val today = todayUtc()
-        return input.filter { it.featuredFrom <= today && it.expires >= today }
-            .distinctBy { it.id }.take(3)
+        return selectVisible(input, todayUtc())
     }
 
     fun starter(): List<Event> = active(fallback())
@@ -181,16 +215,25 @@ internal object InkShelf2Spotlight {
         val entries = root.optJSONArray("events") ?: return@runCatching emptyList()
         val date = Regex("""\d{4}-\d{2}-\d{2}""")
         buildList {
-            for (index in 0 until minOf(entries.length(), 3)) {
+            for (index in 0 until minOf(entries.length(), 4)) {
                 val item = entries.optJSONObject(index) ?: continue
                 val items = item.optJSONArray("series") ?: continue
                 val series = buildList {
-                    for (n in 0 until minOf(items.length(), 12)) {
+                    for (n in 0 until minOf(items.length(), 14)) {
                         val element = items.optJSONObject(n) ?: continue
+                        val alternatives = element.optJSONArray("aliases") ?: JSONArray()
+                        val aliases = buildList {
+                            for (a in 0 until minOf(alternatives.length(), 4)) {
+                                val candidate = alternatives.optString(a)
+                                if (candidate.length in 3..100) add(candidate)
+                            }
+                        }
                         val s = Series(element.optString("id"), element.optString("title"),
-                            element.optInt("year"), element.optString("tagline"))
+                            element.optInt("year"), element.optString("tagline"),
+                            element.optString("issues").takeIf { it.isNotBlank() }, aliases)
                         if (s.id.length in 2..65 && s.title.length in 3..100 &&
-                            s.year in 2000..2099 && s.tagline.length in 5..200) add(s)
+                            s.year in 1900..2099 && s.tagline.length in 5..200 &&
+                            (s.issues == null || s.issues.length <= 80)) add(s)
                     }
                 }.distinctBy { it.id }
                 if (series.isEmpty()) continue

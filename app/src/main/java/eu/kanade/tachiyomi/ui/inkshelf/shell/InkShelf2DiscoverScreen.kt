@@ -226,7 +226,7 @@ internal fun InkShelf2DiscoverScreen(
         .distinctBy { "${it.source}:${it.url}" }
     // The featured carousel has its own current, date-expiring publisher lineup.
     // Popular extension results remain below; they never define the hero.
-    val heroSpotlight = spotlightEvents.take(3)
+    val heroSpotlight = spotlightEvents.take(4)
     val newest = discover?.newest.orEmpty()
         .filter { it.source in enabledSourceIds && !it.thumbnail_url.isNullOrBlank() }
         .distinctBy { "${it.source}:${it.url}" }
@@ -652,7 +652,9 @@ internal fun InkShelf2DiscoverScreen(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 Spacer(Modifier.height(5.dp))
-                                Text(feature.series.size.toString() + " SERIES · EXPLORE THE UNIVERSE",
+                                Text(if (feature.id == "doom-essential")
+                                    feature.series.size.toString() + " ESSENTIAL READS · START HERE"
+                                    else feature.series.size.toString() + " SERIES · EXPLORE THE UNIVERSE",
                                     color = InkShelf2Colors.AccentLight, fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold)
                             }

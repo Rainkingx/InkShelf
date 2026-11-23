@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "updated_at": "2026-11-23",
-  "description": "Exactly three event spotlights. Publisher artwork, series title/year and labels can be edited remotely; Metron and BatCave are used for covers and reading.",
+  "description": "Up to four editorial event spotlights; Doom automatically becomes the lead slide from 1 December 2026 to 28 February 2027. Comic reading continues through installed sources. Check the edition and listed issue numbers.",
   "events": [
     {
       "id": "marvel-midnight",
@@ -179,6 +179,106 @@
         }
       ],
       "artwork_url": "https://cdn.marvel.com/content/2x/ultimateendgame_teaser2.jpg"
+    },
+    {
+      "id": "doom-essential",
+      "title": "DOCTOR DOOM",
+      "publisher": "Marvel",
+      "label": "DOOMSDAY · ESSENTIAL READING",
+      "summary": "Before Marvel Studios' Avengers: Doomsday reaches UK cinemas on 16 December 2026, discover Victor von Doom: the brilliant ruler of Latveria, scientific genius and master of sorcery. This editorial reading path begins with his origin, follows his rivalry with the Fantastic Four and his rise to cosmic power, then ends with One World Under Doom. These comics are recommended background, not a confirmed movie plot.",
+      "official_url": "https://share.marvel.com/comics/discover/2493/one-world-under-doom",
+      "featured_from": "2026-12-01",
+      "expires": "2027-02-28",
+      "pulse_keywords": [
+        "doctor doom",
+        "one world under doom",
+        "avengers: doomsday",
+        "books of doom",
+        "doomquest",
+        "emperor doom",
+        "god emperor doom"
+      ],
+      "artwork_url": "https://cdn.marvel.com/content/2x/oneworlddoom2025005_cover.jpg",
+      "series": [
+        {
+          "id": "origin",
+          "title": "Books of Doom",
+          "year": 2005,
+          "issues": "#1–6",
+          "tagline": "START HERE: Doom recounts his own origin and rise in Latveria."
+        },
+        {
+          "id": "debut",
+          "title": "Fantastic Four",
+          "year": 1961,
+          "issues": "#5",
+          "tagline": "Doctor Doom's original first appearance, by Lee and Kirby."
+        },
+        {
+          "id": "classic-secret-wars",
+          "title": "Marvel Super-Heroes Secret Wars",
+          "year": 1984,
+          "issues": "#1–12",
+          "aliases": [
+            "Secret Wars",
+            "Marvel Super Heroes Secret Wars"
+          ],
+          "tagline": "Doom's hunger for power takes centre stage in the original event."
+        },
+        {
+          "id": "emperor",
+          "title": "Emperor Doom",
+          "year": 1987,
+          "issues": "Graphic novel",
+          "tagline": "What happens when Doom successfully conquers the entire Earth?"
+        },
+        {
+          "id": "triumph",
+          "title": "Doctor Strange & Doctor Doom: Triumph and Torment",
+          "year": 1989,
+          "issues": "Graphic novel",
+          "aliases": [
+            "Doctor Strange and Doctor Doom: Triumph and Torment",
+            "Triumph and Torment"
+          ],
+          "tagline": "Doom confronts the mystical bargain involving his mother's soul."
+        },
+        {
+          "id": "doomwar",
+          "title": "Doomwar",
+          "year": 2010,
+          "issues": "#1–6",
+          "tagline": "Doom targets Wakanda and brings Black Panther into the conflict."
+        },
+        {
+          "id": "modern-secret-wars",
+          "title": "Secret Wars",
+          "year": 2015,
+          "issues": "#1–9",
+          "tagline": "God Emperor Doom rules the fractured remains of the multiverse."
+        },
+        {
+          "id": "infamous",
+          "title": "Infamous Iron Man",
+          "year": 2016,
+          "issues": "#1–12",
+          "tagline": "After Secret Wars, Doom makes an unsettling attempt at heroism."
+        },
+        {
+          "id": "doctor-doom-solo",
+          "title": "Doctor Doom",
+          "year": 2019,
+          "issues": "#1–10",
+          "tagline": "A solo political and sci-fi thriller through Doom's perspective."
+        },
+        {
+          "id": "one-world",
+          "title": "One World Under Doom",
+          "year": 2025,
+          "issues": "#1–9",
+          "tagline": "READ LAST: As Sorcerer Supreme, Doom declares himself emperor of Earth."
+        }
+      ]
     }
   ]
 }
