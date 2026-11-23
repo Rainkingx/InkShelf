@@ -127,6 +127,9 @@ class InkShelf2Activity : AppCompatActivity() {
             var discoverSearchPreset by remember { mutableStateOf("") }
             var guideIssueSearch by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
             var guideIssuePicker by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
+            var guideCollectionPicker by remember {
+                mutableStateOf<InkShelf2GuideCollections.Collection?>(null)
+            }
             // Start a fresh search whenever Discover is left; guide and
             // Find Source entries can still supply a new explicit query.
             var discoverSearchSession by remember { mutableIntStateOf(0) }
@@ -159,6 +162,7 @@ class InkShelf2Activity : AppCompatActivity() {
             fun openTab(destination: InkShelf2Tab) {
                 if (tab == InkShelf2Tab.GUIDES && destination != InkShelf2Tab.GUIDES) {
                     guideIssuePicker = null
+                    guideCollectionPicker = null
                 }
                 if (tab == InkShelf2Tab.DISCOVER && destination != InkShelf2Tab.DISCOVER) {
                     clearDiscoverSearch()
@@ -933,7 +937,12 @@ class InkShelf2Activity : AppCompatActivity() {
                                 metronOpen = true
                             },
                             onReadIssue = { requestedIssue ->
+                                guideCollectionPicker = null
                                 guideIssuePicker = requestedIssue
+                            },
+                            onFindCollection = { requestedCollection ->
+                                guideIssuePicker = null
+                                guideCollectionPicker = requestedCollection
                             },
                         )
                         val requested = guideIssuePicker
@@ -949,6 +958,24 @@ class InkShelf2Activity : AppCompatActivity() {
                                     onBack = { guideIssuePicker = null },
                                     onOpenComic = { comic ->
                                         guideIssuePicker = null
+                                        openComicDetails(comic)
+                                    },
+                                )
+                            }
+                        }
+                        val collection = guideCollectionPicker
+                        if (collection != null) {
+                            Box(
+                                modifier = Modifier.fillMaxSize()
+                                    .background(InkShelf2Colors.Surface),
+                            ) {
+                                InkShelf2GuideCollectionFinderScreen(
+                                    collection = collection,
+                                    padding = padding,
+                                    sources = enabledSources,
+                                    onBack = { guideCollectionPicker = null },
+                                    onOpenComic = { comic ->
+                                        guideCollectionPicker = null
                                         openComicDetails(comic)
                                     },
                                 )
