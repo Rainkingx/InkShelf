@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.content.Context
 import eu.kanade.tachiyomi.ui.source.BrowseController
+import kotlinx.coroutines.CancellationException
 
 /**
  * Repair recommendations after an extension is paused or disabled.
@@ -58,20 +59,28 @@ internal object InkShelf2RecommendationRecovery {
     suspend fun refresh(context: Context, missing: Missing): Boolean {
         var refreshed = false
         if (missing.feeds) {
-            refreshed = runCatching {
+            refreshed = try {
                 BrowseController.refreshDiscoverFeedsInBackground(context.applicationContext)
-            }.getOrDefault(false)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                false
+            }
         }
         if (missing.personal) {
             // An XOXO-only cached batch must not suppress healthy mirror
             // titles through the normal 90-day manual-refresh exclusion.
-            val personal = runCatching {
+            val personal = try {
                 BrowseController.refreshPickedForYouForInkShelf2(
                     context = context.applicationContext,
                     force = true,
                     sourceChangeRecovery = true,
                 )
-            }.getOrDefault(false)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                false
+            }
             refreshed = personal || refreshed
         }
         return refreshed
