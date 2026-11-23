@@ -150,26 +150,29 @@ internal fun InkShelf2GuideCollectionFinderScreen(
                     .padding(15.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("PILOT · CIVIL WAR PRELUDE", color = InkShelf2Colors.AccentLight,
+                Text("COLLECTED EDITION · " + collection.scope.uppercase(java.util.Locale.ROOT), color = InkShelf2Colors.AccentLight,
                     fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Text(collection.title, color = InkShelf2Colors.Text,
                     fontSize = 21.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Published collection (" + collection.publishedYear + ") · " +
-                        collection.issueCount + " original issues in one book",
+                    "Published edition (" + collection.publishedYear + ") · " +
+                        collection.issueCount + " included original issues",
                     color = InkShelf2Colors.AccentLight, fontSize = 12.sp,
                 )
                 collection.included.forEach { group ->
                     Text("• " + group.label, color = InkShelf2Colors.Text, fontSize = 12.sp)
                 }
                 Text(
-                    "These collected contents are verified against a published edition. " +
-                        "An extension search result is NOT verified until its contents can be checked.",
+                    "This book's listed contents are verified. Search results from extensions " +
+                        "are only candidates until their contents can be checked.",
                     color = InkShelf2Colors.Muted, fontSize = 12.sp,
                 )
                 Text(
-                    "This is the prelude only, not the complete Civil War event. " +
-                        "Opening the collection does not automatically mark guide issues as read.",
+                    (if (collection.scope == "Prelude")
+                        "This book covers the event prelude, not the whole event. "
+                    else
+                        "This book collects the main storyline; other event tie-ins may be separate. ") +
+                        "Opening it does not mark individual guide issues as read.",
                     color = InkShelf2Colors.Muted, fontSize = 11.sp,
                 )
             }
@@ -275,7 +278,8 @@ internal fun InkShelf2GuideCollectionFinderScreen(
                         Text(candidate.sourceName, color = InkShelf2Colors.Muted, fontSize = 11.sp)
                         Text(
                             when {
-                                descriptionVerified -> "SOURCE DESCRIPTION LISTS ALL 6 ISSUES"
+                                descriptionVerified ->
+                                    "SOURCE DESCRIPTION LISTS ALL " + collection.issueCount + " CORE ISSUES"
                                 classification == InkShelf2GuideCollections.SourceMatch.TITLE_MATCH ->
                                     "TITLE MATCH · CONTENTS NOT CONFIRMED"
                                 else -> "POSSIBLE EDITION · CONTENTS NOT CONFIRMED"
