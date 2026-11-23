@@ -882,23 +882,26 @@ class InkShelf2Activity : AppCompatActivity() {
                             openTab(InkShelf2Tab.ACCOUNT)
                             metronOpen = true
                         },
-                        onReadIssue = { issue ->
-                            // Metron identifies the intended run by year_began,
-                            // NOT by volume number. A title-only match is unsafe
-                            // for New Avengers, X-Men, Batman, etc.
-                            val exactMatches = library.map { it.manga }
-                                .filter {
-                                    InkShelf2GuideEdition.classify(issue, it.title) ==
-                                        InkShelf2GuideEdition.Match.MATCHING
-                                }
-                                .distinctBy { it.source.toString() + ":" + it.url }
-                            val number = issue.number.toIntOrNull()
-                            if (exactMatches.size == 1) {
-                                val manga = exactMatches.single()
-                                if (number == null) {
-                                    openComicDetails(manga)
-                                } else {
-                                    lifecycleScope.launch {
+                        onReadIssue = { requestedIssue ->
+                            lifecycleScope.launch {
+                                // The list item may only include series ID +
+                                // volume number. Resolve the actual starting
+                                // year from Metron before choosing a book.
+                                val issue = InkShelf2GuidesData.resolveIssueEdition(
+                                    applicationContext, requestedIssue,
+                                )
+                                val exactMatches = library.map { it.manga }
+                                    .filter {
+                                        InkShelf2GuideEdition.classify(issue, it.title) ==
+                                            InkShelf2GuideEdition.Match.MATCHING
+                                    }
+                                    .distinctBy { it.source.toString() + ":" + it.url }
+                                val number = issue.number.toIntOrNull()
+                                if (exactMatches.size == 1) {
+                                    val manga = exactMatches.single()
+                                    if (number == null) {
+                                        openComicDetails(manga)
+                                    } else {
                                         val available = try {
                                             engine.chapters(manga)
                                         } catch (cancel: CancellationException) {
@@ -912,15 +915,12 @@ class InkShelf2Activity : AppCompatActivity() {
                                         if (chapter != null) openChapter(manga, chapter)
                                         else openComicDetails(manga)
                                     }
+                                } else {
+                                    guideIssueSearch = issue
+                                    discoverSearchPreset = InkShelf2GuideEdition.sourceSearchQuery(issue)
+                                    openTab(InkShelf2Tab.DISCOVER)
+                                    searchFocusEpoch += 1
                                 }
-                            } else {
-                                // Carry the intended issue and year to Discover.
-                                // Search broad title for extension compatibility,
-                                // then filter/rank editions by the actual run.
-                                guideIssueSearch = issue
-                                discoverSearchPreset = InkShelf2GuideEdition.sourceSearchQuery(issue)
-                                openTab(InkShelf2Tab.DISCOVER)
-                                searchFocusEpoch += 1
                             }
                         },
                     )

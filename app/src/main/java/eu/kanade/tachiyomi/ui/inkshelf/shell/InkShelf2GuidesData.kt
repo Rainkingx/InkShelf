@@ -256,6 +256,41 @@ internal object InkShelf2GuidesData {
         }
     }
 
+    /**
+     * Reading-list entries include a series ID but can omit year_began.
+     * Resolve the official start year only when the user selects an issue.
+     * Cache by Metron series ID; never mistake volume=1 for 2004/2005.
+     */
+    suspend fun resolveIssueEdition(
+        context: Context,
+        issue: InkShelf2GuideIssue,
+    ): InkShelf2GuideIssue = withContext(Dispatchers.IO) {
+        if (issue.yearBegan != null || issue.seriesId == null)
+            return@withContext issue
+        val id = issue.seriesId
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val cacheKey = "series_year_" + id
+        val cached = prefs.getInt(cacheKey, 0)
+        if (cached in 1900..2100) return@withContext issue.copy(yearBegan = cached)
+        val secret = token(context) ?: return@withContext issue
+        try {
+            val series = JSONObject(get("https://metron.cloud/api/series/" + id + "/", secret))
+            val year = series.optInt("year_began", 0)
+                .takeIf { it in 1900..2100 }
+                ?: Regex("""\(((?:19|20)\d{2})\)""")
+                    .find(series.optString("series"))?.groupValues?.getOrNull(1)?.toIntOrNull()
+            if (year != null) {
+                prefs.edit().putInt(cacheKey, year).apply()
+                issue.copy(yearBegan = year)
+            } else issue
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // The source and reading guide remain usable without Metron.
+            issue
+        }
+    }
+
     fun readIds(context: Context, guideId: Int): Set<String> =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getStringSet("read_" + guideId, emptySet())?.toSet().orEmpty()
@@ -336,7 +371,8 @@ internal object InkShelf2GuidesData {
     private suspend fun get(url: String, token: String): String = networkMutex.withLock {
         delay(850)
         require(url.startsWith("https://metron.cloud/api/reading_list/") ||
-            url.startsWith("https://metron.cloud/api/issue/"))
+            url.startsWith("https://metron.cloud/api/issue/") ||
+            url.startsWith("https://metron.cloud/api/series/"))
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 8_000
             readTimeout = 10_000
