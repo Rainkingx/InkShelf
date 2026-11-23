@@ -368,8 +368,13 @@ class InkShelf2Activity : AppCompatActivity() {
                             }
                         }
                     }
-                    // Give the loaded Compose state a frame to settle before
-                    // releasing the Android launch splash on its next draw.
+                    // Home's first hero has a 620ms entrance animation.
+                    // Allow it to finish behind the branded splash instead
+                    // of revealing the heading while the hero fades in.
+                    withFrameNanos { }
+                    if (refreshedHome != null && tab == InkShelf2Tab.HOME && !welcomeOpen) {
+                        delay(700L)
+                    }
                     withFrameNanos { }
                     initialShellReady = true
                 }
