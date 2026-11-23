@@ -111,6 +111,36 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun guideCatalogueKeepsModernEventsSeparateFromOldAndAmbiguousRuns() {
+        fun guide(id: Int, name: String, publisher: String) = InkShelf2Guide(
+            id = id, name = name, type = "EVENT", author = "test",
+            attribution = "", rating = 1.0, publisher = publisher,
+        )
+        val available = listOf(
+            guide(1, "Civil War (2006)", "marvel"),
+            guide(2, "Civil War II", "marvel"),
+            guide(3, "Secret Wars", "marvel"),
+            guide(4, "Secret Wars (1984)", "marvel"),
+            guide(5, "Secret Wars (2015)", "marvel"),
+            guide(6, "Crisis on Infinite Earths", "dc"),
+            guide(7, "Knightfall", "dc"),
+            guide(8, "Captain America Golden Age (1941)", "marvel"),
+        )
+        val modern = InkShelf2GuideFocus.choose(
+            available, InkShelf2GuideFocus.Era.MODERN,
+        )
+        assertEquals(listOf(1, 5), modern.map { it.id }.sorted())
+        assertEquals(
+            listOf(6, 7),
+            InkShelf2GuideFocus.choose(available, InkShelf2GuideFocus.Era.CLASSIC)
+                .map { it.id }.sorted(),
+        )
+        assertEquals(null, InkShelf2GuideFocus.identify(available[2]))
+        assertEquals(null, InkShelf2GuideFocus.identify(available[3]))
+        assertEquals(null, InkShelf2GuideFocus.identify(available[7]))
+    }
+
+    @Test
     fun guideIssueDoesNotConfuseDifferentNewAvengersRuns() {
         val issue = InkShelf2GuideIssue(
             id = 10024,
