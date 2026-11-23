@@ -81,6 +81,7 @@ import java.util.concurrent.TimeUnit
  */
 @Composable
 internal fun InkShelf2DiscoverScreen(
+    searchSession: Int = 0,
     discover: InkShelf2Engine.Discover?,
     curatedShelves: List<InkShelf2DiscoverCuration.Shelf>,
     padding: PaddingValues,
@@ -124,20 +125,23 @@ internal fun InkShelf2DiscoverScreen(
     }
 
     val sourceIds = sources.map { it.id }
-    LaunchedEffect(searchFocusToken, guideIssueTarget?.id) {
-        if (searchFocusToken > 0) {
-            if (initialSearchQuery.isNotBlank()) {
-                query = initialSearchQuery
-            }
-            if (guideIssueTarget != null) {
-                // "Read Next" launches a results picker, NOT manual typing.
-                // Keep the keyboard closed so covers and edition labels fit.
-                focusManager.clearFocus(force = true)
-                keyboard?.hide()
-            } else {
-                focusRequester.requestFocus()
-                keyboard?.show()
-            }
+    LaunchedEffect(searchSession, searchFocusToken, guideIssueTarget?.id) {
+        // Both manual searches and guide searches start clean on a new
+        // Discover visit. Never restore a prior search when coming back.
+        query = if (searchFocusToken > 0) initialSearchQuery else ""
+        activeQuery = ""
+        found = null
+        foundQuery = ""
+        error = null
+        searching = false
+        showOtherGuideEditions = false
+        attemptedAutoGuideMatch = null
+        focusManager.clearFocus(force = true)
+        keyboard?.hide()
+        if (searchFocusToken > 0 && guideIssueTarget == null) {
+            // Only an explicit header Search requests the keyboard.
+            focusRequester.requestFocus()
+            keyboard?.show()
         }
     }
     LaunchedEffect(found, guideIssueTarget?.id) {
