@@ -62,32 +62,14 @@ internal object InkShelf2FeaturedGuides {
         Event("Knightfall", "dc"),
         Event("Crisis on Infinite Earths", "dc"),
     )
-    private val year = Regex("""\s*\((?:19|20)\d{2}\)""")
-    private val punctuation = Regex("""[^\p{L}\p{N}]+""")
-    private fun normalise(title: String): String =
-        title.lowercase(Locale.ROOT).replace(year, "")
-            .replace(punctuation, " ").trim()
-
-    private fun find(event: Event, candidates: List<InkShelf2Guide>): InkShelf2Guide? {
-        val target = normalise(event.title)
-        return candidates.asSequence()
+    private fun find(event: Event, candidates: List<InkShelf2Guide>): InkShelf2Guide? =
+        candidates.asSequence()
             .filter { it.publisher.isBlank() || it.publisher.equals(event.publisher, true) }
-            .mapNotNull { guide ->
-                val name = normalise(guide.name)
-                val score = when {
-                    name == target -> 3
-                    name.endsWith(" " + target) -> 2
-                    name.startsWith(target + " ") && !name.substring(target.length + 1)
-                        .matches(Regex("""(?:ii|iii|iv|2|3|4)(?:\s.*)?""")) -> 1
-                    else -> 0
-                }
-                if (score == 0) null else guide to score
-            }
-            .sortedWith(
-                compareByDescending<Pair<InkShelf2Guide, Int>> { it.second }
-                    .thenByDescending { it.first.rating },
-            ).firstOrNull()?.first
-    }
+            // The catalogue knows Secret Wars (1984) and (2015) are
+            // different events. Never feature an undated/ambiguous version.
+            .filter { InkShelf2GuideFocus.identify(it)?.title == event.title }
+            .sortedByDescending { it.rating }
+            .firstOrNull()
 
     fun match(candidates: List<InkShelf2Guide>): List<InkShelf2FeaturedGuide> =
         favourites.mapNotNull { event ->
@@ -122,16 +104,12 @@ internal object InkShelf2FeaturedGuides {
             }
         }
 
-        // If a named crossover is unavailable, feature other genuine public
-        // guides. Never display a fake event whose button opens another comic.
+        // Fill remaining hero slots only with curated modern or landmark
+        // events, never unrelated older lists from a generic API page.
         if (featured.size < favourites.size) {
             val exclude = featured.map { it.guide.id }.toSet()
-            val extras = found.distinctBy { it.id }
+            val extras = InkShelf2GuideFocus.choose(found)
                 .filterNot { it.id in exclude }
-                .sortedWith(
-                    compareByDescending<InkShelf2Guide> { it.rating }
-                        .thenBy { it.name },
-                )
                 .take(favourites.size - featured.size)
                 .map { InkShelf2FeaturedGuide(it.name, it) }
             featured = featured + extras
@@ -286,7 +264,8 @@ private fun InkShelf2FeaturedGuideSlide(
                     letterSpacing = 1.sp,
                 )
                 Text(
-                    item.label,
+                    item.label + (InkShelf2GuideFocus.identify(item.guide)
+                        ?.let { " (" + it.year + ")" } ?: ""),
                     color = Color.White,
                     fontSize = 27.sp,
                     lineHeight = 30.sp,
