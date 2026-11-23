@@ -516,6 +516,51 @@ private fun InkShelf2PulseTabs(
     }
 }
 
+
+/** Readable topic filters beneath Articles; Industry stays in All News. */
+@Composable
+private fun InkShelf2PulseTopicTabs(
+    filter: InkShelf2PulseTopic?,
+    onFilterChange: (InkShelf2PulseTopic?) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        listOf(
+            null to "All News",
+            InkShelf2PulseTopic.COMICS to "Comics",
+            InkShelf2PulseTopic.FILM_TV to "Film & TV",
+        ).forEach { (topic, label) ->
+            val selected = filter == topic
+            val shape = RoundedCornerShape(11.dp)
+            Box(
+                modifier = Modifier.weight(1f).height(37.dp)
+                    .clip(shape)
+                    .background(
+                        if (selected) InkShelf2Colors.AccentLight.copy(alpha = 0.18f)
+                        else InkShelf2Colors.SurfaceRaised,
+                    )
+                    .border(
+                        1.dp,
+                        if (selected) InkShelf2Colors.AccentLight
+                        else InkShelf2Colors.Border,
+                        shape,
+                    )
+                    .clickable { if (!selected) onFilterChange(topic) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    color = if (selected) InkShelf2Colors.AccentLight else InkShelf2Colors.Text,
+                    fontSize = 12.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 internal fun InkShelf2PulsePreview(
     articles: List<InkShelf2PulseArticle>,
@@ -714,10 +759,14 @@ internal fun InkShelf2PulseScreen(
     loading: Boolean,
     showVideos: Boolean,
     onShowVideos: (Boolean) -> Unit,
+    topicFilter: InkShelf2PulseTopic?,
+    onTopicFilterChange: (InkShelf2PulseTopic?) -> Unit,
     onBack: () -> Unit,
     onOpenArticle: (String) -> Unit,
 ) {
-    val selected = articles.filter { it.isVideo == showVideos }
+    val selected = articles.filter {
+        it.isVideo == showVideos && (showVideos || topicFilter == null || it.topic == topicFilter)
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = PaddingValues(
@@ -732,12 +781,19 @@ internal fun InkShelf2PulseScreen(
         item(key = "pulse-tabs") {
             InkShelf2PulseTabs(showVideos, onShowVideos)
         }
+        if (!showVideos) {
+            item(key = "pulse-topic-tabs") {
+                InkShelf2PulseTopicTabs(topicFilter, onTopicFilterChange)
+            }
+        }
         if (selected.isEmpty()) {
             item {
                 Text(
                     when {
                         loading -> if (showVideos) "Loading comic-book videos…" else "Loading comic-book news…"
                         showVideos -> "No videos available right now. Check your connection and try again."
+                        topicFilter != null -> "No " + InkShelf2PulseTopics.label(topicFilter) +
+                            " stories available. Try All News."
                         else -> "No articles available right now. Check your connection and try again."
                     },
                     modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
@@ -753,7 +809,8 @@ internal fun InkShelf2PulseScreen(
                     if (showVideos)
                         "YouTube news and reviews from selected comic channels. Videos open in YouTube."
                     else
-                        "Comic news from AIPT Comics and The Beat. Articles open on the original publisher's website.",
+                        "News from AIPT, The Beat, Bleeding Cool and ComicBook.com. " +
+                            "Stories open on the publishers' own websites.",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     color = InkShelf2Colors.Muted,
                     fontSize = 11.sp,
@@ -783,7 +840,8 @@ private fun InkShelf2PulseListCard(
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                article.publisher.uppercase(Locale.UK),
+                (article.publisher + " · " +
+                    InkShelf2PulseTopics.label(article.topic)).uppercase(Locale.UK),
                 color = InkShelf2Colors.AccentLight,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
