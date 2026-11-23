@@ -79,6 +79,7 @@ internal fun InkShelf2GuidesScreen(
     var remoteResults by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
     var featured by remember { mutableStateOf<List<InkShelf2FeaturedGuide>>(emptyList()) }
+    var focused by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
     val connected = InkShelf2GuidesData.configured(context)
     // Local hits appear immediately; server search extends beyond the first
     // page of events. Cancellation prevents stale results replacing new ones.
@@ -121,6 +122,20 @@ internal fun InkShelf2GuidesScreen(
         }
     }
 
+    // Query a small, editorially selected set of modern events in the
+    // background. Never infer event age from an issue series' start year.
+    LaunchedEffect(loading, guides, connected) {
+        if (!loading && connected) {
+            try {
+                InkShelf2GuideFocus.load(context, guides) { focused = it }
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                focused = InkShelf2GuideFocus.choose(guides)
+            }
+        }
+    }
+
     // Curated real crossover guides can sit beyond Metron's first catalogue
     // page. Cache results and preserve the generic hero as a safe fallback.
     LaunchedEffect(loading, guides, connected) {
@@ -148,27 +163,36 @@ internal fun InkShelf2GuidesScreen(
         return
     }
 
-    val popular = guides.sortedWith(
+    val catalogue = (guides + focused + featured.map { it.guide } + remoteResults)
+        .distinctBy { it.id }
+    val curated = InkShelf2GuideFocus.choose(catalogue)
+    val modern = InkShelf2GuideFocus.choose(catalogue, InkShelf2GuideFocus.Era.MODERN)
+    val classics = InkShelf2GuideFocus.choose(catalogue, InkShelf2GuideFocus.Era.CLASSIC)
+    val popular = modern.sortedWith(
         compareByDescending<InkShelf2Guide> { it.rating }.thenBy { it.name },
     ).take(10)
-    val marvel = guides.filter { it.publisher == "marvel" }.take(12)
-    val dc = guides.filter { it.publisher == "dc" }.take(12)
-    val crisis = guides.filter {
-        listOf("crisis", "secret wars", "multiverse", "infinite", "worlds", "dark nights")
-            .any { term -> it.name.contains(term, ignoreCase = true) }
-    }.take(10)
-    val continuation = guides.firstOrNull { it.id in started }
+    val marvel = modern.filter { it.publisher.equals("marvel", true) }.take(12)
+    val dc = modern.filter { it.publisher.equals("dc", true) }.take(12)
+    val continuation = catalogue.firstOrNull { it.id in started }
     val finding = guideSearch.trim()
-    val matching = (guides + remoteResults).distinctBy { it.id }
+    val matching = catalogue
         .filter { guide ->
             (finding.isBlank() || listOf(
                 guide.name, guide.publisher, guide.author, guide.attribution,
             ).any { it.contains(finding, ignoreCase = true) }) &&
                 when (guideFilter) {
-                    "Marvel" -> guide.publisher.equals("marvel", ignoreCase = true)
-                    "DC" -> guide.publisher.equals("dc", ignoreCase = true)
+                    "Marvel" -> (finding.isNotBlank() ||
+                        InkShelf2GuideFocus.identify(guide)?.era == InkShelf2GuideFocus.Era.MODERN) &&
+                        guide.publisher.equals("marvel", ignoreCase = true)
+                    "DC" -> (finding.isNotBlank() ||
+                        InkShelf2GuideFocus.identify(guide)?.era == InkShelf2GuideFocus.Era.MODERN) &&
+                        guide.publisher.equals("dc", ignoreCase = true)
+                    "Classics" -> InkShelf2GuideFocus.identify(guide)?.era ==
+                        InkShelf2GuideFocus.Era.CLASSIC
                     "Started" -> guide.id in started
-                    else -> true
+                    "Archive" -> InkShelf2GuideFocus.identify(guide) == null
+                    "Popular" -> finding.isNotBlank() || guide.id in curated.map { it.id }
+                    else -> finding.isNotBlank() || guide.id in curated.map { it.id }
                 }
         }
         .sortedWith(
@@ -209,8 +233,8 @@ internal fun InkShelf2GuidesScreen(
                     guideCount = guides.size,
                     startedCount = started.size,
                     onExplore = {
-                        if (guides.isNotEmpty()) openGuide(continuation ?: popular.first())
-                        else onMetronSettings()
+                        val first = continuation ?: popular.firstOrNull() ?: classics.firstOrNull()
+                        if (first != null) openGuide(first) else onMetronSettings()
                     },
                 )
             }
@@ -234,7 +258,7 @@ internal fun InkShelf2GuidesScreen(
                     }
                 }
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(listOf("All", "Marvel", "DC", "Started", "Popular")) { option ->
+                    items(listOf("All", "Marvel", "DC", "Classics", "Started", "Archive")) { option ->
                         val active = guideFilter == option
                         val shape = RoundedCornerShape(22.dp)
                         Box(
@@ -298,7 +322,7 @@ internal fun InkShelf2GuidesScreen(
                     Text(
                         if (finding.length == 1)
                             "Type another letter to search Metron. No local matches yet."
-                        else "No guides found. Try another title or choose All.",
+                        else "No guides found. Try a different title or open Archive.",
                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
                         color = InkShelf2Colors.Muted,
                         fontSize = 13.sp,
@@ -327,7 +351,7 @@ internal fun InkShelf2GuidesScreen(
         }
         if (popular.isNotEmpty()) {
             item {
-                InkShelf2SectionHeading("Popular Events", onClick = null)
+                InkShelf2SectionHeading("Popular Modern Events", onClick = null)
                 Spacer(Modifier.height(10.dp))
                 InkShelf2GuideShelf(
                     guides = popular,
@@ -338,31 +362,42 @@ internal fun InkShelf2GuidesScreen(
         }
         if (marvel.isNotEmpty()) {
             item {
-                InkShelf2SectionHeading("Marvel Events", onClick = null)
+                InkShelf2SectionHeading("Modern Marvel Events", onClick = null)
                 Spacer(Modifier.height(10.dp))
                 InkShelf2GuideShelf(marvel, openGuide, started)
             }
         }
         if (dc.isNotEmpty()) {
             item {
-                InkShelf2SectionHeading("DC Events", onClick = null)
+                InkShelf2SectionHeading("Modern DC Events", onClick = null)
                 Spacer(Modifier.height(10.dp))
                 InkShelf2GuideShelf(dc, openGuide, started)
             }
         }
-        if (crisis.isNotEmpty()) {
+        if (classics.isNotEmpty()) {
             item {
-                InkShelf2SectionHeading("Multiverse & Crisis", onClick = null)
+                InkShelf2SectionHeading("Landmark Classics (1985–1999)", onClick = null)
                 Spacer(Modifier.height(10.dp))
-                InkShelf2GuideShelf(crisis, openGuide, started)
+                InkShelf2GuideShelf(classics, openGuide, started)
+            }
+        }
+        if (modern.isEmpty() && !loading) {
+            item {
+                Text(
+                    "No featured modern Metron lists are available yet. Search for an event by name " +
+                        "or use Archive to see other community guides.",
+                    modifier = Modifier.padding(horizontal = 17.dp),
+                    color = InkShelf2Colors.Muted, fontSize = 12.sp,
+                )
             }
         }
         }
         if (guides.isNotEmpty()) {
             item {
                 Text(
-                    "Reading orders provided by community creators on Metron. " +
-                        "Essential uses available issue labels; check the full guide for tie-ins.",
+                    "Featured events are selected by their event date, not the year a long-running " +
+                        "comic series began. Earlier community lists remain in Archive. " +
+                        "Issue order is supplied by Metron contributors.",
                     modifier = Modifier.padding(horizontal = 17.dp, vertical = 8.dp),
                     color = InkShelf2Colors.Muted,
                     fontSize = 11.sp,
@@ -510,8 +545,11 @@ private fun InkShelf2GuideShelf(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (guide.attribution.isNotBlank()) guide.attribution
-                    else "Community reading order",
+                    InkShelf2GuideFocus.identify(guide)?.let { event ->
+                        event.year.toString() + " · " +
+                            if (event.era == InkShelf2GuideFocus.Era.CLASSIC) "Landmark classic"
+                            else "Modern event"
+                    } ?: guide.attribution.ifBlank { "Community reading order" },
                     fontSize = 10.sp,
                     color = InkShelf2Colors.Muted,
                     maxLines = 1,
