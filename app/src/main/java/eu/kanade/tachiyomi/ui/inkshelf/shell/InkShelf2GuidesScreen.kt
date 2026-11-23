@@ -67,6 +67,7 @@ import kotlinx.coroutines.launch
 internal fun InkShelf2GuidesScreen(
     padding: PaddingValues,
     onReadIssue: (InkShelf2GuideIssue) -> Unit,
+    onFindCollection: (InkShelf2GuideCollections.Collection) -> Unit,
     onMetronSettings: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -159,6 +160,7 @@ internal fun InkShelf2GuidesScreen(
             padding = padding,
             onBack = { chosen = null; started = InkShelf2GuidesData.startedGuides(context) },
             onReadIssue = onReadIssue,
+            onFindCollection = onFindCollection,
         )
         return
     }
@@ -665,9 +667,13 @@ private fun InkShelf2GuideDetails(
     padding: PaddingValues,
     onBack: () -> Unit,
     onReadIssue: (InkShelf2GuideIssue) -> Unit,
+    onFindCollection: (InkShelf2GuideCollections.Collection) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val collections = remember(guide.id, guide.name) {
+        InkShelf2GuideCollections.forGuide(guide)
+    }
     var all by remember(guide.id) { mutableStateOf<List<InkShelf2GuideIssue>>(emptyList()) }
     var nextPage by remember(guide.id) { mutableStateOf(1) }
     var hasMore by remember(guide.id) { mutableStateOf(true) }
@@ -754,6 +760,27 @@ private fun InkShelf2GuideDetails(
                         onClick = { essential = false },
                         modifier = Modifier.weight(1f),
                     )
+                }
+                if (collections.isNotEmpty()) {
+                    Text(
+                        "COLLECTION-FIRST TEST",
+                        color = InkShelf2Colors.AccentLight,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    collections.forEach { collection ->
+                        InkShelf2ActionButton(
+                            label = "Find Collected Book · " + collection.issueCount + " issues",
+                            onClick = { onFindCollection(collection) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            collection.title + " — a verified published collection. " +
+                                "Search your installed sources to see if it is available.",
+                            color = InkShelf2Colors.Muted,
+                            fontSize = 11.sp,
+                        )
+                    }
                 }
                 if (nextUnread != null) {
                     InkShelf2ActionButton(
