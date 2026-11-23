@@ -149,6 +149,7 @@ internal fun InkShelf2HomeScreen(
     var pulseArticles by remember { mutableStateOf<List<InkShelf2PulseArticle>>(emptyList()) }
     var pulseLoading by remember { mutableStateOf(true) }
     var pulseShowVideos by rememberSaveable { mutableStateOf(false) }
+    var pulseTopicFilter by rememberSaveable { mutableStateOf("") }
     BackHandler(enabled = pulseExpanded) { onPulseExpandedChange(false) }
     LaunchedEffect(Unit) {
         // Pulse is optional: stale or unavailable feeds must never crash Home
@@ -171,6 +172,8 @@ internal fun InkShelf2HomeScreen(
             loading = pulseLoading,
             showVideos = pulseShowVideos,
             onShowVideos = { pulseShowVideos = it },
+            topicFilter = InkShelf2PulseTopic.entries.firstOrNull { it.name == pulseTopicFilter },
+            onTopicFilterChange = { pulseTopicFilter = it?.name.orEmpty() },
             onBack = { onPulseExpandedChange(false) },
             onOpenArticle = { url -> InkShelf2PulseFeed.openArticle(context, url) },
         )
