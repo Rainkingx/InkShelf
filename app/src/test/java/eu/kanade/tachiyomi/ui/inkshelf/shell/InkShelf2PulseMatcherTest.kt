@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
+import eu.kanade.tachiyomi.ui.source.InkShelfRecommendationRotation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,6 +22,36 @@ class InkShelf2PulseMatcherTest {
             imageUrl = null,
             isVideo = video,
         )
+
+    @Test
+    fun manualRefreshUsesOlderHistoryOnlyAfterAllFreshChoices() {
+        val pool = InkShelfRecommendationRotation.eligible(
+            candidates = listOf("Batman", "Superman", "Daredevil", "X-Men"),
+            titleKey = { it.lowercase() },
+            recentHistory = setOf("batman", "superman", "daredevil"),
+            visibleTitles = setOf("superman"),
+        )
+        assertEquals(listOf("X-Men"), pool.unseen)
+        assertEquals(listOf("Batman", "Daredevil"), pool.older)
+    }
+
+    @Test
+    fun refreshNeverRepeatsVisibleComicsOrMirroredSourceTitles() {
+        data class Candidate(val title: String, val source: Long)
+        val pool = InkShelfRecommendationRotation.eligible(
+            candidates = listOf(
+                Candidate("Absolute Batman", 1),
+                Candidate("Absolute Batman", 2),
+                Candidate("Wonder Woman", 2),
+                Candidate("Superman", 2),
+            ),
+            titleKey = { it.title.lowercase() },
+            recentHistory = setOf("wonder woman", "superman"),
+            visibleTitles = setOf("absolute batman", "superman"),
+        )
+        assertTrue(pool.unseen.isEmpty())
+        assertEquals(listOf("Wonder Woman"), pool.older.map { it.title })
+    }
 
     @Test
     fun disabledExtensionCannotCountAsAHealthyRecommendationShelf() {
