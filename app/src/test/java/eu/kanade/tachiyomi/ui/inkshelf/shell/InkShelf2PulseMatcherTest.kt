@@ -231,6 +231,84 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun officialDcIssueUrlCandidatesRespectSeriesYearAndPublisher() {
+        val absolute = InkShelf2DcOfficialMetadata.targetFor("Absolute Batman (2024-)")
+        assertEquals(
+            "https://www.dc.com/comics/absolute-batman-2024/absolute-batman-1",
+            absolute?.candidates?.first(),
+        )
+        assertTrue(
+            "https://www.dc.com/comics/batman-2025/batman-2025-1" in
+                InkShelf2DcOfficialMetadata.targetFor("Batman (2025-)")!!.candidates,
+        )
+        assertEquals(null, InkShelf2DcOfficialMetadata.targetFor("New Avengers (2005-)"))
+        assertEquals(null, InkShelf2DcOfficialMetadata.targetFor("Batman"))
+    }
+
+    @Test
+    fun officialDcMetadataNeverAcceptsWrongIssueOrUnverifiedSource() {
+        val target = InkShelf2DcOfficialMetadata.targetFor("Absolute Batman (2024-)")!!
+        val officialUrl = target.candidates.first()
+        val page = """
+            <html><body>
+              <h1>ABSOLUTE BATMAN #1</h1>
+              <div>
+                <h3>Talent</h3>
+                <p>Writer: Scott Snyder</p>
+                <p>Art by: Nick Dragotta</p>
+                <p>Cover: Nick Dragotta</p>
+                <h3>SPECS</h3>
+                <p>Series: ABSOLUTE BATMAN (2024-)</p>
+                <p>On Sale Date: Wednesday, October 9th, 2024</p>
+                <p>Page Count: 42</p>
+                <p>Rated: Teen</p>
+              </div>
+            </body></html>
+        """.trimIndent()
+        val info = InkShelf2DcOfficialMetadata.parseOfficialPage(page, officialUrl, target)
+        assertEquals("Scott Snyder", info?.writers)
+        assertEquals("Nick Dragotta", info?.artists)
+        assertEquals("Wednesday, October 9th, 2024", info?.onSaleDate)
+        assertEquals(42, info?.pages)
+        assertEquals(
+            null,
+            InkShelf2DcOfficialMetadata.parseOfficialPage(
+                page.replace("ABSOLUTE BATMAN #1", "X-MEN #1"), officialUrl, target,
+            ),
+        )
+        assertEquals(
+            null,
+            InkShelf2DcOfficialMetadata.parseOfficialPage(
+                page, "https://www.dc.com/search?q=batman", target,
+            ),
+        )
+        assertEquals(
+            null,
+            InkShelf2DcOfficialMetadata.parseOfficialPage(
+                page, "https://example.com/comics/absolute-batman-2024/absolute-batman-1", target,
+            ),
+        )
+    }
+
+    @Test
+    fun officialMarvelNewsClassifiesComicsAndRelevantFilmTv() {
+        assertEquals(
+            InkShelf2PulseTopic.COMICS,
+            InkShelf2PulseTopics.classify(
+                "Marvel Reveals New Amazing Spider-Man Comic Series",
+            ),
+        )
+        assertEquals(
+            InkShelf2PulseTopic.FILM_TV,
+            InkShelf2PulseTopics.classify("Marvel Studios Announces Daredevil TV Season 4"),
+        )
+        assertEquals(
+            null,
+            InkShelf2PulseTopics.classify("Marvel Rivals game update for PlayStation"),
+        )
+    }
+
+    @Test
     fun pulseSelectsComicNewsAndRelevantFilmTvButRejectsGeneralEntertainment() {
         assertEquals(
             InkShelf2PulseTopic.COMICS,
