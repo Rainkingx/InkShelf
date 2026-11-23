@@ -300,7 +300,9 @@ internal fun InkShelf2DiscoverScreen(
             top = padding.calculateTopPadding(),
             bottom = padding.calculateBottomPadding() + 14.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(13.dp),
+        // A little more vertical rhythm between editorial sections makes
+        // Discover easier to scan without shrinking art or removing shelves.
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         item(key = "discover-header") {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
@@ -730,7 +732,7 @@ internal fun InkShelf2DiscoverScreen(
                     DiscoverSeeAllHeading("Critically Acclaimed", onClick = { onSeeAll("Critically Acclaimed") })
                     Text(
                         acclaimed.description,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
                         color = InkShelf2Colors.Muted,
                         fontSize = 11.sp,
                     )
@@ -742,7 +744,7 @@ internal fun InkShelf2DiscoverScreen(
                     DiscoverSeeAllHeading("Hidden Gems", onClick = { onSeeAll("Hidden Gems") })
                     Text(
                         hiddenGems.description,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
                         color = InkShelf2Colors.Muted,
                         fontSize = 11.sp,
                     )
@@ -757,7 +759,7 @@ internal fun InkShelf2DiscoverScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Based on your library and recent reading",
+                        "Based on your reading",
                         modifier = Modifier.weight(1f),
                         color = InkShelf2Colors.Muted,
                         fontSize = 11.sp,
