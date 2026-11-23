@@ -115,6 +115,11 @@ internal object InkShelf2PulseFeed {
             "https://bleedingcool.com/comics/feed/", dedicatedComicsFeed = true),
         Publisher("ComicBook.com", "comicbook.com",
             "https://comicbook.com/category/comics/feed/", dedicatedComicsFeed = true),
+        // Marvel's own editorial RSS. Use only comics/related film & TV
+        // headlines; this is not an API for comic issue/reader data.
+        // If Marvel blocks requests, the other feeds still work.
+        Publisher("Marvel Official", "marvel.com",
+            "https://www.marvel.com/rss/feed/"),
         // Screen Rant's separate Comics and Comics News sections. If a feed
         // is blocked, all other publishers continue to load normally.
         Publisher("Screen Rant", "screenrant.com",
@@ -148,8 +153,8 @@ internal object InkShelf2PulseFeed {
         val now = System.currentTimeMillis()
         val existing = readCached(context)
         val checkedAt = prefs.getLong("checked_at", 0L)
-        // Version bump refreshes image metadata after installing the update.
-        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 5)
+        // Refresh on first launch after adding the official Marvel news feed.
+        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 6)
             return@withLock existing
 
         // Pull each independent feed concurrently so a slow/blocked source
@@ -188,7 +193,7 @@ internal object InkShelf2PulseFeed {
             (if (videos.isNotEmpty()) videos else existing.filter { it.isVideo })
         ).distinctBy { it.url }
 
-        prefs.edit().putLong("checked_at", now).putInt("feed_version", 5).apply()
+        prefs.edit().putLong("checked_at", now).putInt("feed_version", 6).apply()
         if (entries.isNotEmpty()) {
             val output = JSONArray()
             entries.forEach { article ->
@@ -889,7 +894,7 @@ internal fun InkShelf2PulseScreen(
                     if (showVideos)
                         "YouTube news and reviews from selected comic channels. Videos open in YouTube."
                     else
-                        "News from AIPT, The Beat, Bleeding Cool, ComicBook.com and Screen Rant. " +
+                        "News from Marvel Official, AIPT, The Beat, Bleeding Cool, ComicBook.com and Screen Rant. " +
                             "Stories open on the publishers' own websites.",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     color = InkShelf2Colors.Muted,
