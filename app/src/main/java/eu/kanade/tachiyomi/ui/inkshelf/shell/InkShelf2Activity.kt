@@ -200,6 +200,15 @@ class InkShelf2Activity : AppCompatActivity() {
             // Owned by the shell so reselecting the already-active Home tab
             // closes The Pulse instead of being ignored by bottom navigation.
             var pulseExpanded by rememberSaveable { mutableStateOf(false) }
+            var pulseReturnToTab by rememberSaveable { mutableStateOf("") }
+            var pulseHasNewStories by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                // A cached headline can light the dot even when launched into
+                // Library/Discover. Home's feed callback updates it on refresh.
+                pulseHasNewStories = InkShelf2PulseStatus.hasUnread(
+                    applicationContext, InkShelf2PulseFeed.cached(applicationContext),
+                )
+            }
             fun openTab(destination: InkShelf2Tab) {
                 // Pause the entire Guides destination without deleting its
                 // implementation or risking a saved-state enum mismatch.
@@ -233,6 +242,23 @@ class InkShelf2Activity : AppCompatActivity() {
                 selectedDay = null
                 selectedDiscoverShelf = null
                 pulseExpanded = false
+            }
+            fun openPulse() {
+                // The shortcut is a route to the existing full Pulse screen,
+                // not a fifth tab or a second/duplicated feed.
+                pulseReturnToTab = if (tab == InkShelf2Tab.HOME) "" else tab.name
+                openTab(InkShelf2Tab.HOME)
+                pulseExpanded = true
+                InkShelf2PulseStatus.markViewed(applicationContext)
+                pulseHasNewStories = false
+            }
+            fun closePulse() {
+                pulseExpanded = false
+                val previous = InkShelf2Tab.entries.firstOrNull {
+                    it.name == pulseReturnToTab && it != InkShelf2Tab.GUIDES
+                }
+                pulseReturnToTab = ""
+                if (previous != null) openTab(previous)
             }
             val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
             val availableExtensions by extensionManager.availableExtensionsFlow.collectAsState()
@@ -579,6 +605,7 @@ class InkShelf2Activity : AppCompatActivity() {
             BackHandler(enabled = true) {
                 when {
                     selected != null -> backFromComicDetails()
+                    pulseExpanded -> closePulse()
                     notificationsOpen -> notificationsOpen = false
                     selectedDiscoverShelf != null -> selectedDiscoverShelf = null
                     selectedDay != null -> selectedDay = null
@@ -687,6 +714,8 @@ class InkShelf2Activity : AppCompatActivity() {
                     searchFocusEpoch += 1
                 },
                 onNotifications = { notificationsOpen = true },
+                onPulse = { openPulse() },
+                pulseHasNewStories = pulseHasNewStories,
                 notificationCount = extensionUpdates.size,
             ) { padding ->
                 val comic = selected
@@ -926,7 +955,13 @@ class InkShelf2Activity : AppCompatActivity() {
                         profileName = profileName,
                         padding = padding,
                         pulseExpanded = pulseExpanded,
-                        onPulseExpandedChange = { pulseExpanded = it },
+                        onPulseExpandedChange = { expanded ->
+                            if (expanded) openPulse() else closePulse()
+                        },
+                        onPulseArticlesUpdated = { articles ->
+                            pulseHasNewStories = !pulseExpanded &&
+                                InkShelf2PulseStatus.hasUnread(applicationContext, articles)
+                        },
                         onOpen = openComicDetails,
                         onSave = { saveComic(it) },
                         onDiscover = { openTab(InkShelf2Tab.DISCOVER) },
