@@ -121,6 +121,7 @@ class InkShelf2Activity : AppCompatActivity() {
             }
             var searchFocusEpoch by remember { mutableIntStateOf(0) }
             var discoverSearchPreset by remember { mutableStateOf("") }
+            var guideIssueSearch by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
             var sourceHubOpen by rememberSaveable { mutableStateOf(false) }
             var metronOpen by rememberSaveable { mutableStateOf(false) }
             var themesOpen by rememberSaveable { mutableStateOf(false) }
@@ -545,8 +546,12 @@ class InkShelf2Activity : AppCompatActivity() {
                 currentTab = tab,
                 showHeader = selected == null && !welcomeOpen,
                 showBottomNav = selected == null && !welcomeOpen,
-                onTabSelected = { openTab(it) },
+                onTabSelected = {
+                    if (it == InkShelf2Tab.DISCOVER) guideIssueSearch = null
+                    openTab(it)
+                },
                 onSearch = {
+                    guideIssueSearch = null
                     openTab(InkShelf2Tab.DISCOVER)
                     discoverSearchPreset = ""
                     searchFocusEpoch += 1
@@ -824,9 +829,41 @@ class InkShelf2Activity : AppCompatActivity() {
                         padding = padding,
                         onOpen = openComicDetails,
                         sources = enabledSources,
-                        onOpenSearchResult = openComicDetails,
+                        onOpenSearchResult = { candidate ->
+                            val issue = guideIssueSearch
+                            if (issue == null ||
+                                InkShelf2GuideEdition.classify(issue, candidate.title) !=
+                                InkShelf2GuideEdition.Match.MATCHING
+                            ) {
+                                // Unknown-year editions are NEVER auto-read.
+                                // Let the user inspect their details first.
+                                openComicDetails(candidate)
+                            } else {
+                                val number = issue.number.toIntOrNull()
+                                if (number == null) {
+                                    openComicDetails(candidate)
+                                } else {
+                                    lifecycleScope.launch {
+                                        val available = try {
+                                            engine.chapters(candidate)
+                                        } catch (cancel: CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) {
+                                            emptyList()
+                                        }
+                                        val chapter = available.firstOrNull {
+                                            InkShelf2IssueNumbers.fromChapter(it) == number
+                                        }
+                                        if (chapter != null) openChapter(candidate, chapter)
+                                        else openComicDetails(candidate)
+                                    }
+                                }
+                            }
+                        },
                         searchFocusToken = searchFocusEpoch,
                         initialSearchQuery = discoverSearchPreset,
+                        guideIssueTarget = guideIssueSearch,
+                        onClearGuideTarget = { guideIssueSearch = null },
                         onManageSources = {
                             openTab(InkShelf2Tab.ACCOUNT)
                             sourceHubMode = "Sources"
@@ -846,44 +883,43 @@ class InkShelf2Activity : AppCompatActivity() {
                             metronOpen = true
                         },
                         onReadIssue = { issue ->
-                            // Only open a saved comic when its title resolves
-                            // unambiguously. Never invent URLs or duplicate rows.
-                            val clean: (String) -> String = { title ->
-                                title.lowercase(java.util.Locale.ROOT)
-                                    .replace(Regex("""\s*\((?:19|20)\d{2}(?:[-–—]\d{0,4})?\)\s*$"""), "")
-                                    .replace(Regex("""[^\p{L}\p{N}]+"""), " ")
-                                    .trim()
-                            }
-                            val matches = library.map { it.manga }
-                                .filter { clean(it.title) == clean(issue.series) }
-                                .distinctBy { comic -> comic.source.toString() + ":" + comic.url }
-                            val targetNumber = issue.number.toIntOrNull()
-                            if (matches.size == 1) {
-                                val manga = matches.single()
-                                if (targetNumber == null) {
+                            // Metron identifies the intended run by year_began,
+                            // NOT by volume number. A title-only match is unsafe
+                            // for New Avengers, X-Men, Batman, etc.
+                            val exactMatches = library.map { it.manga }
+                                .filter {
+                                    InkShelf2GuideEdition.classify(issue, it.title) ==
+                                        InkShelf2GuideEdition.Match.MATCHING
+                                }
+                                .distinctBy { it.source.toString() + ":" + it.url }
+                            val number = issue.number.toIntOrNull()
+                            if (exactMatches.size == 1) {
+                                val manga = exactMatches.single()
+                                if (number == null) {
                                     openComicDetails(manga)
                                 } else {
                                     lifecycleScope.launch {
-                                        val chaptersForGuide = try {
+                                        val available = try {
                                             engine.chapters(manga)
                                         } catch (cancel: CancellationException) {
                                             throw cancel
                                         } catch (_: Exception) {
                                             emptyList()
                                         }
-                                        val target = chaptersForGuide.firstOrNull {
-                                            InkShelf2IssueNumbers.fromChapter(it) == targetNumber
+                                        val chapter = available.firstOrNull {
+                                            InkShelf2IssueNumbers.fromChapter(it) == number
                                         }
-                                        if (target != null) {
-                                            openChapter(manga, target)
-                                        } else {
-                                            openComicDetails(manga)
-                                        }
+                                        if (chapter != null) openChapter(manga, chapter)
+                                        else openComicDetails(manga)
                                     }
                                 }
                             } else {
+                                // Carry the intended issue and year to Discover.
+                                // Search broad title for extension compatibility,
+                                // then filter/rank editions by the actual run.
+                                guideIssueSearch = issue
+                                discoverSearchPreset = InkShelf2GuideEdition.sourceSearchQuery(issue)
                                 openTab(InkShelf2Tab.DISCOVER)
-                                discoverSearchPreset = issue.series
                                 searchFocusEpoch += 1
                             }
                         },

@@ -33,11 +33,14 @@ internal data class InkShelf2GuideIssue(
     val volume: Int?,
     val number: String,
     val role: String,
+    // Metron volume is a volume NUMBER, not a publication year.
+    val yearBegan: Int? = null,
+    val seriesId: Int? = null,
 ) {
     val isEssential: Boolean get() =
         role.equals("Core Issue", true) || role.equals("Prologue", true) ||
             role.equals("Epilogue", true) || role.isBlank()
-    val displayName: String get() = series + " #" + number
+    val displayName: String get() = series + (yearBegan?.let { " ($it)" } ?: "") + " #" + number
 }
 
 internal data class InkShelf2GuidePage(
@@ -319,6 +322,12 @@ internal object InkShelf2GuidesData {
                 volume = series.optInt("volume", 0).takeIf { it > 0 },
                 number = number,
                 role = item.optString("issue_type"),
+                yearBegan = series.optInt("year_began", 0)
+                    .takeIf { it in 1900..2100 }
+                    ?: Regex("""\(((?:19|20)\d{2})\)""")
+                        .find(issue.optString("issue"))
+                        ?.groupValues?.getOrNull(1)?.toIntOrNull(),
+                seriesId = series.optInt("id", 0).takeIf { it > 0 },
             )
         }.sortedBy { it.position }
         InkShelf2GuidePage(items, !root.isNull("next") && root.optString("next").isNotBlank())

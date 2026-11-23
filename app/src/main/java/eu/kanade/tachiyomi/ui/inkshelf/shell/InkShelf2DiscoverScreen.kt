@@ -91,6 +91,8 @@ internal fun InkShelf2DiscoverScreen(
     onRecommendationsUpdated: suspend () -> Unit,
     searchFocusToken: Int = 0,
     initialSearchQuery: String = "",
+    guideIssueTarget: InkShelf2GuideIssue? = null,
+    onClearGuideTarget: () -> Unit = {},
 ) {
     val engine = remember { InkShelf2SourcesEngine() }
     val scroll = rememberLazyListState()
@@ -105,6 +107,7 @@ internal fun InkShelf2DiscoverScreen(
     var refreshingPicks by remember { mutableStateOf(false) }
     var picksMessage by remember { mutableStateOf<String?>(null) }
     var autoAttempted by remember { mutableStateOf(false) }
+    var showOtherGuideEditions by remember(guideIssueTarget?.id) { mutableStateOf(false) }
     val context = LocalContext.current
 
     BackHandler(enabled = query.isNotBlank()) {
@@ -277,6 +280,32 @@ internal fun InkShelf2DiscoverScreen(
         if (query.isNotBlank()) {
             item(key = "search-summary") {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    if (guideIssueTarget != null) {
+                        Text(
+                            "FIND THIS GUIDE ISSUE",
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            guideIssueTarget.displayName,
+                            color = InkShelf2Colors.Text,
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            if (guideIssueTarget.yearBegan != null)
+                                "Matching publication year first. Unlabelled editions need checking."
+                            else "Metron has no year for this issue. Check the edition before reading.",
+                            color = InkShelf2Colors.Muted,
+                            fontSize = 12.sp,
+                        )
+                        TextButton(onClick = onClearGuideTarget) {
+                            Text("Exit guide search", color = InkShelf2Colors.AccentLight)
+                        }
+                        Spacer(Modifier.height(5.dp))
+                    }
                     Text("Search Installed Sources", color = InkShelf2Colors.Text,
                         fontSize = 19.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(5.dp))
@@ -320,13 +349,59 @@ internal fun InkShelf2DiscoverScreen(
                 }
             }
             val comics = found?.results.orEmpty()
+            val matchedEditions = if (guideIssueTarget == null) emptyList()
+                else comics.filter {
+                    InkShelf2GuideEdition.classify(guideIssueTarget, it.manga.title) ==
+                        InkShelf2GuideEdition.Match.MATCHING
+                }
+            val unverifiedEditions = if (guideIssueTarget == null) emptyList()
+                else comics.filter {
+                    InkShelf2GuideEdition.classify(guideIssueTarget, it.manga.title) ==
+                        InkShelf2GuideEdition.Match.UNVERIFIED
+                }
+            val otherEditions = if (guideIssueTarget == null) emptyList()
+                else comics.filter {
+                    InkShelf2GuideEdition.classify(guideIssueTarget, it.manga.title) in setOf(
+                        InkShelf2GuideEdition.Match.OTHER_RUN,
+                        InkShelf2GuideEdition.Match.OTHER_TITLE,
+                    )
+                }
+            val visibleComics = if (guideIssueTarget == null) comics else
+                matchedEditions + unverifiedEditions +
+                    (if (showOtherGuideEditions) otherEditions else emptyList())
+            if (guideIssueTarget != null && comics.isNotEmpty()) {
+                item(key = "guide-edition-totals") {
+                    Text(
+                        matchedEditions.size.toString() + " matching • " +
+                            unverifiedEditions.size + " unverified • " +
+                            otherEditions.size + " other editions",
+                        color = InkShelf2Colors.AccentLight,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 17.dp, vertical = 6.dp),
+                    )
+                }
+            }
             if (!searching && error == null && comics.isEmpty() && query.length >= 2 && found != null) {
                 item(key = "search-empty") {
                     InkShelf2EmptyShelf("No matches from your installed sources. Try a different title.")
                 }
             }
+            if (guideIssueTarget != null &&
+                matchedEditions.isEmpty() && unverifiedEditions.isEmpty() &&
+                otherEditions.isNotEmpty() && !showOtherGuideEditions
+            ) {
+                item(key = "guide-no-safe-match") {
+                    Text(
+                        "No matching or verifiable editions were found. " +
+                            "Other years are hidden to avoid opening the wrong run.",
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 17.dp, vertical = 10.dp),
+                    )
+                }
+            }
             items(
-                items = comics.chunked(3),
+                items = visibleComics.chunked(3),
                 key = { row -> row.first().manga.source.toString() + ":" + row.first().manga.url },
             ) { row ->
                 Row(
@@ -364,9 +439,45 @@ internal fun InkShelf2DiscoverScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                            if (guideIssueTarget != null) {
+                                val match = InkShelf2GuideEdition.classify(
+                                    guideIssueTarget, result.manga.title,
+                                )
+                                val badge = when (match) {
+                                    InkShelf2GuideEdition.Match.MATCHING -> "MATCHING RUN"
+                                    InkShelf2GuideEdition.Match.UNVERIFIED -> "CHECK YEAR"
+                                    InkShelf2GuideEdition.Match.OTHER_RUN -> "DIFFERENT YEAR"
+                                    InkShelf2GuideEdition.Match.OTHER_TITLE -> "OTHER TITLE"
+                                }
+                                Text(
+                                    badge + (InkShelf2GuideEdition.year(result.manga.title)
+                                        ?.let { " · $it" } ?: ""),
+                                    color = if (match == InkShelf2GuideEdition.Match.MATCHING)
+                                        InkShelf2Colors.AccentLight else InkShelf2Colors.Muted,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                )
+                            }
                         }
                     }
                     repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            if (guideIssueTarget != null && otherEditions.isNotEmpty()) {
+                item(key = "guide-other-editions-toggle") {
+                    TextButton(
+                        onClick = { showOtherGuideEditions = !showOtherGuideEditions },
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    ) {
+                        Text(
+                            if (showOtherGuideEditions) "Hide other editions"
+                            else "Show " + otherEditions.size + " other editions",
+                            color = InkShelf2Colors.AccentLight,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                        )
+                    }
                 }
             }
         } else {

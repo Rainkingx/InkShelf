@@ -111,6 +111,41 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun guideIssueDoesNotConfuseDifferentNewAvengersRuns() {
+        val issue = InkShelf2GuideIssue(
+            id = 10024,
+            position = 9,
+            series = "New Avengers",
+            volume = 1,
+            number = "24",
+            role = "Tie-In",
+            yearBegan = 2004,
+        )
+        assertEquals("New Avengers (2004) #24", issue.displayName)
+        assertEquals(
+            InkShelf2GuideEdition.Match.MATCHING,
+            InkShelf2GuideEdition.classify(issue, "New Avengers (2004)"),
+        )
+        assertEquals(
+            InkShelf2GuideEdition.Match.MATCHING,
+            InkShelf2GuideEdition.classify(issue, "New Avengers (2004–2010)"),
+        )
+        assertEquals(
+            InkShelf2GuideEdition.Match.OTHER_RUN,
+            InkShelf2GuideEdition.classify(issue, "New Avengers (2013)"),
+        )
+        assertEquals(
+            InkShelf2GuideEdition.Match.UNVERIFIED,
+            InkShelf2GuideEdition.classify(issue, "New Avengers"),
+        )
+        assertEquals(
+            InkShelf2GuideEdition.Match.OTHER_TITLE,
+            InkShelf2GuideEdition.classify(issue, "The New Avengers (2004)"),
+        )
+        assertEquals("New Avengers", InkShelf2GuideEdition.sourceSearchQuery(issue))
+    }
+
+    @Test
     fun emptyAndAmbiguousTitlesDoNotProduceResults() {
         assertEquals(null, InkShelf2PulseMatcher.searchTerm("???"))
         assertTrue(InkShelf2PulseMatcher.related("???", listOf(item("comics news"))).isEmpty())
