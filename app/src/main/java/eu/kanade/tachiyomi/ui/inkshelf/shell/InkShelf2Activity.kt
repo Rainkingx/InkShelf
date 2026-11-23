@@ -376,7 +376,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     null
                 }
                 val refreshedDiscover = try {
-                    engine.loadDiscover()
+                    engine.loadDiscover(enabledSourceIds)
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (error: Exception) {
@@ -420,6 +420,32 @@ class InkShelf2Activity : AppCompatActivity() {
                     // A plain readiness flag does not recompose on its own.
                     // Schedule the frame that releases the pre-draw gate.
                     window.decorView.postInvalidateOnAnimation()
+                }
+
+                // An extension pause can leave every cached Discover card
+                // pointing at XOXO. Rebuild missing shelves from the other
+                // enabled extensions AFTER the first UI frame; never delay the
+                // splash, hijack a saved comic or create library favourites.
+                if (refreshedDiscover != null && enabledSourceIds.isNotEmpty()) {
+                    val missing = InkShelf2RecommendationRecovery.missing(
+                        refreshedDiscover, enabledSourceIds,
+                    )
+                    if (InkShelf2RecommendationRecovery.claimAttempt(
+                            applicationContext, enabledSourceIds, missing,
+                        )
+                    ) {
+                        try {
+                            InkShelf2RecommendationRecovery.refresh(applicationContext, missing)
+                            // The network can fail independently per source; use
+                            // whatever successful cache entries were recovered.
+                            discover = engine.loadDiscover(enabledSourceIds)
+                            home = engine.loadHome(enabledSourceIds)
+                        } catch (cancel: CancellationException) {
+                            throw cancel
+                        } catch (error: Exception) {
+                            android.util.Log.w("InkShelf2", "Recommendation source recovery failed", error)
+                        }
+                    }
                 }
             }
             // InkShelf 1's flow: show Comic Details immediately, then fetch
@@ -1061,7 +1087,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         onSeeAll = { selectedDiscoverShelf = it },
                         onRecommendationsUpdated = {
-                            discover = engine.loadDiscover()
+                            discover = engine.loadDiscover(enabledSourceIds)
                             home = engine.loadHome(enabledSourceIds)
                         },
                     )
