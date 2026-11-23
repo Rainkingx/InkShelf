@@ -55,7 +55,12 @@ internal object InkShelf2DcOfficialMetadata {
     private const val MAX_HTML_CHARS = 512 * 1024
     private val seriesPattern = Regex("""^(.+?)\s*\(((?:19|20)\d{2})(?:\s*[-–]\s*(?:(?:19|20)\d{2})?)?\)$""")
     private val dcPrefixes = listOf(
-        "absolute ", "batman", "detective comics", "superman", "action comics",
+        // Don't classify Marvel's "Absolute Carnage" or other generic
+        // Absolute titles as DC's distinct Absolute Universe.
+        "absolute batman", "absolute superman", "absolute wonder woman",
+        "absolute flash", "absolute green lantern",
+        "absolute martian manhunter", "absolute catwoman",
+        "batman", "detective comics", "superman", "action comics",
         "wonder woman", "nightwing", "catwoman", "batgirl", "robin", "green lantern",
         "justice league", "the flash", "flash ", "aquaman", "harley quinn",
         "teen titans", "titans", "swamp thing", "doom patrol", "shazam",
@@ -138,7 +143,7 @@ internal object InkShelf2DcOfficialMetadata {
             if (cached != null) {
                 val stored = runCatching { JSONObject(cached) }.getOrNull()
                 if (stored != null && System.currentTimeMillis() -
-                    stored.optLong("saved_at") in 0 until TTL_MS
+                    stored.optLong("saved_at") in 0L until TTL_MS
                 ) {
                     return@withContext OfficialIssue(
                         stored.optString("title"),
