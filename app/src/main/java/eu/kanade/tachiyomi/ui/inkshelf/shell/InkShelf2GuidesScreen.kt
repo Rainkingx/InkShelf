@@ -763,20 +763,21 @@ private fun InkShelf2GuideDetails(
                 }
                 if (collections.isNotEmpty()) {
                     Text(
-                        "COLLECTION-FIRST TEST",
+                        "COLLECTED EDITIONS · BETA",
                         color = InkShelf2Colors.AccentLight,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     collections.forEach { collection ->
                         InkShelf2ActionButton(
-                            label = "Find Collected Book · " + collection.issueCount + " issues",
+                            label = "Find: " + collection.title,
                             onClick = { onFindCollection(collection) },
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Text(
-                            collection.title + " — a verified published collection. " +
-                                "Search your installed sources to see if it is available.",
+                            collection.scope + " · " + collection.issueCount +
+                                " included original issues · verified published book. " +
+                                "Source availability still needs checking.",
                             color = InkShelf2Colors.Muted,
                             fontSize = 11.sp,
                         )
