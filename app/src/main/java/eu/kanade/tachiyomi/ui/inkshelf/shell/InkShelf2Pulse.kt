@@ -355,11 +355,17 @@ internal object InkShelf2PulseFeed {
                             ) {
                                 if (title.isNotBlank() && isApprovedArticleLink(link)) {
                                     val cleanTitle = cleanText(title)
-                                    val topic = InkShelf2PulseTopics.classify(
-                                        cleanTitle,
-                                        categories.joinToString(" "),
-                                        publisher.dedicatedComicsFeed,
-                                    )
+                                    val topic = if (publisher.name == "Marvel Official") {
+                                        InkShelf2PulseTopics.classifyOfficialMarvel(
+                                            cleanTitle, categories.joinToString(" "),
+                                        )
+                                    } else {
+                                        InkShelf2PulseTopics.classify(
+                                            cleanTitle,
+                                            categories.joinToString(" "),
+                                            publisher.dedicatedComicsFeed,
+                                        )
+                                    }
                                     if (topic != null) {
                                         result += InkShelf2PulseArticle(
                                             title = cleanTitle,
@@ -514,7 +520,18 @@ internal object InkShelf2PulseFeed {
         return (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 6_000
             readTimeout = 7_000
-            setRequestProperty("User-Agent", "InkShelf/2.0 RSS reader")
+            if (url.contains("marvel.com/rss/feed")) {
+                // Public feed endpoint uses typical browser content
+                // negotiation; a blocked request still fails gracefully.
+                setRequestProperty(
+                    "User-Agent",
+                    "Mozilla/5.0 (Linux; Android 15; Mobile) AppleWebKit/537.36 " +
+                        "(KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
+                )
+                setRequestProperty("Accept", "application/rss+xml, application/xml, text/xml, */*")
+            } else {
+                setRequestProperty("User-Agent", "InkShelf/2.0 RSS reader")
+            }
             setRequestProperty("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml")
         }
     }
@@ -669,7 +686,7 @@ internal fun InkShelf2PulsePreview(
 ) {
     // Home stays a simple editorial teaser. The Articles and Videos selector
     // belongs only to the full Pulse destination behind the large CTA.
-    val news = InkShelf2PulseTopics.promoteScreenRant(
+    val news = InkShelf2PulseTopics.promoteOfficialNews(
         articles.filterNot { it.isVideo },
     ).take(2)
     InkShelf2SectionHeading("The Pulse", onClick = null)
@@ -868,7 +885,7 @@ internal fun InkShelf2PulseScreen(
     val filtered = articles.filter {
         it.isVideo == showVideos && (showVideos || topicFilter == null || it.topic == topicFilter)
     }
-    val selected = if (showVideos) filtered else InkShelf2PulseTopics.promoteScreenRant(filtered)
+    val selected = if (showVideos) filtered else InkShelf2PulseTopics.promoteOfficialNews(filtered)
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = PaddingValues(
