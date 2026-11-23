@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.LocalFocusManager
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -99,6 +100,7 @@ internal fun InkShelf2DiscoverScreen(
     val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     var query by rememberSaveable { mutableStateOf("") }
     var activeQuery by rememberSaveable { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
@@ -119,13 +121,29 @@ internal fun InkShelf2DiscoverScreen(
     }
 
     val sourceIds = sources.map { it.id }
-    LaunchedEffect(searchFocusToken) {
+    LaunchedEffect(searchFocusToken, guideIssueTarget?.id) {
         if (searchFocusToken > 0) {
             if (initialSearchQuery.isNotBlank()) {
                 query = initialSearchQuery
             }
-            focusRequester.requestFocus()
-            keyboard?.show()
+            if (guideIssueTarget != null) {
+                // "Read Next" launches a results picker, NOT manual typing.
+                // Keep the keyboard closed so covers and edition labels fit.
+                focusManager.clearFocus(force = true)
+                keyboard?.hide()
+            } else {
+                focusRequester.requestFocus()
+                keyboard?.show()
+            }
+        }
+    }
+    LaunchedEffect(found, guideIssueTarget?.id) {
+        if (guideIssueTarget != null && found != null) {
+            // Bring the matching-edition results into view once the
+            // background extension search finishes.
+            focusManager.clearFocus(force = true)
+            keyboard?.hide()
+            scroll.animateScrollToItem(1)
         }
     }
     // Debounced live search; the keyboard's Search action also submits instantly.
@@ -246,7 +264,10 @@ internal fun InkShelf2DiscoverScreen(
         item(key = "discover-header") {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    InkShelf2PageHeading("Discover Comics", modifier = Modifier.weight(1f))
+                    InkShelf2PageHeading(
+                        if (guideIssueTarget == null) "Discover Comics" else "Find Guide Issue",
+                        modifier = Modifier.weight(1f),
+                    )
                     IconButton(onClick = onManageSources) {
                         Icon(
                             Icons.Outlined.AutoStories,
@@ -457,6 +478,14 @@ internal fun InkShelf2DiscoverScreen(
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 2,
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    "VIEW SERIES ISSUES",
+                                    color = InkShelf2Colors.AccentLight,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable { onOpen(result.manga) },
                                 )
                             }
                         }

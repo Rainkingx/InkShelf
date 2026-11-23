@@ -30,7 +30,11 @@ internal object InkShelf2GuideEdition {
         val expected = issue.yearBegan ?: year(issue.series)
         val found = year(candidateTitle)
         if (expected == null || found == null) return Match.UNVERIFIED
-        return if (expected == found) Match.MATCHING else Match.OTHER_RUN
+        if (expected == found) return Match.MATCHING
+        // A first issue can be cover-dated one year after its publication.
+        // A one-year mismatch needs human verification, not silent rejection
+        // or automatic reader launch.
+        return if (kotlin.math.abs(expected - found) == 1) Match.UNVERIFIED else Match.OTHER_RUN
     }
 
     fun sourceSearchQuery(issue: InkShelf2GuideIssue): String =

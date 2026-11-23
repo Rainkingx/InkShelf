@@ -89,6 +89,7 @@ class InkShelf2Activity : AppCompatActivity() {
     private var refreshEpoch by mutableIntStateOf(0)
     private var lastBackAtMillis = 0L
     private var readerOpenInProgress by mutableStateOf(false)
+    private var guideIssueOpenInProgress = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingEntryIntent = intent
@@ -831,31 +832,43 @@ class InkShelf2Activity : AppCompatActivity() {
                         sources = enabledSources,
                         onOpenSearchResult = { candidate ->
                             val issue = guideIssueSearch
-                            if (issue == null ||
+                            if (issue == null) {
+                                openComicDetails(candidate)
+                            } else if (
                                 InkShelf2GuideEdition.classify(issue, candidate.title) !=
                                 InkShelf2GuideEdition.Match.MATCHING
                             ) {
-                                // Unknown-year editions are NEVER auto-read.
-                                // Let the user inspect their details first.
+                                // Source titles without a verified year should
+                                // be inspected, never auto-read from the wrong run.
+                                Toast.makeText(
+                                    this@InkShelf2Activity,
+                                    "Edition year unverified. Check this series before reading.",
+                                    Toast.LENGTH_LONG,
+                                ).show()
                                 openComicDetails(candidate)
-                            } else {
-                                val number = issue.number.toIntOrNull()
-                                if (number == null) {
-                                    openComicDetails(candidate)
-                                } else {
-                                    lifecycleScope.launch {
-                                        val available = try {
-                                            engine.chapters(candidate)
-                                        } catch (cancel: CancellationException) {
-                                            throw cancel
-                                        } catch (_: Exception) {
-                                            emptyList()
+                            } else if (!guideIssueOpenInProgress) {
+                                lifecycleScope.launch {
+                                    guideIssueOpenInProgress = true
+                                    try {
+                                        val opened = openGuideIssueFromSource(candidate, issue)
+                                        if (!opened) {
+                                            Toast.makeText(
+                                                this@InkShelf2Activity,
+                                                "This source does not list " + issue.displayName +
+                                                    " as a readable issue. Try another source or View Series Issues.",
+                                                Toast.LENGTH_LONG,
+                                            ).show()
                                         }
-                                        val chapter = available.firstOrNull {
-                                            InkShelf2IssueNumbers.fromChapter(it) == number
-                                        }
-                                        if (chapter != null) openChapter(candidate, chapter)
-                                        else openComicDetails(candidate)
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        Toast.makeText(
+                                            this@InkShelf2Activity,
+                                            "Could not load issues from this source. Try another result.",
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    } finally {
+                                        guideIssueOpenInProgress = false
                                     }
                                 }
                             }
@@ -883,43 +896,50 @@ class InkShelf2Activity : AppCompatActivity() {
                             metronOpen = true
                         },
                         onReadIssue = { requestedIssue ->
-                            lifecycleScope.launch {
-                                // The list item may only include series ID +
-                                // volume number. Resolve the actual starting
-                                // year from Metron before choosing a book.
-                                val issue = InkShelf2GuidesData.resolveIssueEdition(
-                                    applicationContext, requestedIssue,
-                                )
-                                val exactMatches = library.map { it.manga }
-                                    .filter {
-                                        InkShelf2GuideEdition.classify(issue, it.title) ==
-                                            InkShelf2GuideEdition.Match.MATCHING
-                                    }
-                                    .distinctBy { it.source.toString() + ":" + it.url }
-                                val number = issue.number.toIntOrNull()
-                                if (exactMatches.size == 1) {
-                                    val manga = exactMatches.single()
-                                    if (number == null) {
-                                        openComicDetails(manga)
-                                    } else {
-                                        val available = try {
-                                            engine.chapters(manga)
-                                        } catch (cancel: CancellationException) {
-                                            throw cancel
-                                        } catch (_: Exception) {
-                                            emptyList()
+                            if (!guideIssueOpenInProgress) {
+                                lifecycleScope.launch {
+                                    guideIssueOpenInProgress = true
+                                    try {
+                                        // Metron's series ID resolves the
+                                        // intended run, independent of volume.
+                                        val issue = InkShelf2GuidesData.resolveIssueEdition(
+                                            applicationContext, requestedIssue,
+                                        )
+                                        val exactMatches = library.map { it.manga }
+                                            .filter {
+                                                InkShelf2GuideEdition.classify(issue, it.title) ==
+                                                    InkShelf2GuideEdition.Match.MATCHING
+                                            }
+                                            .distinctBy { it.source.toString() + ":" + it.url }
+                                        val opened = if (exactMatches.size == 1) {
+                                            try {
+                                                openGuideIssueFromSource(exactMatches.single(), issue)
+                                            } catch (cancel: CancellationException) {
+                                                throw cancel
+                                            } catch (_: Exception) {
+                                                false
+                                            }
+                                        } else false
+                                        if (!opened) {
+                                            // Keep issue+edition context while
+                                            // searching all installed sources.
+                                            guideIssueSearch = issue
+                                            discoverSearchPreset =
+                                                InkShelf2GuideEdition.sourceSearchQuery(issue)
+                                            openTab(InkShelf2Tab.DISCOVER)
+                                            searchFocusEpoch += 1
                                         }
-                                        val chapter = available.firstOrNull {
-                                            InkShelf2IssueNumbers.fromChapter(it) == number
-                                        }
-                                        if (chapter != null) openChapter(manga, chapter)
-                                        else openComicDetails(manga)
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        Toast.makeText(
+                                            this@InkShelf2Activity,
+                                            "Guide issue lookup failed. Try again.",
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    } finally {
+                                        guideIssueOpenInProgress = false
                                     }
-                                } else {
-                                    guideIssueSearch = issue
-                                    discoverSearchPreset = InkShelf2GuideEdition.sourceSearchQuery(issue)
-                                    openTab(InkShelf2Tab.DISCOVER)
-                                    searchFocusEpoch += 1
                                 }
                             }
                         },
@@ -1078,6 +1098,32 @@ class InkShelf2Activity : AppCompatActivity() {
 
     private fun openChapter(manga: Manga, chapter: Chapter) {
         startActivity(ReaderActivity.newIntent(this, manga, chapter))
+    }
+
+    /**
+     * Read Next uses the actual issues from InkShelf 1's installed extension,
+     * not just an initially empty chapter cache. For merged source entries
+     * (#21-#25), open the collection containing the requested issue.
+     *
+     * A missing/ambiguous chapter returns false: the guide remains in its
+     * source results picker and never silently opens the wrong issue.
+     */
+    private suspend fun openGuideIssueFromSource(
+        manga: Manga,
+        issue: InkShelf2GuideIssue,
+    ): Boolean {
+        val (resolved, chapters) = sourcesEngine.ensureIssues(manga)
+        val match = InkShelf2GuideChapterFinder.find(issue, chapters) ?: return false
+        if (match.grouped) {
+            Toast.makeText(
+                this,
+                "This source groups issues together. Opening the collection containing #" +
+                    issue.number + ".",
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+        openChapter(resolved, match.chapter)
+        return true
     }
 
     /** Queue through InkShelf 1's existing source-backed offline download manager. */

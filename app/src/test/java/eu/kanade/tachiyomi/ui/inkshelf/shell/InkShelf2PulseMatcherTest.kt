@@ -146,6 +146,66 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun guideSourceIssueMatcherHandlesIssueCollectionsWithoutGuessing() {
+        fun chapter(name: String, number: Float = -1f) =
+            eu.kanade.tachiyomi.data.database.models.Chapter.create().apply {
+                this.name = name
+                this.url = "/comic/" + name
+                this.chapter_number = number
+            }
+        val requested = InkShelf2GuideIssue(
+            id = 24,
+            position = 1,
+            series = "New Avengers",
+            volume = 1,
+            number = "24",
+            role = "Core Issue",
+            yearBegan = 2004,
+        )
+        val direct = chapter("New Avengers #24")
+        val combined = chapter("New Avengers #23-#25")
+        val annual = chapter("New Avengers Annual #24")
+        assertEquals(
+            direct,
+            InkShelf2GuideChapterFinder.find(requested, listOf(combined, direct, annual))?.chapter,
+        )
+        assertFalse(
+            InkShelf2GuideChapterFinder.find(requested, listOf(combined, direct))!!.grouped,
+        )
+        assertTrue(
+            InkShelf2GuideChapterFinder.find(requested, listOf(combined))!!.grouped,
+        )
+        assertEquals(null, InkShelf2GuideChapterFinder.find(requested, listOf(annual)))
+        assertEquals(
+            null,
+            InkShelf2GuideChapterFinder.find(requested, listOf(direct, chapter("#24"))),
+        )
+        val wrong = chapter("#25")
+        assertEquals(null, InkShelf2GuideChapterFinder.find(requested, listOf(wrong)))
+    }
+
+    @Test
+    fun guideYearMayNeedVerificationWhenCoverDateDiffers() {
+        val issue = InkShelf2GuideIssue(
+            id = 24,
+            position = 1,
+            series = "New Avengers",
+            volume = 1,
+            number = "24",
+            role = "Core Issue",
+            yearBegan = 2004,
+        )
+        assertEquals(
+            InkShelf2GuideEdition.Match.UNVERIFIED,
+            InkShelf2GuideEdition.classify(issue, "New Avengers (2005)"),
+        )
+        assertEquals(
+            InkShelf2GuideEdition.Match.OTHER_RUN,
+            InkShelf2GuideEdition.classify(issue, "New Avengers (2013)"),
+        )
+    }
+
+    @Test
     fun emptyAndAmbiguousTitlesDoNotProduceResults() {
         assertEquals(null, InkShelf2PulseMatcher.searchTerm("???"))
         assertTrue(InkShelf2PulseMatcher.related("???", listOf(item("comics news"))).isEmpty())
