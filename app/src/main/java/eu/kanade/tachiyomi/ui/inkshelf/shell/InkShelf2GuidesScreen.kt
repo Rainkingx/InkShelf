@@ -694,7 +694,14 @@ private fun InkShelf2GuideDetails(
             loading = false
         }
     }
-    LaunchedEffect(guide.id) { loadPage() }
+    // Metron paginates long events. Prefetch a bounded number of pages
+    // progressively so Read Next and the checklist do not stop at page one.
+    // Very large community lists retain the explicit Load More control.
+    LaunchedEffect(guide.id) {
+        repeat(6) {
+            if (hasMore) loadPage()
+        }
+    }
     val filtered = all.filter { (!essential || it.isEssential) && (!missingOnly || it.id.toString() !in readIds) }
     val nextUnread = all.firstOrNull { (!essential || it.isEssential) && it.id.toString() !in readIds }
 
@@ -730,7 +737,8 @@ private fun InkShelf2GuideDetails(
                     fontSize = 11.sp,
                 )
                 Text(
-                    readIds.size.toString() + " issues marked read • " + all.size + " issues loaded",
+                    readIds.size.toString() + " issues marked read • " + all.size +
+                        if (hasMore) " issues loaded so far" else " issues in guide",
                     color = InkShelf2Colors.AccentLight, fontSize = 12.sp,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
