@@ -166,7 +166,29 @@ internal class InkShelf2Engine(private val context: Context) {
         )
         val saved = runCatching { database.getLibraryMangas().executeAsBlocking() }
             .getOrDefault(emptyList()).filter { it.favorite }
-        return InkShelf2SourceBalance.balanceDiscover(active, sourceNames, saved)
+        val balanced = InkShelf2SourceBalance.balanceDiscover(active, sourceNames, saved)
+        // An older cache may contain only XOXO recommendations. Until the
+        // existing recommendation engine rebuilds them from enabled sources,
+        // offer real currently sourced comics instead of a blank shelf.
+        // These are visibly labelled as source picks, not falsely personalised.
+        if (balanced.recommendationDetails.size >= 3) return balanced
+        val chosen = balanced.recommendationDetails.toMutableList()
+        val seenEditions = chosen.map {
+            InkShelf2ComicIdentity.editionKey(it.manga)
+        }.toMutableSet()
+        (balanced.trending + balanced.newest).forEach { manga ->
+            val edition = InkShelf2ComicIdentity.editionKey(manga)
+            if (manga.url.isNotBlank() && manga.source !in pausedIds &&
+                (availableIds == null || manga.source in availableIds) &&
+                edition.isNotBlank() && seenEditions.add(edition) && chosen.size < 9
+            ) {
+                chosen += PersonalPick(manga, InkShelf2RecommendationRecovery.FALLBACK_REASON)
+            }
+        }
+        return balanced.copy(
+            recommended = chosen.map { it.manga },
+            recommendationDetails = chosen,
+        )
     }
 
     suspend fun chapters(manga: Manga): List<Chapter> = withContext(Dispatchers.IO) {
