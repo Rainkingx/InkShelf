@@ -134,6 +134,11 @@ internal object InkShelf2MoreLikeThis {
                 if (focusThemes.isNotEmpty() && candidateThemes.isNotEmpty() &&
                     focusThemes.none { it in candidateThemes }
                 ) return@mapNotNull null
+                // A generic genre on its own isn't an actionable connection
+                // to a clearly identifiable comic universe.
+                if (focusThemes.isNotEmpty() && candidateThemes.isEmpty() &&
+                    commonCreator == null && sharedTerms.isEmpty()
+                ) return@mapNotNull null
                 val commonTheme = candidateThemes.firstOrNull { it in focusThemes }
 
                 val score = (if (commonCreator != null) 75 else 0) +
