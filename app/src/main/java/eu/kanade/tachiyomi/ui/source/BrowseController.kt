@@ -1137,7 +1137,9 @@ class BrowseController :
                 val recommendationSources =
                     (preferredSources + eligibleSources)
                         .distinctBy { it.id }
-                        .take(4)
+                        // More fallbacks when a previously preferred extension
+                        // (for example XOXO) has been paused or stopped responding.
+                        .take(6)
 
                 val candidates =
                     recommendationSources
@@ -1209,25 +1211,33 @@ class BrowseController :
                         title !in libraryTitles && seenTitles.add(title)
                     }
 
-                // Persistent 90-day no-repeat window, across app restarts and
-                // extension mirrors. Manual refresh may return fewer than nine
-                // rather than repeating the same comics when sources are sparse.
-                val priorTitles = if (recoverPickedForYouFromSourceChange) {
-                    // XOXO's old recommendations may be mirrored by other
-                    // working sources. Treat this as source recovery rather
-                    // than manual 90-day title rotation.
+                // Keep currently visible titles out of manual refreshes.
+                // Prefer genuinely fresh titles, but never let 90-day history
+                // eliminate other different, source-backed options.
+                val history = if (recoverPickedForYouFromSourceChange) {
                     emptySet()
                 } else {
-                    discoverCacheContext?.let(InkShelfRecommendationHistory::recentTitles).orEmpty() +
-                        pendingPickedForYouExclusions
+                    discoverCacheContext?.let(InkShelfRecommendationHistory::recentTitles).orEmpty()
                 }
-                val freshCandidates = uniqueCandidates.filterNot { candidate ->
-                    InkShelfRecommendationHistory.titleKey(candidate.manga.title) in priorTitles
-                }
-                val selectedCandidates = selectRecommendationMix(
-                    candidates = freshCandidates,
+                val pools = InkShelfRecommendationRotation.eligible(
+                    candidates = uniqueCandidates,
+                    titleKey = { InkShelfRecommendationHistory.titleKey(it.manga.title) },
+                    recentHistory = history,
+                    visibleTitles = pendingPickedForYouExclusions.map(
+                        InkShelfRecommendationHistory::titleKey,
+                    ).toSet(),
+                )
+                val preferred = selectRecommendationMix(
+                    candidates = pools.unseen,
                     refreshSeed = pendingPickedForYouRefreshSeed,
                 ).take(9)
+                val older = if (preferred.size < 9) {
+                    selectRecommendationMix(
+                        candidates = pools.older,
+                        refreshSeed = pendingPickedForYouRefreshSeed,
+                    ).take(9 - preferred.size)
+                } else emptyList()
+                val selectedCandidates = preferred + older
 
                 val picks =
                     selectedCandidates
@@ -2805,6 +2815,7 @@ class BrowseController :
             context: Context,
             force: Boolean = false,
             sourceChangeRecovery: Boolean = false,
+            visibleTitles: Set<String> = emptySet(),
         ): Boolean {
             val controller = BrowseController()
             controller.discoverCacheContext = context.applicationContext
@@ -2820,7 +2831,7 @@ class BrowseController :
                         )
                         InkShelfRecommendationHistory.record(context, previous)
                     }
-                    requestPickedForYouRefresh(sourceChangeRecovery)
+                    requestPickedForYouRefresh(sourceChangeRecovery, visibleTitles)
                 }
                 val result = CompletableDeferred<List<DiscoverRecommendation>>()
                 controller.loadPickedForYou(background = true) { items ->
@@ -2874,13 +2885,17 @@ class BrowseController :
             }
         }
 
-        internal fun requestPickedForYouRefresh(sourceChangeRecovery: Boolean = false) {
-            // Rebuild with the currently enabled sources. An extension-pause
-            // recovery must not exclude the same editions on healthy mirrors.
+        internal fun requestPickedForYouRefresh(
+            sourceChangeRecovery: Boolean = false,
+            visibleTitles: Set<String> = emptySet(),
+        ) {
+            // A disabled extension can be replaced by healthy mirrors during
+            // automatic recovery. For manual refreshes exclude the exact titles
+            // visible in Compose, including temporary curated fallback cards.
             recoverPickedForYouFromSourceChange = sourceChangeRecovery
             pendingPickedForYouExclusions = if (sourceChangeRecovery) emptySet() else {
-                cachedPickedForYouItems
-                    .map { item -> normalizePickedForYouTitle(item.manga.title) }.toSet()
+                (cachedPickedForYouItems.map { it.manga.title } + visibleTitles)
+                    .map(::normalizePickedForYouTitle).toSet()
             }
 
             pendingPickedForYouRefreshSeed = System.nanoTime()
