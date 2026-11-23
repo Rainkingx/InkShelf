@@ -80,6 +80,7 @@ internal data class InkShelf2PulseArticle(
     val publishedAt: Long,
     val imageUrl: String?,
     val isVideo: Boolean = false,
+    val topic: InkShelf2PulseTopic = InkShelf2PulseTopic.COMICS,
 )
 
 
@@ -90,12 +91,29 @@ internal object InkShelf2PulseFeed {
     // A single in-flight refresh serves Home and Comic Details alike.
     private val refreshMutex = Mutex()
 
-    private data class Publisher(val name: String, val host: String, val feed: String)
+    private data class Publisher(
+        val name: String,
+        val host: String,
+        val feed: String,
+        val dedicatedComicsFeed: Boolean = false,
+    )
     private data class VideoChannel(val name: String, val id: String)
 
     private val publishers = listOf(
-        Publisher("AIPT Comics", "aiptcomics.com", "https://aiptcomics.com/category/comic-books/feed/"),
-        Publisher("The Beat", "comicsbeat.com", "https://www.comicsbeat.com/feed/"),
+        Publisher("AIPT Comics", "aiptcomics.com",
+            "https://aiptcomics.com/category/comic-books/feed/", dedicatedComicsFeed = true),
+        Publisher("The Beat", "comicsbeat.com",
+            "https://www.comicsbeat.com/feed/", dedicatedComicsFeed = true),
+        Publisher("Bleeding Cool", "bleedingcool.com",
+            "https://bleedingcool.com/comics/feed/", dedicatedComicsFeed = true),
+        Publisher("ComicBook.com", "comicbook.com",
+            "https://comicbook.com/category/comics/feed/", dedicatedComicsFeed = true),
+        // Supplement comic books with comic-adaptation film/TV coverage.
+        // The classifier screens out unrelated entertainment and gaming.
+        Publisher("Bleeding Cool", "bleedingcool.com",
+            "https://bleedingcool.com/feed/"),
+        Publisher("ComicBook.com", "comicbook.com",
+            "https://comicbook.com/feed/"),
     )
 
     // These are the channels' publicly listed, stable YouTube channel IDs.
@@ -105,11 +123,6 @@ internal object InkShelf2PulseFeed {
         VideoChannel("ComicPop", "UCEqBMWd6aeCVLAUMEO5WqIw"),
         VideoChannel("Casually Comics", "UCjKC1V-BWoFRVLAmYeoPCWw"),
         VideoChannel("Variant Comics", "UC4kjDjhexSVuC8JWk4ZanFw"),
-    )
-
-    private val skipTerms = listOf(
-        "layoff", "bankruptcy", "lawsuit", "allegation", "scandal",
-        "cutbacks", "controversy", "arrested", "misconduct",
     )
 
     suspend fun cached(context: Context): List<InkShelf2PulseArticle> = withContext(Dispatchers.IO) {
@@ -122,10 +135,8 @@ internal object InkShelf2PulseFeed {
         val now = System.currentTimeMillis()
         val existing = readCached(context)
         val checkedAt = prefs.getLong("checked_at", 0L)
-        // A feed-version bump makes the first update fetch YouTube once, even
-        // if the previous news-only version cached articles minutes ago.
-        // Afterward, respect the TTL even when a channel is unavailable.
-        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 2)
+        // Version bump loads new publishers on first launch after update.
+        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 3)
             return@withLock existing
 
         // Pull each independent feed concurrently so a slow/blocked source
@@ -141,16 +152,15 @@ internal object InkShelf2PulseFeed {
             }.awaitAll()
         }
 
-        // Round-robin by publisher: the two Home headlines normally show one
-        // from each site, rather than letting a high-volume site dominate.
-        val news = balance(newsByPublisher, 24)
+        // Keep all publisher voices visible before balancing 60/25/15 topics.
+        val news = InkShelf2PulseTopics.mix(balance(newsByPublisher, 100), 36)
         val videos = balance(videosByChannel, 12)
         val entries = (
             (if (news.isNotEmpty()) news else existing.filterNot { it.isVideo }) +
             (if (videos.isNotEmpty()) videos else existing.filter { it.isVideo })
         ).distinctBy { it.url }
 
-        prefs.edit().putLong("checked_at", now).putInt("feed_version", 2).apply()
+        prefs.edit().putLong("checked_at", now).putInt("feed_version", 3).apply()
         if (entries.isNotEmpty()) {
             val output = JSONArray()
             entries.forEach { article ->
@@ -161,6 +171,7 @@ internal object InkShelf2PulseFeed {
                     put("publishedAt", article.publishedAt)
                     put("imageUrl", article.imageUrl)
                     put("video", article.isVideo)
+                    put("topic", article.topic.name)
                 })
             }
             prefs.edit().putString("articles", output.toString()).putLong("saved_at", now).apply()
@@ -184,10 +195,7 @@ internal object InkShelf2PulseFeed {
 
     private inline fun safeLoad(block: () -> List<InkShelf2PulseArticle>): List<InkShelf2PulseArticle> {
         return try {
-            block().filterNot { article ->
-                val title = article.title.lowercase(Locale.ROOT)
-                skipTerms.any { it in title }
-            }
+            block()
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: Exception) {
@@ -226,6 +234,11 @@ internal object InkShelf2PulseFeed {
                     publishedAt = row.optLong("publishedAt"),
                     imageUrl = row.optString("imageUrl").takeIf { validHttps(it) },
                     isVideo = row.optBoolean("video", false),
+                    topic = InkShelf2PulseTopic.entries.firstOrNull {
+                        it.name == row.optString("topic")
+                    } ?: InkShelf2PulseTopics.classify(
+                        title, dedicatedComicsFeed = true,
+                    ) ?: InkShelf2PulseTopic.COMICS,
                 )
             }
         } catch (_: Exception) {
@@ -246,6 +259,7 @@ internal object InkShelf2PulseFeed {
                 var link = ""
                 var date = ""
                 var image: String? = null
+                var categories = mutableListOf<String>()
                 var event = parser.eventType
                 while (event != XmlPullParser.END_DOCUMENT && result.size < 20) {
                     when (event) {
@@ -258,11 +272,13 @@ internal object InkShelf2PulseFeed {
                                 link = ""
                                 date = ""
                                 image = null
+                                categories = mutableListOf()
                             } else if (insideItem) {
                                 when {
                                     tag == "title" -> title = parser.nextText().trim()
                                     tag == "link" -> link = parser.nextText().trim()
                                     tag == "pubdate" || tag == "published" -> date = parser.nextText().trim()
+                                    tag == "category" -> categories += parser.nextText().trim()
                                     tag == "description" || tag == "encoded" || tag == "summary" -> {
                                         val body = parser.nextText()
                                         if (image == null) image = firstFeedImage(body)
@@ -288,13 +304,22 @@ internal object InkShelf2PulseFeed {
                         XmlPullParser.END_TAG -> {
                             if (parser.name.equals("item", ignoreCase = true) && insideItem) {
                                 if (title.isNotBlank() && isApprovedArticleLink(link)) {
-                                    result += InkShelf2PulseArticle(
-                                        title = cleanText(title),
-                                        url = link,
-                                        publisher = publisher.name,
-                                        publishedAt = parseDate(date),
-                                        imageUrl = image,
+                                    val cleanTitle = cleanText(title)
+                                    val topic = InkShelf2PulseTopics.classify(
+                                        cleanTitle,
+                                        categories.joinToString(" "),
+                                        publisher.dedicatedComicsFeed,
                                     )
+                                    if (topic != null) {
+                                        result += InkShelf2PulseArticle(
+                                            title = cleanTitle,
+                                            url = link,
+                                            publisher = publisher.name,
+                                            publishedAt = parseDate(date),
+                                            imageUrl = image,
+                                            topic = topic,
+                                        )
+                                    }
                                 }
                                 insideItem = false
                             }
