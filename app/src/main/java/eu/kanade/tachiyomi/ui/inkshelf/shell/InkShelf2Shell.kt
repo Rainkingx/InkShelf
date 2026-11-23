@@ -79,9 +79,20 @@ enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
     DISCOVER("Discover", Icons.Outlined.Search),
     LIBRARY("Library", Icons.Outlined.LibraryBooks),
+    // Kept for saved-state compatibility and eventual feature return;
+    // Reading Guides is hidden from the visible navigation for now.
     GUIDES("Guides", Icons.Outlined.AutoStories),
     ACCOUNT("Menu", Icons.Outlined.Menu),
 }
+
+// The paused Guides feature is excluded from all user-facing tab items.
+// Keep four equal-width navigation targets with no empty placeholder.
+private val visibleInkShelf2Tabs = listOf(
+    InkShelf2Tab.HOME,
+    InkShelf2Tab.DISCOVER,
+    InkShelf2Tab.LIBRARY,
+    InkShelf2Tab.ACCOUNT,
+)
 
 /**
  * The single, offline InkShelf 2.0 font family. All UI text uses Oxanium to
@@ -302,7 +313,7 @@ private fun InkShelf2BottomNavigation(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            InkShelf2Tab.entries.forEach { tab ->
+            visibleInkShelf2Tabs.forEach { tab ->
                 val selected = tab == currentTab
                 val selectedBrush = Brush.verticalGradient(
                     listOf(

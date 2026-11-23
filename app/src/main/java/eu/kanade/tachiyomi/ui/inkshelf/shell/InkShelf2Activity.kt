@@ -123,6 +123,13 @@ class InkShelf2Activity : AppCompatActivity() {
             var tabTrail by rememberSaveable {
                 mutableStateOf(if (openedFromDownloadNotice) "ACCOUNT" else "HOME")
             }
+            // A previous install may restore an open Guides tab. Redirect it
+            // to Home and strip paused Guides entries from the Back trail.
+            LaunchedEffect(Unit) {
+                if (tab == InkShelf2Tab.GUIDES) tab = InkShelf2Tab.HOME
+                val history = tabTrail.split('|').filter { it != InkShelf2Tab.GUIDES.name }
+                tabTrail = history.joinToString("|").ifBlank { InkShelf2Tab.HOME.name }
+            }
             var searchFocusEpoch by remember { mutableIntStateOf(0) }
             var discoverSearchPreset by remember { mutableStateOf("") }
             var guideIssueSearch by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
@@ -160,17 +167,22 @@ class InkShelf2Activity : AppCompatActivity() {
             // closes The Pulse instead of being ignored by bottom navigation.
             var pulseExpanded by rememberSaveable { mutableStateOf(false) }
             fun openTab(destination: InkShelf2Tab) {
-                if (tab == InkShelf2Tab.GUIDES && destination != InkShelf2Tab.GUIDES) {
+                // Pause the entire Guides destination without deleting its
+                // implementation or risking a saved-state enum mismatch.
+                val visibleDestination = if (destination == InkShelf2Tab.GUIDES)
+                    InkShelf2Tab.HOME else destination
+                if (tab == InkShelf2Tab.GUIDES) {
                     guideIssuePicker = null
                     guideCollectionPicker = null
                 }
-                if (tab == InkShelf2Tab.DISCOVER && destination != InkShelf2Tab.DISCOVER) {
+                if (tab == InkShelf2Tab.DISCOVER && visibleDestination != InkShelf2Tab.DISCOVER) {
                     clearDiscoverSearch()
                 }
-                if (tab != destination) {
-                    tabTrail = (tabTrail.split('|').takeLast(20) + destination.name)
-                        .joinToString("|")
-                    tab = destination
+                if (tab != visibleDestination) {
+                    tabTrail = (tabTrail.split('|')
+                        .filter { it != InkShelf2Tab.GUIDES.name }
+                        .takeLast(20) + visibleDestination.name).joinToString("|")
+                    tab = visibleDestination
                 }
                 sourceHubOpen = false
                 updateAllExtensionsRequested = false
@@ -514,8 +526,13 @@ class InkShelf2Activity : AppCompatActivity() {
                         welcomeOpen = false
                     }
                     tabTrail.contains('|') -> {
-                        tabTrail = tabTrail.substringBeforeLast('|')
-                        tab = InkShelf2Tab.valueOf(tabTrail.substringAfterLast('|'))
+                        val backTrail = tabTrail.substringBeforeLast('|')
+                            .split('|').filter { it != InkShelf2Tab.GUIDES.name }
+                        tabTrail = backTrail.joinToString("|").ifBlank { InkShelf2Tab.HOME.name }
+                        tab = InkShelf2Tab.entries.firstOrNull {
+                            it.name == tabTrail.substringAfterLast('|') &&
+                                it != InkShelf2Tab.GUIDES
+                        } ?: InkShelf2Tab.HOME
                     }
                     tab != InkShelf2Tab.HOME -> {
                         tab = InkShelf2Tab.HOME
