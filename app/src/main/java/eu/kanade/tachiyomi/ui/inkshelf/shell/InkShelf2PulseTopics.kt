@@ -87,11 +87,9 @@ internal object InkShelf2PulseTopics {
             val alreadyVisible = reordered.take(target + 1)
                 .count { it.publisher == "Screen Rant" }
             if (alreadyVisible > ordinal) return@forEachIndexed
-            val next = reordered.indexOfFirst { article ->
-                article.publisher == "Screen Rant" &&
-                    reordered.indexOf(article) > target
-            }
-            if (next > target) {
+            val next = (target + 1 until reordered.size)
+                .firstOrNull { reordered[it].publisher == "Screen Rant" }
+            if (next != null) {
                 val featured = reordered.removeAt(next)
                 reordered.add(target, featured)
             }
