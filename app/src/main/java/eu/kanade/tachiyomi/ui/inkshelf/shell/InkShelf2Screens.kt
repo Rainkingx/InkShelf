@@ -344,14 +344,16 @@ internal fun InkShelf2HomeScreen(
                                     // The hero promotes the complete daily selection.
                                     // Open all three verified picks first; each
                                     // then opens the normal InkShelf 2 details page.
-                                    label = "Comic Details",
+                                    label = "View All Picks",
                                     leadingIcon = Icons.Outlined.AutoStories,
                                     enabled = true,
                                     onClick = { onDayPicks(day) },
                                     modifier = Modifier.weight(1f),
                                 )
                                 InkShelf2ActionButton(
-                                    label = if (pick?.favorite == true) "In Library" else "Save",
+                                    // Saves only the featured first comic, not
+                                    // all three daily selections.
+                                    label = if (pick?.favorite == true) "First Saved" else "Save First",
                                     leadingIcon = if (pick?.favorite == true) Icons.Outlined.CheckCircleOutline else Icons.Outlined.Add,
                                     enabled = pick != null,
                                     onClick = { pick?.let(onSave) },
@@ -1154,6 +1156,7 @@ internal fun ComicCoverCard(
     manga: Manga,
     onClick: () -> Unit,
     percent: Int? = null,
+    percentLabel: String = "",
     badgeText: String? = null,
     width: androidx.compose.ui.unit.Dp? = 106.dp,
     showTitle: Boolean = true,
@@ -1212,7 +1215,7 @@ internal fun ComicCoverCard(
                         trackColor = InkShelf2Colors.Border,
                     )
                     Text(
-                        "${percent}%",
+                        if (percentLabel.isBlank()) "${percent}%" else "$percentLabel ${percent}%",
                         modifier = Modifier.align(Alignment.End),
                         fontSize = 10.sp,
                         color = Color.White,
