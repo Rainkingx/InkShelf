@@ -232,7 +232,7 @@ internal fun InkShelf2SpotlightEventScreen(
                         preferred == null -> "No enabled comic extension. Enable BatCave or another source in Menu."
                         lookingUp -> "Checking " + preferred.name + " for the correct editions…"
                         tryOtherSources -> "BatCave first, then other enabled sources for missing series."
-                        else -> "Using " + preferred.name + " · No duplicate source editions.",
+                        else -> "Using " + preferred.name + " · No duplicate source editions."
                     },
                     color = InkShelf2Colors.Muted, fontSize = 12.sp,
                 )
