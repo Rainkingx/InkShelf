@@ -2,7 +2,6 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.content.Context
 import eu.kanade.tachiyomi.ui.source.BrowseController
-import java.util.Locale
 
 /**
  * Repair recommendations after an extension is paused or disabled.
@@ -10,6 +9,7 @@ import java.util.Locale
  * switching sources on saved comics, or launching network work on every visit.
  */
 internal object InkShelf2RecommendationRecovery {
+    const val FALLBACK_REASON = "Popular on your enabled sources"
     private const val PREFS = "inkshelf2_recommendation_recovery"
     private const val COOLDOWN_MS = 30 * 60 * 1000L
 
@@ -29,7 +29,7 @@ internal object InkShelf2RecommendationRecovery {
             trending = discover.trending.count { it.source in enabledSourceIds } < 2,
             newest = discover.newest.count { it.source in enabledSourceIds } < 2,
             personal = discover.recommendationDetails.count {
-                it.manga.source in enabledSourceIds
+                it.manga.source in enabledSourceIds && it.reason != FALLBACK_REASON
             } < 2,
         )
     }
