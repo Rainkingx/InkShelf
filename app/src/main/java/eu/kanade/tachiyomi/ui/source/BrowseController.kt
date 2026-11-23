@@ -1212,9 +1212,15 @@ class BrowseController :
                 // Persistent 90-day no-repeat window, across app restarts and
                 // extension mirrors. Manual refresh may return fewer than nine
                 // rather than repeating the same comics when sources are sparse.
-                val priorTitles =
+                val priorTitles = if (recoverPickedForYouFromSourceChange) {
+                    // XOXO's old recommendations may be mirrored by other
+                    // working sources. Treat this as source recovery rather
+                    // than manual 90-day title rotation.
+                    emptySet()
+                } else {
                     discoverCacheContext?.let(InkShelfRecommendationHistory::recentTitles).orEmpty() +
                         pendingPickedForYouExclusions
+                }
                 val freshCandidates = uniqueCandidates.filterNot { candidate ->
                     InkShelfRecommendationHistory.titleKey(candidate.manga.title) in priorTitles
                 }
@@ -1245,6 +1251,7 @@ class BrowseController :
                 // The exclusion list and seed apply to one manual refresh only.
                 pendingPickedForYouExclusions = emptySet()
                 pendingPickedForYouRefreshSeed = 0L
+                recoverPickedForYouFromSourceChange = false
 
                 withUIContext {
                     pickedForYouFingerprint = tasteFingerprint
@@ -2779,6 +2786,7 @@ class BrowseController :
         private var startupPickedForYouPrewarmInProgress = false
         private var pendingPickedForYouExclusions: Set<String> = emptySet()
         private var pendingPickedForYouRefreshSeed: Long = 0L
+        private var recoverPickedForYouFromSourceChange = false
         private var cachedTrendingItems: List<DiscoverRecommendation> = emptyList()
         private var cachedNewThisWeekItems: List<DiscoverRecommendation> = emptyList()
         private var cachedRecentlyUpdatedItems: List<DiscoverRecommendation> = emptyList()
@@ -2796,21 +2804,23 @@ class BrowseController :
         internal suspend fun refreshPickedForYouForInkShelf2(
             context: Context,
             force: Boolean = false,
+            sourceChangeRecovery: Boolean = false,
         ): Boolean {
             val controller = BrowseController()
             controller.discoverCacheContext = context.applicationContext
             return try {
                 if (force) {
-                    // Old builds persisted a recommendation batch but not its
-                    // rotation history. Remember that visible batch before
-                    // generating replacements, including on a fresh process.
-                    val previous = InkShelfDiscoverCache.load(
-                        context,
-                        InkShelfDiscoverCache.Section.PICKED_FOR_YOU,
-                        Injekt.get<DatabaseHelper>(),
-                    )
-                    InkShelfRecommendationHistory.record(context, previous)
-                    requestPickedForYouRefresh()
+                    if (!sourceChangeRecovery) {
+                        // Manual Refresh Picks keeps the normal 90-day title
+                        // rotation; automatic extension recovery does not.
+                        val previous = InkShelfDiscoverCache.load(
+                            context,
+                            InkShelfDiscoverCache.Section.PICKED_FOR_YOU,
+                            Injekt.get<DatabaseHelper>(),
+                        )
+                        InkShelfRecommendationHistory.record(context, previous)
+                    }
+                    requestPickedForYouRefresh(sourceChangeRecovery)
                 }
                 val result = CompletableDeferred<List<DiscoverRecommendation>>()
                 controller.loadPickedForYou(background = true) { items ->
@@ -2864,14 +2874,14 @@ class BrowseController :
             }
         }
 
-        internal fun requestPickedForYouRefresh() {
-            // Remember the current shelf before clearing it. The next generation pass will
-            // avoid these titles wherever the candidate pool makes that possible.
-            pendingPickedForYouExclusions =
+        internal fun requestPickedForYouRefresh(sourceChangeRecovery: Boolean = false) {
+            // Rebuild with the currently enabled sources. An extension-pause
+            // recovery must not exclude the same editions on healthy mirrors.
+            recoverPickedForYouFromSourceChange = sourceChangeRecovery
+            pendingPickedForYouExclusions = if (sourceChangeRecovery) emptySet() else {
                 cachedPickedForYouItems
-                    .map { item ->
-                        normalizePickedForYouTitle(item.manga.title)
-                    }.toSet()
+                    .map { item -> normalizePickedForYouTitle(item.manga.title) }.toSet()
+            }
 
             pendingPickedForYouRefreshSeed = System.nanoTime()
 
