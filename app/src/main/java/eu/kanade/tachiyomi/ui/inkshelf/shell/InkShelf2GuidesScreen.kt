@@ -78,6 +78,7 @@ internal fun InkShelf2GuidesScreen(
     var guideFilter by rememberSaveable { mutableStateOf("All") }
     var remoteResults by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
+    var featured by remember { mutableStateOf<List<InkShelf2FeaturedGuide>>(emptyList()) }
     val connected = InkShelf2GuidesData.configured(context)
     // Local hits appear immediately; server search extends beyond the first
     // page of events. Cancellation prevents stale results replacing new ones.
@@ -117,6 +118,22 @@ internal fun InkShelf2GuidesScreen(
             // Guides must never interfere with the existing comic engine.
         } finally {
             loading = false
+        }
+    }
+
+    // Curated real crossover guides can sit beyond Metron's first catalogue
+    // page. Cache results and preserve the generic hero as a safe fallback.
+    LaunchedEffect(loading, guides, connected) {
+        if (!loading && connected) {
+            try {
+                InkShelf2FeaturedGuides.load(context, guides) { resolved ->
+                    featured = resolved
+                }
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                // The regular guide shelves continue to work if discovery fails.
+            }
         }
     }
 
@@ -181,14 +198,22 @@ internal fun InkShelf2GuidesScreen(
             )
         }
         item(key = "guides-hero") {
-            InkShelf2GuidesHero(
-                guideCount = guides.size,
-                startedCount = started.size,
-                onExplore = {
-                    if (guides.isNotEmpty()) openGuide(continuation ?: popular.first())
-                    else onMetronSettings()
-                },
-            )
+            if (featured.isNotEmpty()) {
+                InkShelf2FeaturedGuidesHero(
+                    featured = featured,
+                    started = started,
+                    onOpenGuide = openGuide,
+                )
+            } else {
+                InkShelf2GuidesHero(
+                    guideCount = guides.size,
+                    startedCount = started.size,
+                    onExplore = {
+                        if (guides.isNotEmpty()) openGuide(continuation ?: popular.first())
+                        else onMetronSettings()
+                    },
+                )
+            }
         }
         item(key = "guides-search-and-filters") {
             Column(

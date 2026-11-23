@@ -83,6 +83,34 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun guidesHeroPrefersRealNamedEventsOverSimilarSequels() {
+        fun guide(id: Int, title: String, publisher: String) = InkShelf2Guide(
+            id = id,
+            name = title,
+            type = "EVENT",
+            author = "test",
+            attribution = "",
+            rating = 0.0,
+            publisher = publisher,
+        )
+        val available = listOf(
+            guide(1, "Civil War II", "marvel"),
+            guide(2, "Civil War (2006)", "marvel"),
+            guide(3, "Secret Wars (2015)", "marvel"),
+            guide(4, "Crisis on Infinite Earths", "dc"),
+            guide(5, "Knightfall", "dc"),
+            guide(6, "Absolute Power", "dc"),
+        )
+        val featured = InkShelf2FeaturedGuides.match(available)
+        assertEquals(
+            listOf("Civil War", "Secret Wars", "Absolute Power", "Knightfall", "Crisis on Infinite Earths"),
+            featured.map { it.label },
+        )
+        assertEquals(2, featured.first().guide.id)
+        assertFalse(featured.any { it.guide.id == 1 })
+    }
+
+    @Test
     fun emptyAndAmbiguousTitlesDoNotProduceResults() {
         assertEquals(null, InkShelf2PulseMatcher.searchTerm("???"))
         assertTrue(InkShelf2PulseMatcher.related("???", listOf(item("comics news"))).isEmpty())
