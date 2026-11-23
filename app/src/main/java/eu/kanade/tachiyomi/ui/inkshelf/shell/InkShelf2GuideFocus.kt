@@ -98,7 +98,9 @@ internal object InkShelf2GuideFocus {
         guides.distinctBy { it.id }.filter { identify(it)?.let { event ->
             era == null || event.era == era
         } == true }.sortedWith(
-            compareBy<InkShelf2Guide> { g -> events.indexOf(identify(g)) }
+            compareBy<InkShelf2Guide> { g ->
+                identify(g)?.let { event -> events.indexOf(event) } ?: Int.MAX_VALUE
+            }
                 .thenByDescending { it.rating },
         ).distinctBy { identify(it)?.let { e -> e.publisher + ":" + e.title + ":" + e.year } }
 
