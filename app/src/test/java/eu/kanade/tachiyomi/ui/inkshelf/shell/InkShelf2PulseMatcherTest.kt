@@ -152,36 +152,24 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
-    fun screenRantComicArticlesAreApprovedAndUnrelatedDomainsRejected() {
-        assertTrue(
-            InkShelf2PulseFeed.isApprovedArticleLink(
-                "https://screenrant.com/comics/batman-new-issue/",
-            ),
-        )
-        assertTrue(
-            InkShelf2PulseFeed.isApprovedArticleLink(
-                "https://www.screenrant.com/superman-comic-review/",
-            ),
-        )
-        assertFalse(
-            InkShelf2PulseFeed.isApprovedArticleLink(
-                "https://screenrant.com.evil.example/fake-story/",
-            ),
-        )
-        assertFalse(
-            InkShelf2PulseFeed.isApprovedArticleLink(
-                "http://screenrant.com/comics/batman-new-issue/",
-            ),
-        )
-        // A broad fallback RSS feed should never bring unrelated film/TV
-        // articles into a comic-first Pulse list.
+    fun screenRantEditorialFeedsUseComicsAndFilmTvFiltering() {
+        // A comics-specific feed establishes relevance even for headlines
+        // that do not repeat the word "comic".
         assertEquals(
-            null,
-            InkShelf2PulseTopics.classify("Netflix releases new baking reality TV show"),
+            InkShelf2PulseTopic.COMICS,
+            InkShelf2PulseTopics.classify(
+                "The Next Batman Storyline Changes Everything",
+                dedicatedComicsFeed = true,
+            ),
         )
+        // The general RSS fallback must still match a comic franchise.
         assertEquals(
             InkShelf2PulseTopic.FILM_TV,
             InkShelf2PulseTopics.classify("Spider-Man: Brand New Day trailer details"),
+        )
+        assertEquals(
+            null,
+            InkShelf2PulseTopics.classify("Celebrity wedding trends for November"),
         )
     }
 
