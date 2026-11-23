@@ -1,151 +1,181 @@
 {
-  "schema": 1,
+  "schema": 2,
   "updated_at": "2026-11-23",
-  "notes": "Editorially selected series from verified Marvel and DC announcements; update this file to refresh InkShelf Spotlight without an APK rebuild. Keep year and official URL accurate. Remove expired features.",
-  "features": [
+  "description": "Three editorial event spotlights. Change the event order, summary, or series lineup here without a new APK. Each series searches a single preferred extension (BatCave if installed).",
+  "events": [
     {
-      "id": "midnight-xmen",
-      "title": "Midnight X-Men",
-      "year": 2026,
+      "id": "marvel-midnight",
+      "title": "MARVEL MIDNIGHT",
       "publisher": "Marvel",
-      "label": "MIDNIGHT UNIVERSE",
-      "caption": "A bold new X-Men world",
-      "release_date": "2026-10-07",
+      "label": "THE MIDNIGHT UNIVERSE",
+      "summary": "A terrifying new Marvel Universe reimagines familiar heroes through a darker, horror-infused lens. Three interconnected series launched together on 7 October 2026: Midnight X-Men, Midnight Spider-Man and Midnight Fantastic Four.",
+      "official_url": "https://www.marvel.com/midnight",
       "featured_from": "2026-11-01",
-      "expires": "2027-05-31",
-      "official_url": "https://www.marvel.com/articles/comics/midnight-universe-series-announcement-fall-2026"
+      "expires": "2027-12-31",
+      "pulse_keywords": [
+        "midnight universe",
+        "midnight x-men",
+        "midnight spider-man",
+        "midnight fantastic four",
+        "marvel midnight"
+      ],
+      "series": [
+        {
+          "id": "xmen",
+          "title": "Midnight X-Men",
+          "year": 2026,
+          "tagline": "The X-Men fight to survive a terrifying new Marvel world."
+        },
+        {
+          "id": "spiderman",
+          "title": "Midnight Spider-Man",
+          "year": 2026,
+          "tagline": "A dark and unsettling transformation of Spider-Man."
+        },
+        {
+          "id": "fantastic-four",
+          "title": "Midnight Fantastic Four",
+          "year": 2026,
+          "tagline": "Marvel's First Family faces a twisted new reality."
+        }
+      ]
     },
     {
-      "id": "absolute-batman",
-      "title": "Absolute Batman",
-      "year": 2024,
+      "id": "dc-absolute",
+      "title": "DC ABSOLUTE UNIVERSE",
       "publisher": "DC",
-      "label": "ABSOLUTE UNIVERSE",
-      "caption": "DC's reimagined Dark Knight",
-      "release_date": "2024-10-09",
+      "label": "DC ALL IN",
+      "summary": "DC's Absolute Universe reinvents familiar superheroes in a world of new origins and dangers. Explore the main Batman, Superman and Wonder Woman titles, then the expanded line including Flash, Green Lantern, Martian Manhunter, Green Arrow and Catwoman.",
+      "official_url": "https://www.dc.com/allin",
       "featured_from": "2026-11-01",
-      "expires": "2027-06-30",
-      "official_url": "https://www.dc.com/allin"
+      "expires": "2027-12-31",
+      "pulse_keywords": [
+        "absolute universe",
+        "absolute batman",
+        "absolute superman",
+        "absolute wonder woman",
+        "absolute flash",
+        "absolute green lantern",
+        "absolute martian manhunter",
+        "absolute green arrow",
+        "absolute catwoman",
+        "absolute justice"
+      ],
+      "series": [
+        {
+          "id": "batman",
+          "title": "Absolute Batman",
+          "year": 2024,
+          "tagline": "A radically reimagined Dark Knight."
+        },
+        {
+          "id": "superman",
+          "title": "Absolute Superman",
+          "year": 2024,
+          "tagline": "A different world for the Man of Steel."
+        },
+        {
+          "id": "wonder-woman",
+          "title": "Absolute Wonder Woman",
+          "year": 2024,
+          "tagline": "Diana enters the Absolute Universe."
+        },
+        {
+          "id": "flash",
+          "title": "Absolute Flash",
+          "year": 2025,
+          "tagline": "The Scarlet Speedster, reinvented."
+        },
+        {
+          "id": "green-lantern",
+          "title": "Absolute Green Lantern",
+          "year": 2025,
+          "tagline": "A new light and an unsettling mystery."
+        },
+        {
+          "id": "martian-manhunter",
+          "title": "Absolute Martian Manhunter",
+          "year": 2025,
+          "tagline": "A visionary science-fiction take on J'onn."
+        },
+        {
+          "id": "green-arrow",
+          "title": "Absolute Green Arrow",
+          "year": 2026,
+          "tagline": "A dark murder mystery set in the Absolute world."
+        },
+        {
+          "id": "catwoman",
+          "title": "Absolute Catwoman",
+          "year": 2026,
+          "tagline": "Selina Kyle joins the growing Absolute line."
+        }
+      ]
     },
     {
-      "id": "midnight-spiderman",
-      "title": "Midnight Spider-Man",
-      "year": 2026,
+      "id": "marvel-ultimate",
+      "title": "ULTIMATE UNIVERSE",
       "publisher": "Marvel",
-      "label": "MIDNIGHT UNIVERSE",
-      "caption": "A darker take on Spider-Man",
-      "release_date": "2026-10-07",
+      "label": "MARVEL'S NEW ULTIMATE ERA",
+      "summary": "Marvel's modern Ultimate Universe began with new versions of Spider-Man, Black Panther, the X-Men and the Ultimates. Follow their connected stories and the return of the Maker through Ultimate Endgame and Ultimate Universe: Finale.",
+      "official_url": "https://share.marvel.com/comics/discover/2529/ultimate-endgame",
       "featured_from": "2026-11-01",
-      "expires": "2027-05-31",
-      "official_url": "https://www.marvel.com/articles/comics/midnight-universe-series-announcement-fall-2026"
-    },
-    {
-      "id": "teen-titans",
-      "title": "Teen Titans",
-      "year": 2026,
-      "publisher": "DC",
-      "label": "DC NEXT LEVEL",
-      "caption": "A new generation of Titans",
-      "release_date": "2026-09-02",
-      "featured_from": "2026-11-01",
-      "expires": "2027-04-30",
-      "official_url": "https://www.dc.com/blog/2026-06-17/dc-announces-three-new-next-level-comic-book-series"
-    },
-    {
-      "id": "avengers",
-      "title": "Avengers",
-      "year": 2026,
-      "publisher": "Marvel",
-      "label": "NEW MARVEL ERA",
-      "caption": "A new Avengers team rises",
-      "release_date": "2026-11-01",
-      "featured_from": "2026-11-01",
-      "expires": "2027-06-30",
-      "official_url": "https://www.marvel.com/articles/comics/avengers-1-assembles-earths-mightiest-survivors-november-2026"
-    },
-    {
-      "id": "doom-patrol",
-      "title": "The Doom Patrol",
-      "year": 2026,
-      "publisher": "DC",
-      "label": "DC NEXT LEVEL",
-      "caption": "The World's Strangest Heroes return",
-      "release_date": "2026-09-02",
-      "featured_from": "2026-11-01",
-      "expires": "2027-04-30",
-      "official_url": "https://www.dc.com/blog/2026-06-17/dc-announces-three-new-next-level-comic-book-series"
-    },
-    {
-      "id": "midnight-fantastic-four",
-      "title": "Midnight Fantastic Four",
-      "year": 2026,
-      "publisher": "Marvel",
-      "label": "MIDNIGHT UNIVERSE",
-      "caption": "A sinister new Fantastic Four",
-      "release_date": "2026-10-07",
-      "featured_from": "2026-11-01",
-      "expires": "2027-05-31",
-      "official_url": "https://www.marvel.com/articles/comics/midnight-universe-series-announcement-fall-2026"
-    },
-    {
-      "id": "legion-super-heroes",
-      "title": "Legion of Super-Heroes",
-      "year": 2026,
-      "publisher": "DC",
-      "label": "DC NEXT LEVEL",
-      "caption": "The Legion enters a new era",
-      "release_date": "2026-09-02",
-      "featured_from": "2026-11-01",
-      "expires": "2027-04-30",
-      "official_url": "https://www.dc.com/blog/2026-06-17/dc-announces-three-new-next-level-comic-book-series"
-    },
-    {
-      "id": "ultimate-finale",
-      "title": "Ultimate Universe: Finale",
-      "year": 2026,
-      "publisher": "Marvel",
-      "label": "ULTIMATE UNIVERSE",
-      "caption": "The closing chapter of the Ultimate saga",
-      "release_date": "2026-04-01",
-      "featured_from": "2026-11-01",
-      "expires": "2027-02-28",
-      "official_url": "https://share.marvel.com/comics/discover/2529/ultimate-endgame"
-    },
-    {
-      "id": "absolute-justice",
-      "title": "Absolute Justice",
-      "year": 2027,
-      "publisher": "DC",
-      "label": "COMING SOON",
-      "caption": "The first major Absolute crossover",
-      "release_date": "2027-04-07",
-      "featured_from": "2026-11-17",
-      "expires": "2027-08-31",
-      "official_url": "https://www.dc.com/blog/2026-11-17/dc-reveals-full-details-for-absolute-justice-2027"
-    },
-    {
-      "id": "static",
-      "title": "Static",
-      "year": 2027,
-      "publisher": "DC",
-      "label": "COMING SOON",
-      "caption": "DC's Next Level expands",
-      "release_date": "2027-02-24",
-      "featured_from": "2026-11-16",
-      "expires": "2027-06-30",
-      "official_url": "https://www.dc.com/blog/2026-11-16/static-batman-and-swamp-thing-take-dc-next-level-in-february-2027"
-    },
-    {
-      "id": "batman-shadow",
-      "title": "Batman: Shadow of the Bat",
-      "year": 2027,
-      "publisher": "DC",
-      "label": "COMING SOON",
-      "caption": "A new Batman series",
-      "release_date": "2027-02-24",
-      "featured_from": "2026-11-16",
-      "expires": "2027-06-30",
-      "official_url": "https://www.dc.com/blog/2026-11-16/static-batman-and-swamp-thing-take-dc-next-level-in-february-2027"
+      "expires": "2027-12-31",
+      "pulse_keywords": [
+        "ultimate universe",
+        "ultimate endgame",
+        "ultimate spider-man",
+        "ultimate black panther",
+        "ultimate x-men",
+        "ultimate wolverine",
+        "ultimates 2024",
+        "the ultimates",
+        "ultimate universe finale"
+      ],
+      "series": [
+        {
+          "id": "spiderman",
+          "title": "Ultimate Spider-Man",
+          "year": 2024,
+          "tagline": "Peter Parker starts an extraordinary new life."
+        },
+        {
+          "id": "black-panther",
+          "title": "Ultimate Black Panther",
+          "year": 2024,
+          "tagline": "A bold new story for Wakanda."
+        },
+        {
+          "id": "xmen",
+          "title": "Ultimate X-Men",
+          "year": 2024,
+          "tagline": "An unsettling new take on the X-Men."
+        },
+        {
+          "id": "ultimates",
+          "title": "Ultimates",
+          "year": 2024,
+          "tagline": "The heroes of this new universe assemble."
+        },
+        {
+          "id": "wolverine",
+          "title": "Ultimate Wolverine",
+          "year": 2025,
+          "tagline": "A dangerous new beginning for Wolverine."
+        },
+        {
+          "id": "endgame",
+          "title": "Ultimate Endgame",
+          "year": 2025,
+          "tagline": "The Maker returns for a climactic showdown."
+        },
+        {
+          "id": "finale",
+          "title": "Ultimate Universe: Finale",
+          "year": 2026,
+          "tagline": "The conclusion of the modern Ultimate saga."
+        }
+      ]
     }
   ]
 }

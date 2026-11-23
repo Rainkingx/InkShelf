@@ -111,22 +111,21 @@ internal fun InkShelf2DiscoverScreen(
     var refreshingPicks by remember { mutableStateOf(false) }
     var picksMessage by remember { mutableStateOf<String?>(null) }
     var autoAttempted by remember { mutableStateOf(false) }
-    var spotlightTarget by remember { mutableStateOf<InkShelf2Spotlight.Feature?>(null) }
-    var spotlightFeatures by remember { mutableStateOf(InkShelf2Spotlight.fallback()) }
+    var activeSpotlight by remember { mutableStateOf<InkShelf2Spotlight.Event?>(null) }
+    var spotlightEvents by remember { mutableStateOf(InkShelf2Spotlight.starter()) }
     var showOtherGuideEditions by remember(guideIssueTarget?.id) { mutableStateOf(false) }
     var attemptedAutoGuideMatch by remember(guideIssueTarget?.id) { mutableStateOf<String?>(null) }
     var foundQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
     LaunchedEffect(Unit) {
-        spotlightFeatures = InkShelf2Spotlight.load(context)
+        spotlightEvents = InkShelf2Spotlight.load(context)
     }
 
-    BackHandler(enabled = query.isNotBlank()) {
+    BackHandler(enabled = query.isNotBlank() && activeSpotlight == null) {
         query = ""
         activeQuery = ""
         found = null
         error = null
-        spotlightTarget = null
         keyboard?.hide()
     }
 
@@ -142,7 +141,7 @@ internal fun InkShelf2DiscoverScreen(
         searching = false
         showOtherGuideEditions = false
         attemptedAutoGuideMatch = null
-        spotlightTarget = null
+        activeSpotlight = null
         focusManager.clearFocus(force = true)
         keyboard?.hide()
         if (searchFocusToken > 0 && guideIssueTarget == null) {
@@ -160,22 +159,6 @@ internal fun InkShelf2DiscoverScreen(
             scroll.animateScrollToItem(1)
         }
     }
-    // Spotlight results are verified against the run year. Never silently open
-    // an unknown-year reboot, and never select a source when several match.
-    LaunchedEffect(found, foundQuery, spotlightTarget?.id, query) {
-        val target = spotlightTarget ?: return@LaunchedEffect
-        if (!foundQuery.equals(target.title, ignoreCase = true) ||
-            !query.trim().equals(target.title, ignoreCase = true)) return@LaunchedEffect
-        val verified = found?.results.orEmpty().filter {
-            InkShelf2Spotlight.edition(target, it.manga.title) ==
-                InkShelf2Spotlight.Edition.VERIFIED
-        }.distinctBy { it.manga.source.toString() + ":" + it.manga.url }
-        if (verified.size == 1) {
-            spotlightTarget = null
-            onOpenSearchResult(verified.single().manga)
-        }
-    }
-
     // Debounced live search; the keyboard's Search action also submits instantly.
     LaunchedEffect(query) {
         val cleaned = query.trim()
@@ -242,7 +225,7 @@ internal fun InkShelf2DiscoverScreen(
         .distinctBy { "${it.source}:${it.url}" }
     // The featured carousel has its own current, date-expiring publisher lineup.
     // Popular extension results remain below; they never define the hero.
-    val heroSpotlight = spotlightFeatures.take(8)
+    val heroSpotlight = spotlightEvents.take(3)
     val newest = discover?.newest.orEmpty()
         .filter { it.source in enabledSourceIds && !it.thumbnail_url.isNullOrBlank() }
         .distinctBy { "${it.source}:${it.url}" }
@@ -256,12 +239,11 @@ internal fun InkShelf2DiscoverScreen(
     }
     val heroPager = rememberPagerState(pageCount = { heroSpotlight.size.coerceAtLeast(1) })
     val highQualityHeroArt = remember { mutableStateMapOf<String, String>() }
-    val heroKeys = heroSpotlight.map { it.id + ":" + it.year }
+    val heroKeys = heroSpotlight.map { it.id }
     LaunchedEffect(heroKeys) {
         heroSpotlight.forEach { feature ->
-            val key = feature.id + ":" + feature.year
-            val cover = InkShelf2HeroArtwork.findCover(context, feature.editionTitle)
-            if (cover != null) highQualityHeroArt[key] = cover
+            val cover = InkShelf2HeroArtwork.findCover(context, feature.leadSeries.editionTitle)
+            if (cover != null) highQualityHeroArt[feature.id] = cover
         }
     }
     // Swipe remains manual, but the editorial feature also advances gently.
@@ -319,6 +301,17 @@ internal fun InkShelf2DiscoverScreen(
         }
     }
 
+    activeSpotlight?.let { event ->
+        InkShelf2SpotlightEventScreen(
+            event = event,
+            sources = sources,
+            padding = padding,
+            onBack = { activeSpotlight = null },
+            onOpen = onOpenSearchResult,
+        )
+        return
+    }
+
     LazyColumn(
         state = scroll,
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
@@ -350,10 +343,7 @@ internal fun InkShelf2DiscoverScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     InkShelf2SearchField(
                         value = query,
-                        onValueChange = { next ->
-                            query = next
-                            if (spotlightTarget?.title != next.trim()) spotlightTarget = null
-                        },
+                        onValueChange = { query = it },
                         placeholderText = "Search all comic sources",
                         onSearch = {
                             activeQuery = query.trim().takeIf { it.length >= 2 }.orEmpty()
@@ -362,7 +352,7 @@ internal fun InkShelf2DiscoverScreen(
                         modifier = Modifier.weight(1f).focusRequester(focusRequester),
                     )
                     if (query.isNotBlank()) {
-                        IconButton(onClick = { query = ""; activeQuery = ""; found = null; spotlightTarget = null }) {
+                        IconButton(onClick = { query = ""; activeQuery = ""; found = null }) {
                             Icon(Icons.Outlined.Close, "Clear search", tint = InkShelf2Colors.Text)
                         }
                     }
@@ -399,26 +389,8 @@ internal fun InkShelf2DiscoverScreen(
                         }
                         Spacer(Modifier.height(5.dp))
                     }
-                    if (spotlightTarget != null && guideIssueTarget == null) {
-                        Text("SPOTLIGHT · " + spotlightTarget!!.publisher.uppercase(),
-                            color = InkShelf2Colors.AccentLight,
-                            fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text("Find " + spotlightTarget!!.editionTitle,
-                            color = InkShelf2Colors.Text, fontSize = 19.sp,
-                            fontWeight = FontWeight.Bold)
-                        Text("Verified publication year first. If your extensions don't label the year, choose carefully.",
-                            color = InkShelf2Colors.Muted, fontSize = 12.sp)
-                        TextButton(onClick = {
-                            val link = android.content.Intent(android.content.Intent.ACTION_VIEW,
-                                android.net.Uri.parse(spotlightTarget!!.officialUrl))
-                            runCatching { context.startActivity(link) }
-                        }) {
-                            Text("Official publisher announcement", color = InkShelf2Colors.AccentLight)
-                        }
-                    } else {
-                        Text("Search Installed Sources", color = InkShelf2Colors.Text,
-                            fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Text("Search Installed Sources", color = InkShelf2Colors.Text,
+                        fontSize = 19.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(5.dp))
                     when {
                         sources.isEmpty() -> Text(
@@ -477,25 +449,9 @@ internal fun InkShelf2DiscoverScreen(
                         InkShelf2GuideEdition.Match.OTHER_TITLE,
                     )
                 }
-            val spotlightResults = if (guideIssueTarget != null || spotlightTarget == null)
-                emptyList() else comics.filter {
-                    InkShelf2Spotlight.edition(spotlightTarget!!, it.manga.title) !=
-                        InkShelf2Spotlight.Edition.DIFFERENT_RUN
-                }.sortedBy {
-                    if (InkShelf2Spotlight.edition(spotlightTarget!!, it.manga.title) ==
-                        InkShelf2Spotlight.Edition.VERIFIED) 0 else 1
-                }
-            val visibleComics = when {
-                guideIssueTarget != null -> matchedEditions + unverifiedEditions +
+            val visibleComics = if (guideIssueTarget == null) comics else
+                matchedEditions + unverifiedEditions +
                     (if (showOtherGuideEditions) otherEditions else emptyList())
-                spotlightTarget != null -> spotlightResults
-                else -> comics
-            }
-            if (spotlightTarget != null && comics.isNotEmpty() && spotlightResults.isEmpty()) {
-                item(key = "spotlight-no-matching-edition") {
-                    InkShelf2EmptyShelf("Sources returned comics, but none matched this exact series. Older runs are hidden.")
-                }
-            }
             if (guideIssueTarget != null && comics.isNotEmpty()) {
                 item(key = "guide-edition-totals") {
                     Text(
@@ -510,9 +466,7 @@ internal fun InkShelf2DiscoverScreen(
             }
             if (!searching && error == null && comics.isEmpty() && query.length >= 2 && found != null) {
                 item(key = "search-empty") {
-                    InkShelf2EmptyShelf(if (spotlightTarget != null)
-                        "No edition found for this spotlight in your enabled sources. See the publisher announcement or try another source."
-                        else "No matches from your installed sources. Try a different title.")
+                    InkShelf2EmptyShelf("No matches from your installed sources. Try a different title.")
                 }
             }
             if (guideIssueTarget != null &&
@@ -627,23 +581,16 @@ internal fun InkShelf2DiscoverScreen(
                         pageSpacing = 10.dp,
                     ) { index ->
                         val feature = heroSpotlight[index]
-                        val heroKey = feature.id + ":" + feature.year
-                        val enhancedUrl = highQualityHeroArt[heroKey]
+                        val enhancedUrl = highQualityHeroArt[feature.id]
                         var enhancedImageFailed by remember(enhancedUrl) { mutableStateOf(false) }
                         Box(
                             modifier = Modifier.fillMaxWidth().height(194.dp)
                                 .clip(RoundedCornerShape(17.dp))
                                 .background(InkShelf2Colors.SurfaceRaised)
                                 .clickable {
-                                    spotlightTarget = feature
-                                    query = feature.title
-                                    activeQuery = feature.title
-                                    found = null
-                                    foundQuery = ""
-                                    error = null
+                                    activeSpotlight = feature
                                     focusManager.clearFocus(force = true)
                                     keyboard?.hide()
-                                    scope.launch { scroll.animateScrollToItem(1) }
                                 },
                         ) {
                             // Metron cover art loads independently of extensions. A missing
@@ -689,12 +636,8 @@ internal fun InkShelf2DiscoverScreen(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 Spacer(Modifier.height(5.dp))
-                                Text(feature.caption, color = Color.White.copy(alpha = 0.9f),
-                                    fontSize = 11.sp, maxLines = 2)
-                                Spacer(Modifier.height(5.dp))
-                                Text(if (feature.isUpcoming(InkShelf2Spotlight.utcToday()))
-                                    "COMING SOON · EXPLORE SERIES" else "EXPLORE THIS RUN",
-                                    color = InkShelf2Colors.AccentLight, fontSize = 10.sp,
+                                Text(feature.series.size.toString() + " SERIES · EXPLORE THE UNIVERSE",
+                                    color = InkShelf2Colors.AccentLight, fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold)
                             }
                         }
