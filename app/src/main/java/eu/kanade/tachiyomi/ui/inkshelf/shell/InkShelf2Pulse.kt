@@ -57,13 +57,16 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import org.xmlpull.v1.XmlPullParser
 import java.net.HttpURLConnection
 import java.net.URL
+import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -135,8 +138,8 @@ internal object InkShelf2PulseFeed {
         val now = System.currentTimeMillis()
         val existing = readCached(context)
         val checkedAt = prefs.getLong("checked_at", 0L)
-        // Version bump loads new publishers on first launch after update.
-        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 3)
+        // Version bump refreshes image metadata after installing the update.
+        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 4)
             return@withLock existing
 
         // Pull each independent feed concurrently so a slow/blocked source
@@ -152,15 +155,18 @@ internal object InkShelf2PulseFeed {
             }.awaitAll()
         }
 
-        // Keep all publisher voices visible before balancing 60/25/15 topics.
-        val news = InkShelf2PulseTopics.mix(balance(newsByPublisher, 100), 36)
+        // Fetch only missing artwork metadata for a few real Bleeding Cool
+        // articles. This is bounded and optional; never block other publishers.
+        val publisherNews = balance(newsByPublisher, 100)
+        val hydratedNews = hydrateBleedingCoolArtwork(publisherNews)
+        val news = InkShelf2PulseTopics.mix(hydratedNews, 36)
         val videos = balance(videosByChannel, 12)
         val entries = (
             (if (news.isNotEmpty()) news else existing.filterNot { it.isVideo }) +
             (if (videos.isNotEmpty()) videos else existing.filter { it.isVideo })
         ).distinctBy { it.url }
 
-        prefs.edit().putLong("checked_at", now).putInt("feed_version", 3).apply()
+        prefs.edit().putLong("checked_at", now).putInt("feed_version", 4).apply()
         if (entries.isNotEmpty()) {
             val output = JSONArray()
             entries.forEach { article ->
@@ -281,7 +287,7 @@ internal object InkShelf2PulseFeed {
                                     tag == "category" -> categories += parser.nextText().trim()
                                     tag == "description" || tag == "encoded" || tag == "summary" -> {
                                         val body = parser.nextText()
-                                        if (image == null) image = firstFeedImage(body)
+                                        if (image == null) image = InkShelf2PulseImages.fromFeedHtml(body)
                                     }
                                     tag == "thumbnail" || tag == "enclosure" ||
                                         tag == "content" || tag == "image" -> {
@@ -390,6 +396,76 @@ internal object InkShelf2PulseFeed {
         }
     }
 
+    /**
+     * Bleeding Cool's feed may omit featured images. For up to eight recent
+     * Bleeding Cool articles with no RSS image, read publisher metadata only.
+     * Never fetch or cache the article body, and never guess cover art.
+     */
+    private suspend fun hydrateBleedingCoolArtwork(
+        news: List<InkShelf2PulseArticle>,
+    ): List<InkShelf2PulseArticle> = coroutineScope {
+        val candidates = news.withIndex().filter { (_, article) ->
+            article.publisher == "Bleeding Cool" && article.imageUrl.isNullOrBlank()
+        }.take(8)
+        if (candidates.isEmpty()) return@coroutineScope news
+
+        val limiter = Semaphore(3)
+        val artwork = candidates.map { (index, article) ->
+            async(Dispatchers.IO) {
+                index to limiter.withPermit {
+                    try {
+                        fetchBleedingCoolFeaturedImage(article.url)
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            }
+        }.awaitAll().toMap()
+        news.mapIndexed { index, article ->
+            artwork[index]?.let { article.copy(imageUrl = it) } ?: article
+        }
+    }
+
+    private fun fetchBleedingCoolFeaturedImage(articleUrl: String): String? {
+        if (!isApprovedArticleLink(articleUrl)) return null
+        val host = Uri.parse(articleUrl).host.orEmpty().lowercase(Locale.ROOT)
+        if (host != "bleedingcool.com" && !host.endsWith(".bleedingcool.com")) return null
+
+        val connection = (URL(articleUrl).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 3_500
+            readTimeout = 4_000
+            setRequestProperty("Accept", "text/html")
+            setRequestProperty("User-Agent", "InkShelf/2.0 publisher metadata reader")
+        }
+        try {
+            if (connection.responseCode !in 200..299 ||
+                !connection.contentType.orEmpty().contains("text/html", ignoreCase = true)
+            ) return null
+            val finalHost = connection.url.host.orEmpty().lowercase(Locale.ROOT)
+            if (finalHost != "bleedingcool.com" &&
+                !finalHost.endsWith(".bleedingcool.com")
+            ) return null
+
+            // Open Graph metadata is in the HTML head. Limit all reads to
+            // 192 KiB so missing/broken pages never consume large downloads.
+            val html = StringBuilder()
+            connection.inputStream.reader(StandardCharsets.UTF_8).use { reader ->
+                val buffer = CharArray(4_096)
+                while (html.length < 192 * 1_024) {
+                    val count = reader.read(buffer, 0, minOf(buffer.size, 192 * 1_024 - html.length))
+                    if (count < 0) break
+                    html.append(buffer, 0, count)
+                    if (html.contains("</head>", ignoreCase = true)) break
+                }
+            }
+            return InkShelf2PulseImages.fromArticleMetadata(html.toString(), articleUrl)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     private fun openFeed(url: String): HttpURLConnection {
         return (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 6_000
@@ -397,27 +473,6 @@ internal object InkShelf2PulseFeed {
             setRequestProperty("User-Agent", "InkShelf/2.0 RSS reader")
             setRequestProperty("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml")
         }
-    }
-
-    // WordPress feeds often put a full <img> inside description or
-    // content:encoded rather than providing a media:thumbnail element.
-    // Read only the first publisher-supplied image; do not scrape web pages.
-    private fun firstFeedImage(html: String): String? {
-        val tags = Regex("<img\\b[^>]*>", RegexOption.IGNORE_CASE).findAll(html)
-        val sources = listOf("src", "data-src", "data-lazy-src", "data-original")
-        for (tag in tags) {
-            for (attr in sources) {
-                val matcher = Regex("\\b" + attr + "\\s*=\\s*[\"']([^\"']+)[\"']", RegexOption.IGNORE_CASE)
-                val candidate = matcher.find(tag.value)?.groupValues?.getOrNull(1) ?: continue
-                val normalised = normaliseImageUrl(candidate)
-                if (validHttps(normalised) &&
-                    !normalised.contains("gravatar", ignoreCase = true) &&
-                    !normalised.contains("pixel", ignoreCase = true) &&
-                    !normalised.startsWith("data:", ignoreCase = true)
-                ) return normalised
-            }
-        }
-        return null
     }
 
     private fun normaliseImageUrl(value: String): String =
