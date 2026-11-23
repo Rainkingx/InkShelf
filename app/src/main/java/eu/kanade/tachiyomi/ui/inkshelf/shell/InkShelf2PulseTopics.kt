@@ -38,6 +38,47 @@ internal object InkShelf2PulseTopics {
     }
 
     /**
+     * Marvel's general official RSS includes comic releases, film and TV
+     * stories, and unrelated games/merchandise. Source provenance verifies
+     * the brand, but does not make every headline comic news.
+     */
+    fun classifyOfficialMarvel(title: String, rssCategories: String = ""): InkShelf2PulseTopic? {
+        val normal = classify(title, rssCategories)
+        if (normal != null) return normal
+        val lower = title.lowercase(Locale.ROOT)
+        if (unrelated.containsMatchIn(lower) ||
+            Regex("""\b(?:merch|toys?|collectibles?|shopping|store|sale|giveaway)\b""")
+                .containsMatchIn(lower)
+        ) return null
+        return if (screenContext.containsMatchIn(lower) ||
+            Regex("""\b(?:visionquest|wandavision|agatha all along|moon knight|loki|what if|echo)\b""")
+                .containsMatchIn(lower)
+        ) InkShelf2PulseTopic.FILM_TV else null
+    }
+
+    /**
+     * Keep the existing Screen Rant position, then give one verified Marvel
+     * Official headline a slot within the first six articles when available.
+     * Missing/blocked feeds create no placeholder or invented news.
+     */
+    fun promoteOfficialNews(news: List<InkShelf2PulseArticle>): List<InkShelf2PulseArticle> {
+        val promoted = promoteScreenRant(news)
+        if (promoted.size < 3 || promoted.none { it.publisher == "Marvel Official" }) {
+            return promoted
+        }
+        val targetIndex = minOf(4, promoted.lastIndex)
+        if (promoted.take(targetIndex + 1).any { it.publisher == "Marvel Official" }) {
+            return promoted
+        }
+        val next = (targetIndex + 1 until promoted.size)
+            .firstOrNull { promoted[it].publisher == "Marvel Official" }
+            ?: return promoted
+        return promoted.toMutableList().apply {
+            add(targetIndex, removeAt(next))
+        }
+    }
+
+    /**
      * Approximate 60% comics, 25% film/TV and 15% industry when available.
      * Missing topics fill with genuine items rather than leaving blank slots.
      * Input order stays publisher-balanced; the buckets preserve that order.
