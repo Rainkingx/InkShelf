@@ -64,10 +64,14 @@ internal object InkShelf2HeroArtwork {
      * retrieved in a single request instead of loading entire issue lists.
      * Successful URLs are cached on the device and loaded by Coil's disk cache.
      */
-    suspend fun findCover(context: Context, manga: Manga): String? = withContext(Dispatchers.IO) {
-        val name = titleWithoutYear(manga.title)
+    suspend fun findCover(context: Context, manga: Manga): String? =
+        findCover(context, manga.title)
+
+    /** Editorial series do not need a synthetic database Manga just to load an issue cover. */
+    suspend fun findCover(context: Context, seriesTitle: String): String? = withContext(Dispatchers.IO) {
+        val name = titleWithoutYear(seriesTitle)
         if (name.length < 3) return@withContext null
-        val startYear = publicationYear(manga.title)
+        val startYear = publicationYear(seriesTitle)
         val key = normalized(name) + "|" + (startYear?.toString() ?: "?")
         val appContext = context.applicationContext
         val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

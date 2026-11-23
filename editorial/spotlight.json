@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "updated_at": "2026-11-23",
+  "notes": "Editorially selected series from verified Marvel and DC announcements; update this file to refresh InkShelf Spotlight without an APK rebuild. Keep year and official URL accurate. Remove expired features.",
+  "features": [
+    {
+      "id": "midnight-xmen",
+      "title": "Midnight X-Men",
+      "year": 2026,
+      "publisher": "Marvel",
+      "label": "MIDNIGHT UNIVERSE",
+      "caption": "A bold new X-Men world",
+      "release_date": "2026-10-07",
+      "featured_from": "2026-11-01",
+      "expires": "2027-05-31",
+      "official_url": "https://www.marvel.com/articles/comics/midnight-universe-series-announcement-fall-2026"
+    },
+    {
+      "id": "absolute-batman",
+      "title": "Absolute Batman",
+      "year": 2024,
+      "publisher": "DC",
+      "label": "ABSOLUTE UNIVERSE",
+      "caption": "DC's reimagined Dark Knight",
+      "release_date": "2024-10-09",
+      "featured_from": "2026-11-01",
+      "expires": "2027-06-30",
+      "official_url": "https://www.dc.com/allin"
+    },
+    {
+      "id": "midnight-spiderman",
+      "title": "Midnight Spider-Man",
+      "year": 2026,
+      "publisher": "Marvel",
+      "label": "MIDNIGHT UNIVERSE",
+      "caption": "A darker take on Spider-Man",
+      "release_date": "2026-10-07",
+      "featured_from": "2026-11-01",
+      "expires": "2027-05-31",
+      "official_url": "https://www.marvel.com/articles/comics/midnight-universe-series-announcement-fall-2026"
+    },
+    {
+      "id": "teen-titans",
+      "title": "Teen Titans",
+      "year": 2026,
+      "publisher": "DC",
+      "label": "DC NEXT LEVEL",
+      "caption": "A new generation of Titans",
+      "release_date": "2026-09-02",
+      "featured_from": "2026-11-01",
+      "expires": "2027-04-30",
+      "official_url": "https://www.dc.com/blog/2026-06-17/dc-announces-three-new-next-level-comic-book-series"
+    },
+    {
+      "id": "avengers",
+      "title": "Avengers",
+      "year": 2026,
+      "publisher": "Marvel",
+      "label": "NEW MARVEL ERA",
+      "caption": "A new Avengers team rises",
+      "release_date": "2026-11-01",
+      "featured_from": "2026-11-01",
+      "expires": "2027-06-30",
+      "official_url": "https://www.marvel.com/articles/comics/avengers-1-assembles-earths-mightiest-survivors-november-2026"
+    },
+    {
+      "id": "doom-patrol",
+      "title": "The Doom Patrol",
+      "year": 2026,
+      "publisher": "DC",
+      "label": "DC NEXT LEVEL",
+      "caption": "The World's Strangest Heroes return",
+      "release_date": "2026-09-02",
+      "featured_from": "2026-11-01",
+      "expires": "2027-04-30",
+      "official_url": "https://www.dc.com/blog/2026-06-17/dc-announces-three-new-next-level-comic-book-series"
+    },
+    {
+      "id": "midnight-fantastic-four",
+      "title": "Midnight Fantastic Four",
+      "year": 2026,
+      "publisher": "Marvel",
+      "label": "MIDNIGHT UNIVERSE",
+      "caption": "A sinister new Fantastic Four",
+      "release_date": "2026-10-07",
+      "featured_from": "2026-11-01",
+      "expires": "2027-05-31",
+      "official_url": "https://www.marvel.com/articles/comics/midnight-universe-series-announcement-fall-2026"
+    },
+    {
+      "id": "legion-super-heroes",
+      "title": "Legion of Super-Heroes",
+      "year": 2026,
+      "publisher": "DC",
+      "label": "DC NEXT LEVEL",
+      "caption": "The Legion enters a new era",
+      "release_date": "2026-09-02",
+      "featured_from": "2026-11-01",
+      "expires": "2027-04-30",
+      "official_url": "https://www.dc.com/blog/2026-06-17/dc-announces-three-new-next-level-comic-book-series"
+    },
+    {
+      "id": "ultimate-finale",
+      "title": "Ultimate Universe: Finale",
+      "year": 2026,
+      "publisher": "Marvel",
+      "label": "ULTIMATE UNIVERSE",
+      "caption": "The closing chapter of the Ultimate saga",
+      "release_date": "2026-04-01",
+      "featured_from": "2026-11-01",
+      "expires": "2027-02-28",
+      "official_url": "https://share.marvel.com/comics/discover/2529/ultimate-endgame"
+    },
+    {
+      "id": "absolute-justice",
+      "title": "Absolute Justice",
+      "year": 2027,
+      "publisher": "DC",
+      "label": "COMING SOON",
+      "caption": "The first major Absolute crossover",
+      "release_date": "2027-04-07",
+      "featured_from": "2026-11-17",
+      "expires": "2027-08-31",
+      "official_url": "https://www.dc.com/blog/2026-11-17/dc-reveals-full-details-for-absolute-justice-2027"
+    },
+    {
+      "id": "static",
+      "title": "Static",
+      "year": 2027,
+      "publisher": "DC",
+      "label": "COMING SOON",
+      "caption": "DC's Next Level expands",
+      "release_date": "2027-02-24",
+      "featured_from": "2026-11-16",
+      "expires": "2027-06-30",
+      "official_url": "https://www.dc.com/blog/2026-11-16/static-batman-and-swamp-thing-take-dc-next-level-in-february-2027"
+    },
+    {
+      "id": "batman-shadow",
+      "title": "Batman: Shadow of the Bat",
+      "year": 2027,
+      "publisher": "DC",
+      "label": "COMING SOON",
+      "caption": "A new Batman series",
+      "release_date": "2027-02-24",
+      "featured_from": "2026-11-16",
+      "expires": "2027-06-30",
+      "official_url": "https://www.dc.com/blog/2026-11-16/static-batman-and-swamp-thing-take-dc-next-level-in-february-2027"
+    }
+  ]
+}
