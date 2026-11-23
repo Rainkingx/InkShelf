@@ -309,9 +309,24 @@ internal object InkShelf2PulseFeed {
                             } else if (insideItem) {
                                 when {
                                     tag == "title" -> title = parser.nextText().trim()
-                                    tag == "link" -> link = parser.nextText().trim()
-                                    tag == "pubdate" || tag == "published" -> date = parser.nextText().trim()
-                                    tag == "category" -> categories += parser.nextText().trim()
+                                    tag == "link" -> {
+                                        // Handle RSS text links and Atom alternate hrefs.
+                                        val href = parser.getAttributeValue(null, "href")
+                                        val rel = parser.getAttributeValue(null, "rel").orEmpty()
+                                        if (!href.isNullOrBlank() &&
+                                            (rel.isBlank() || rel == "alternate")
+                                        ) {
+                                            link = href.trim()
+                                        } else if (href == null) {
+                                            link = parser.nextText().trim()
+                                        }
+                                    }
+                                    tag == "pubdate" || tag == "published" || tag == "updated" ->
+                                        date = parser.nextText().trim()
+                                    tag == "category" -> {
+                                        val term = parser.getAttributeValue(null, "term")
+                                        categories += term?.trim() ?: parser.nextText().trim()
+                                    }
                                     tag == "description" || tag == "encoded" || tag == "summary" -> {
                                         val body = parser.nextText()
                                         if (image == null) image = InkShelf2PulseImages.fromFeedHtml(body)
