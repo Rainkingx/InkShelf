@@ -715,6 +715,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 },
                 onNotifications = { notificationsOpen = true },
                 onPulse = { openPulse() },
+                pulseActive = tab == InkShelf2Tab.HOME && pulseExpanded,
                 pulseHasNewStories = pulseHasNewStories,
                 notificationCount = extensionUpdates.size,
             ) { padding ->
