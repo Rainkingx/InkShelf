@@ -119,7 +119,7 @@ internal object InkShelf2PulseFeed {
         // headlines; this is not an API for comic issue/reader data.
         // If Marvel blocks requests, the other feeds still work.
         Publisher("Marvel Official", "marvel.com",
-            "https://www.marvel.com/rss/feed/"),
+            "https://www.marvel.com/rss/feed"),
         // Screen Rant's separate Comics and Comics News sections. If a feed
         // is blocked, all other publishers continue to load normally.
         Publisher("Screen Rant", "screenrant.com",
@@ -154,7 +154,7 @@ internal object InkShelf2PulseFeed {
         val existing = readCached(context)
         val checkedAt = prefs.getLong("checked_at", 0L)
         // Refresh on first launch after adding the official Marvel news feed.
-        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 6)
+        if (now - checkedAt in 0L until TTL_MS && prefs.getInt("feed_version", 0) >= 7)
             return@withLock existing
 
         // Pull each independent feed concurrently so a slow/blocked source
@@ -193,7 +193,7 @@ internal object InkShelf2PulseFeed {
             (if (videos.isNotEmpty()) videos else existing.filter { it.isVideo })
         ).distinctBy { it.url }
 
-        prefs.edit().putLong("checked_at", now).putInt("feed_version", 6).apply()
+        prefs.edit().putLong("checked_at", now).putInt("feed_version", 7).apply()
         if (entries.isNotEmpty()) {
             val output = JSONArray()
             entries.forEach { article ->
@@ -299,7 +299,7 @@ internal object InkShelf2PulseFeed {
                         XmlPullParser.START_TAG -> {
                             val rawName = parser.name.orEmpty().lowercase(Locale.ROOT)
                             val tag = rawName.substringAfterLast(':')
-                            if (tag == "item") {
+                            if (tag == "item" || tag == "entry") {
                                 insideItem = true
                                 title = ""
                                 link = ""
@@ -335,7 +335,9 @@ internal object InkShelf2PulseFeed {
                             }
                         }
                         XmlPullParser.END_TAG -> {
-                            if (parser.name.equals("item", ignoreCase = true) && insideItem) {
+                            if ((parser.name.equals("item", ignoreCase = true) ||
+                                    parser.name.equals("entry", ignoreCase = true)) && insideItem
+                            ) {
                                 if (title.isNotBlank() && isApprovedArticleLink(link)) {
                                     val cleanTitle = cleanText(title)
                                     val topic = InkShelf2PulseTopics.classify(
