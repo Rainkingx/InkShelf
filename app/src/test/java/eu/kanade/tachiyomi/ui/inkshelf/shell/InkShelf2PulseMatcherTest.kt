@@ -242,6 +242,7 @@ class InkShelf2PulseMatcherTest {
                 InkShelf2DcOfficialMetadata.targetFor("Batman (2025-)")!!.candidates,
         )
         assertEquals(null, InkShelf2DcOfficialMetadata.targetFor("New Avengers (2005-)"))
+        assertEquals(null, InkShelf2DcOfficialMetadata.targetFor("Absolute Carnage (2019-)"))
         assertEquals(null, InkShelf2DcOfficialMetadata.targetFor("Batman"))
     }
 
