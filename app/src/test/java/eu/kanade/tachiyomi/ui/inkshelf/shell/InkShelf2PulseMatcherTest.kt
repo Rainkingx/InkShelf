@@ -23,6 +23,41 @@ class InkShelf2PulseMatcherTest {
         )
 
     @Test
+    fun pulseExtractsRealPublisherImagesWithoutPickingTrackers() {
+        val feedHtml = """
+            &lt;div&gt;
+                &lt;img src="https://example.com/tracking-pixel.gif" /&gt;
+                &lt;img data-lazy-src="https://bleedingcool.com/wp-content/uploads/2026/11/cover.webp?width=640&amp;amp;quality=80" /&gt;
+            &lt;/div&gt;
+        """.trimIndent()
+        assertEquals(
+            "https://bleedingcool.com/wp-content/uploads/2026/11/cover.webp?width=640&quality=80",
+            InkShelf2PulseImages.fromFeedHtml(feedHtml),
+        )
+        val page = """
+            <html><head>
+                <meta property="og:title" content="Comic News">
+                <meta property="og:image" content="https://bleedingcool.com/wp-content/uploads/2026/11/featured.jpg?x=1&amp;y=2">
+                <meta name="twitter:image" content="https://bleedingcool.com/alternate.jpg">
+            </head></html>
+        """.trimIndent()
+        assertEquals(
+            "https://bleedingcool.com/wp-content/uploads/2026/11/featured.jpg?x=1&y=2",
+            InkShelf2PulseImages.fromArticleMetadata(
+                page, "https://bleedingcool.com/comics/example-story/",
+            ),
+        )
+        assertEquals(
+            null,
+            InkShelf2PulseImages.fromArticleMetadata(
+                """<meta property="og:image" content="http://bleedingcool.com/image.jpg">""",
+                "https://bleedingcool.com/comics/example-story/",
+            ),
+        )
+        assertEquals(null, InkShelf2PulseImages.fromFeedHtml("<p>Summary without pictures.</p>"))
+    }
+
+    @Test
     fun pulseSelectsComicNewsAndRelevantFilmTvButRejectsGeneralEntertainment() {
         assertEquals(
             InkShelf2PulseTopic.COMICS,
