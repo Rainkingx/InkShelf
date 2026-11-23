@@ -182,38 +182,27 @@ internal fun InkShelf2GuideIssuePickerScreen(
         if (checking != null || navigated) return
         val classification = InkShelf2GuideEdition.classify(target, candidate.manga.title)
         if (classification != InkShelf2GuideEdition.Match.MATCHING) {
-            // Unverified years and alternate runs are inspection only.
             Toast.makeText(
-                context, "Edition not verified — check the year and issue list before reading.",
+                context,
+                "Edition not verified — check the year and issue list before reading.",
                 Toast.LENGTH_LONG,
             ).show()
-            navigated = true
-            onOpenComic(candidate.manga)
-            return
+        } else if (message?.contains("could not be verified", ignoreCase = true) == true ||
+            message?.contains("wasn't confirmed", ignoreCase = true) == true
+        ) {
+            Toast.makeText(
+                context,
+                "Issue #" + target.number + " wasn't confirmed. Opening the source's full issue list.",
+                Toast.LENGTH_LONG,
+            ).show()
         }
-        val key = candidate.manga.source.toString() + ":" + candidate.manga.url
-        checking = key
-        scope.launch {
-            try {
-                val (resolved, chapters) = engine.ensureIssues(candidate.manga)
-                val found = InkShelf2GuideChapterFinder.find(target, chapters)
-                if (found != null) {
-                    InkShelf2GuideSourceLinks.put(context, target, resolved)
-                    navigated = true
-                    onOpenComic(resolved)
-                } else {
-                    message = "Issue #" + target.number +
-                        " wasn't confirmed in " + candidate.sourceName +
-                        ". Try a different source or inspect its issue list."
-                }
-            } catch (cancel: CancellationException) {
-                throw cancel
-            } catch (_: Exception) {
-                message = candidate.sourceName + " could not load its issue list."
-            } finally {
-                checking = null
-            }
-        }
+        // A series title can be correct while a provider omits one issue or
+        // uses an unfamiliar chapter-number scheme. Never let a failed
+        // automatic issue verification make this otherwise valid card inert.
+        // Details loads the original source's chapters; only separately
+        // confirmed series+issue matches are persisted as verified links.
+        navigated = true
+        onOpenComic(candidate.manga)
     }
 
     LazyColumn(
@@ -316,7 +305,7 @@ internal fun InkShelf2GuideIssuePickerScreen(
             items(visible, key = { "${it.manga.source}:${it.manga.url}" }) { candidate ->
                 val kind = InkShelf2GuideEdition.classify(target, candidate.manga.title)
                 val label = when (kind) {
-                    InkShelf2GuideEdition.Match.MATCHING -> "MATCHING SERIES YEAR · CHECK ISSUE"
+                    InkShelf2GuideEdition.Match.MATCHING -> "MATCHING YEAR · OPEN SERIES DETAILS"
                     InkShelf2GuideEdition.Match.UNVERIFIED -> "YEAR UNKNOWN · INSPECT SERIES"
                     InkShelf2GuideEdition.Match.OTHER_RUN -> "DIFFERENT SERIES YEAR · INSPECT"
                     InkShelf2GuideEdition.Match.OTHER_TITLE -> "OTHER TITLE · INSPECT"
@@ -345,6 +334,9 @@ internal fun InkShelf2GuideIssuePickerScreen(
                         Text(candidate.sourceName, color = InkShelf2Colors.Muted, fontSize = 11.sp)
                         Text(label, color = InkShelf2Colors.AccentLight,
                             fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("TAP TO VIEW COMIC AND ISSUES  ›",
+                            color = InkShelf2Colors.Text, fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
