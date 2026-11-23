@@ -23,6 +23,46 @@ class InkShelf2PulseMatcherTest {
         )
 
     @Test
+    fun disabledExtensionCannotCountAsAHealthyRecommendationShelf() {
+        val disabled = eu.kanade.tachiyomi.data.database.models.Manga.create(
+            "/comic/from-xoxo", "Batman (2016)", 1001L,
+        )
+        val enabled = eu.kanade.tachiyomi.data.database.models.Manga.create(
+            "/comic/from-batcave", "Superman (2023)", 2002L,
+        )
+        val oldCache = InkShelf2Engine.Discover(
+            trending = listOf(disabled, enabled),
+            newest = listOf(disabled),
+            recommended = listOf(disabled),
+            recommendationDetails = listOf(
+                InkShelf2Engine.PersonalPick(disabled, "Old XOXO pick"),
+            ),
+        )
+        val missing = InkShelf2RecommendationRecovery.missing(oldCache, setOf(2002L))
+        assertTrue(missing.trending)
+        assertTrue(missing.newest)
+        assertTrue(missing.personal)
+        assertTrue(missing.any)
+
+        val restored = InkShelf2Engine.Discover(
+            trending = listOf(enabled, enabled),
+            newest = listOf(enabled, enabled),
+            recommended = listOf(enabled, enabled),
+            recommendationDetails = listOf(
+                InkShelf2Engine.PersonalPick(
+                    enabled, InkShelf2RecommendationRecovery.FALLBACK_REASON,
+                ),
+            ),
+        )
+        val needPersonal = InkShelf2RecommendationRecovery.missing(restored, setOf(2002L))
+        assertTrue(needPersonal.personal)
+        assertFalse(needPersonal.feeds)
+        assertFalse(
+            InkShelf2RecommendationRecovery.missing(oldCache, emptySet()).any,
+        )
+    }
+
+    @Test
     fun pulseHeaderDotOnlyShowsNewsNewerThanLastVisit() {
         val entries = listOf(
             item("Older comic", 1_000L),
