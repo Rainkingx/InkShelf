@@ -136,7 +136,7 @@ internal object InkShelf2GuideCollections {
         publishedYear = 2003,
         query = "Crisis on Infinite Earths",
         included = listOf(IncludedIssues("Crisis on Infinite Earths (1985)", 1985, 1, 12)),
-        referenceUrl = "https://www.dc.com/graphic-novels/crisis-on-infinite-earths-box-set",
+        referenceUrl = "https://www.dc.com/graphic-novels/crisis-on-infinite-earths-1985/crisis-on-infinite-earths",
         eventYear = 1985,
     )
 
@@ -202,7 +202,12 @@ internal object InkShelf2GuideCollections {
         val candidateTitles = (listOf(rawBase) + alternate).filter { it.isNotBlank() }
         val exact = candidateTitles.any { base == it }
         val partial = candidateTitles.any { phrase ->
-            withoutYear.contains(phrase) && !withoutYear.contains("civil war ii")
+            // Don't surface unrelated tie-ins such as "House of M: Iron
+            // Man" or "Civil War: The Road to Civil War" as the MAIN TPB.
+            // Only longer titles with actual collection-like suffixes.
+            withoutYear.startsWith("$phrase ") &&
+                Regex("""\b(?:tpb|trade|paperback|hardcover|hc|omnibus|graphic|novel|collected|complete|collection|edition|vol|volume)\b""")
+                    .containsMatchIn(withoutYear.removePrefix(phrase).trim())
         }
         if (!exact && !partial) return SourceMatch.OTHER
         // A distinctive full book title may be a confident title match, but
