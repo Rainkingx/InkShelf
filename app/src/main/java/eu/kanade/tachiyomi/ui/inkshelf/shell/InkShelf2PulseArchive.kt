@@ -211,6 +211,7 @@ internal object InkShelf2PulseArchive {
                 put("publishedAt", article.publishedAt)
                 put("imageUrl", article.imageUrl)
                 put("video", article.isVideo)
+                put("topic", article.topic.name)
             })
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -241,6 +242,11 @@ internal object InkShelf2PulseArchive {
                         it.startsWith("https://", ignoreCase = true)
                     },
                     isVideo = row.optBoolean("video", false),
+                    topic = InkShelf2PulseTopic.entries.firstOrNull {
+                        it.name == row.optString("topic")
+                    } ?: InkShelf2PulseTopics.classify(
+                        row.optString("title"), dedicatedComicsFeed = true,
+                    ) ?: InkShelf2PulseTopic.COMICS,
                 )
             }
         } catch (_: Exception) {
