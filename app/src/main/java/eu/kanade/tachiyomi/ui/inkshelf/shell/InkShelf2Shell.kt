@@ -39,7 +39,6 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -176,6 +175,7 @@ fun InkShelf2Shell(
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
     onPulse: () -> Unit,
+    pulseActive: Boolean = false,
     pulseHasNewStories: Boolean = false,
     notificationCount: Int = 0,
     modifier: Modifier = Modifier,
@@ -194,6 +194,7 @@ fun InkShelf2Shell(
                         onSearch = onSearch,
                         onNotifications = onNotifications,
                         onPulse = onPulse,
+                        pulseActive = pulseActive,
                         pulseHasNewStories = pulseHasNewStories,
                         notificationCount = notificationCount,
                     )
@@ -217,6 +218,7 @@ private fun InkShelf2Header(
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
     onPulse: () -> Unit,
+    pulseActive: Boolean,
     pulseHasNewStories: Boolean,
     notificationCount: Int,
 ) {
@@ -283,7 +285,8 @@ private fun InkShelf2Header(
                     }
                     drawPath(
                         path = shape,
-                        color = InkShelf2Colors.Text,
+                        color = if (pulseActive) InkShelf2Colors.AccentLight
+                            else InkShelf2Colors.Text,
                         style = Stroke(
                             width = 2.1.dp.toPx(),
                             cap = StrokeCap.Round,
