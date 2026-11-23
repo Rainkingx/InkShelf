@@ -152,6 +152,40 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun screenRantComicArticlesAreApprovedAndUnrelatedDomainsRejected() {
+        assertTrue(
+            InkShelf2PulseFeed.isApprovedArticleLink(
+                "https://screenrant.com/comics/batman-new-issue/",
+            ),
+        )
+        assertTrue(
+            InkShelf2PulseFeed.isApprovedArticleLink(
+                "https://www.screenrant.com/superman-comic-review/",
+            ),
+        )
+        assertFalse(
+            InkShelf2PulseFeed.isApprovedArticleLink(
+                "https://screenrant.com.evil.example/fake-story/",
+            ),
+        )
+        assertFalse(
+            InkShelf2PulseFeed.isApprovedArticleLink(
+                "http://screenrant.com/comics/batman-new-issue/",
+            ),
+        )
+        // A broad fallback RSS feed should never bring unrelated film/TV
+        // articles into a comic-first Pulse list.
+        assertEquals(
+            null,
+            InkShelf2PulseTopics.classify("Netflix releases new baking reality TV show"),
+        )
+        assertEquals(
+            InkShelf2PulseTopic.FILM_TV,
+            InkShelf2PulseTopics.classify("Spider-Man: Brand New Day trailer details"),
+        )
+    }
+
+    @Test
     fun pulseSelectsComicNewsAndRelevantFilmTvButRejectsGeneralEntertainment() {
         assertEquals(
             InkShelf2PulseTopic.COMICS,
