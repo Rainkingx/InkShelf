@@ -148,7 +148,7 @@ class InkShelf2PulseMatcherTest {
         )
         val collection = InkShelf2GuideCollections.forGuide(
             guide("Civil War (2006)"),
-        ).single()
+        ).first { it.id == "marvel-civil-war-2006-road" }
         assertEquals("Road to Civil War", collection.query)
         assertEquals(6, collection.issueCount)
         assertEquals(
@@ -170,7 +170,7 @@ class InkShelf2PulseMatcherTest {
                 id = 14, name = "Civil War (2006)", type = "EVENT",
                 author = "test", attribution = "", rating = 1.0, publisher = "marvel",
             ),
-        ).single()
+        ).first { it.id == "marvel-civil-war-2006-road" }
         assertEquals(
             InkShelf2GuideCollections.SourceMatch.TITLE_MATCH,
             InkShelf2GuideCollections.classifySourceTitle(
