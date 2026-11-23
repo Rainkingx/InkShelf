@@ -152,6 +152,40 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun screenRantAppearsInHomePreviewAndEarlyPulseWithoutDuplication() {
+        fun news(title: String, publisher: String) =
+            item(title).copy(publisher = publisher)
+        val originals = (1..15).map { index ->
+            news("Other publisher story $index", if (index % 2 == 0) "The Beat" else "AIPT Comics")
+        }.toMutableList()
+        originals.add(12, news("Screen Rant comic headline", "Screen Rant"))
+        originals.add(14, news("Screen Rant movie update", "Screen Rant"))
+        val promoted = InkShelf2PulseTopics.promoteScreenRant(originals)
+        assertEquals(originals.size, promoted.size)
+        assertTrue(promoted.take(2).any { it.publisher == "Screen Rant" })
+        assertEquals(2, promoted.take(8).count { it.publisher == "Screen Rant" })
+        assertEquals(originals.map { it.url }.toSet(), promoted.map { it.url }.toSet())
+        assertEquals(
+            originals.filterNot { it.publisher == "Screen Rant" }.map { it.url },
+            promoted.filterNot { it.publisher == "Screen Rant" }.map { it.url },
+        )
+    }
+
+    @Test
+    fun screenRantPromotionDoesNotInventStoriesWhenPublisherAbsentOrSparse() {
+        val other = listOf(
+            item("Comic update").copy(publisher = "The Beat"),
+            item("DC industry news").copy(publisher = "AIPT Comics"),
+        )
+        assertEquals(other, InkShelf2PulseTopics.promoteScreenRant(other))
+        val one = other + item("Screen Rant feature").copy(publisher = "Screen Rant")
+        val promoted = InkShelf2PulseTopics.promoteScreenRant(one)
+        assertEquals(1, promoted.count { it.publisher == "Screen Rant" })
+        assertTrue(promoted.take(2).any { it.publisher == "Screen Rant" })
+        assertEquals(one.map { it.url }.toSet(), promoted.map { it.url }.toSet())
+    }
+
+    @Test
     fun screenRantEditorialFeedsUseComicsAndFilmTvFiltering() {
         // A comics-specific feed establishes relevance even for headlines
         // that do not repeat the word "comic".
