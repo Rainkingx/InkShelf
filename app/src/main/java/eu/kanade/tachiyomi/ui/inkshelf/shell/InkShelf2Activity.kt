@@ -907,11 +907,10 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         onReadIssue = { requestedIssue ->
                             if (!guideIssueOpenInProgress) {
+                                guideIssueOpenInProgress = true
                                 lifecycleScope.launch {
-                                    guideIssueOpenInProgress = true
                                     try {
-                                        // Metron's series ID resolves the
-                                        // intended run, independent of volume.
+                                        // Resolve the authoritative Metron run first.
                                         val issue = InkShelf2GuidesData.resolveIssueEdition(
                                             applicationContext, requestedIssue,
                                         )
@@ -922,28 +921,11 @@ class InkShelf2Activity : AppCompatActivity() {
                                             }
                                             .distinctBy { it.source.toString() + ":" + it.url }
                                         if (exactMatches.size == 1) {
-                                            // A uniquely verified library edition opens
-                                            // its normal details page immediately.
+                                            // Existing unique edition: details, never reader.
                                             guideIssueSearch = null
                                             openComicDetails(exactMatches.single())
                                         } else {
-                                            // No unique match in the library: use
-                                            // the source-backed edition picker.
-                                            guideIssueSearch = issue
-                                            discoverSearchPreset =
-                                                InkShelf2GuideEdition.sourceSearchQuery(issue)
-                                            openTab(InkShelf2Tab.DISCOVER)
-                                            searchFocusEpoch += 1
-                                        }
-                                    } catch (cancel: CancellationException) {
-                                                throw cancel
-                                            } catch (_: Exception) {
-                                                false
-                                            }
-                                        } else false
-                                        if (!opened) {
-                                            // Keep issue+edition context while
-                                            // searching all installed sources.
+                                            // Find a usable source-backed edition.
                                             guideIssueSearch = issue
                                             discoverSearchPreset =
                                                 InkShelf2GuideEdition.sourceSearchQuery(issue)
