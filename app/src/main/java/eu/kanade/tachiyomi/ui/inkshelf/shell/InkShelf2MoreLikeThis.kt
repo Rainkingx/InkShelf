@@ -56,7 +56,10 @@ internal object InkShelf2MoreLikeThis {
     )
     private data class Theme(val label: String, val terms: List<String>)
     private val themes = listOf(
-        Theme("X-Men universe", listOf("x-men", "x men", "wolverine", "x-force", "x force", "mutant", "magneto")),
+        // Generic "mutant" also describes Teenage Mutant Ninja Turtles;
+        // franchise connections must come from distinctive characters/titles.
+        Theme("X-Men universe", listOf("x-men", "x men", "wolverine", "x-force", "x force", "magneto", "new mutants", "cyclops")),
+        Theme("TMNT universe", listOf("teenage mutant ninja turtles", "tmnt", "ninja turtles", "last ronin", "shredder", "leonardo", "raphael", "donatello", "michelangelo")),
         Theme("Spider-Man universe", listOf("spider-man", "spiderman", "spider-verse", "spider verse", "venom", "carnage")),
         Theme("Batman universe", listOf("batman", "gotham", "nightwing", "batgirl", "robin", "red hood")),
         Theme("Superman universe", listOf("superman", "supergirl", "krypton", "superboy", "action comics")),
@@ -93,10 +96,14 @@ internal object InkShelf2MoreLikeThis {
             .distinct()
 
     private fun themesOf(manga: Manga): List<Theme> {
-        val text = listOfNotNull(
-            manga.title, manga.originalGenre, manga.genre,
-        ).joinToString(" ").lowercase(Locale.ROOT)
-        return themes.filter { theme -> theme.terms.any { it in text } }
+        // Match complete words/phrases, not substrings inside unrelated words.
+        val text = " " + normalized(
+            listOfNotNull(manga.title, manga.originalGenre, manga.genre)
+                .joinToString(" "),
+        ) + " "
+        return themes.filter { theme ->
+            theme.terms.any { term -> (" " + normalized(term) + " ") in text }
+        }
     }
 
     fun select(
@@ -121,7 +128,13 @@ internal object InkShelf2MoreLikeThis {
                 val commonGenre = genres(comic).entries.firstOrNull { it.key in focusGenres }
                 val commonCreator = creators(comic).firstOrNull { it in focusCreators }
                 val sharedTerms = titleTokens(comic).intersect(focusTokens)
-                val commonTheme = themesOf(comic).firstOrNull { it in focusThemes }
+                val candidateThemes = themesOf(comic)
+                // A broadly shared genre or "mutant" tag must not recommend
+                // X-Men to TMNT readers, or Star Wars to Batman readers.
+                if (focusThemes.isNotEmpty() && candidateThemes.isNotEmpty() &&
+                    focusThemes.none { it in candidateThemes }
+                ) return@mapNotNull null
+                val commonTheme = candidateThemes.firstOrNull { it in focusThemes }
 
                 val score = (if (commonCreator != null) 75 else 0) +
                     (if (commonGenre != null) 50 else 0) +
