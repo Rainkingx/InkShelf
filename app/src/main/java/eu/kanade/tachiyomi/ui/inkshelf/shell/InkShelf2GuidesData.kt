@@ -26,6 +26,7 @@ internal data class InkShelf2Guide(
     val publisher: String = "",
     val imageUrl: String? = null,
     val batcaveSlug: String? = null,
+    val description: String = "",
 )
 
 internal data class InkShelf2GuideIssue(
@@ -44,6 +45,9 @@ internal data class InkShelf2GuideIssue(
     val issueLabel: String? = null,
     // Explicitly unavailable in a saved source index; do not guess another edition.
     val sourceUnavailable: Boolean = false,
+    val explicitSource: Long? = null,
+    val explicitSeriesUrl: String? = null,
+    val explicitChapterUrl: String? = null,
 ) {
     val isEssential: Boolean get() =
         role.equals("Core Issue", true) || role.equals("Prologue", true) ||
@@ -164,6 +168,8 @@ internal object InkShelf2GuidesData {
      */
     suspend fun coverUrl(context: Context, guide: InkShelf2Guide): String? =
         withContext(Dispatchers.IO) {
+            InkShelf2PersonalEvents.cover(context, guide.id)?.let { return@withContext it }
+            if (guide.type == "CUSTOM") return@withContext null
             guide.batcaveSlug?.let { slug ->
                 return@withContext verifiedEventCover(context, slug)
             }
@@ -507,6 +513,7 @@ internal object InkShelf2GuidesData {
     }
 
     fun cachedEventCover(context: Context, guide: InkShelf2Guide): String? {
+        InkShelf2PersonalEvents.cover(context, guide.id)?.let { return it }
         val slug = guide.batcaveSlug ?: return guide.imageUrl
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return listOf("verified_event_cover_v3_", "verified_event_cover_v2_", "verified_event_cover_v1_")
@@ -565,7 +572,7 @@ internal object InkShelf2GuidesData {
             ?.mapNotNull(String::toIntOrNull)?.toSet().orEmpty()
         // Previous builds marked a guide started merely by viewing it.
         // Preserve actual marked issues, not the unreliable viewed flag.
-        val marked = InkShelf2BatCaveGuides.verified().filter {
+        val marked = InkShelf2PersonalEvents.catalogue(context).filter {
             readIds(context, it.id).isNotEmpty()
         }.map { it.id }
         return opened + marked

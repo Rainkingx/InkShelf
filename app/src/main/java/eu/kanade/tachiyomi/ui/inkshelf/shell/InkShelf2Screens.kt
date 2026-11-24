@@ -703,6 +703,7 @@ internal fun InkShelf2DetailsScreen(
     onDeleteIssueDownload: (Chapter) -> Unit,
     onSave: () -> Unit,
     onResetReading: (Long?) -> Unit = {},
+    onEventChanged: () -> Unit = {},
     similarComics: List<InkShelf2SimilarPick>,
     onSimilarComic: (Manga) -> Unit,
 ) {
@@ -794,6 +795,13 @@ internal fun InkShelf2DetailsScreen(
             dismissButton = { TextButton(onClick = { resetSeries = false; resetIssue = null }) { Text("Cancel") } },
         )
     }
+    var addToEvent by remember(manga.source, manga.url) { mutableStateOf<Chapter?>(null) }
+    addToEvent?.let { chapter ->
+        InkShelf2AddToEventDialog(manga, chapter, onDismiss = { addToEvent = null }, onAdded = {
+            addToEvent = null
+            onEventChanged()
+        })
+    }
     val chosenIssue = issueActions
     if (chosenIssue != null) {
         val hasOffline = chosenIssue.id in downloadedChapterIds
@@ -822,6 +830,10 @@ internal fun InkShelf2DetailsScreen(
                         issueActions = null
                         onChapter(chosenIssue)
                     }) { Text("Read issue") }
+                    TextButton(enabled = chosenIssue.id != null && manga.id != null, onClick = {
+                        issueActions = null
+                        addToEvent = chosenIssue
+                    }) { Text("Add to Event") }
                     TextButton(enabled = chosenIssue.id != null, onClick = {
                         issueActions = null
                         resetIssue = chosenIssue

@@ -32,7 +32,7 @@ internal object InkShelf2GuideProgress {
         withContext(Dispatchers.IO) {
             val db: DatabaseHelper = Injekt.get()
             val orders = guides.associate { guide ->
-                guide.id to guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
+                guide.id to InkShelf2PersonalEvents.order(context, guide)
             }
             val library = db.getLibraryMangas().executeAsBlocking()
                 .filter { it.favorite && it.id != null }.distinctBy { it.id }
@@ -69,7 +69,12 @@ internal object InkShelf2GuideProgress {
                         val found = chapters[linked.first].orEmpty().firstOrNull { it.id == linked.second }
                         // Verify the chapter is still the exact issue, and never infer individual
                         // progress from a multi-issue grouped chapter.
-                        val exact = InkShelf2GuideChapterFinder.find(issue, chapters[linked.first].orEmpty())
+                        val explicit = issue.explicitSource != null
+                        val exact = if (explicit) {
+                            val manga = knownManga[linked.first]
+                            if (found != null && manga != null && InkShelf2PersonalEvents.explicitMatches(issue, manga, found))
+                                InkShelf2GuideChapterFinder.Found(found, false) else null
+                        } else InkShelf2GuideChapterFinder.find(issue, chapters[linked.first].orEmpty())
                         if (found != null && exact != null && exact.chapter.id == found.id) {
                             boundChapter = found
                             if (!exact.grouped) {
@@ -78,7 +83,7 @@ internal object InkShelf2GuideProgress {
                             }
                         }
                     }
-                    byTitle[InkShelf2GuideAutoMatch.key(issue.series)].orEmpty()
+                    if (issue.explicitSource == null) byTitle[InkShelf2GuideAutoMatch.key(issue.series)].orEmpty()
                         .filter { InkShelf2GuideAutoMatch.rank(issue, it.title) == 3 }
                         .forEach { manga: Manga ->
                             val exact = InkShelf2GuideChapterFinder.find(issue, chapters[manga.id].orEmpty())

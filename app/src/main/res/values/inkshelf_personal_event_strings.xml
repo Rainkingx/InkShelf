@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inkshelf_set_event_cover">Set as event cover</string>
+    <string name="inkshelf_set_second_event_cover">Set second page as event cover</string>
+</resources>

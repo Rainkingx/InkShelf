@@ -93,13 +93,19 @@ internal fun InkShelf2GuidesScreen(
     downloadingGuideId: Int? = null,
 ) {
     val context = LocalContext.current
-    val installed = remember { InkShelf2BatCaveGuides.verified() }
-    var eventCovers by remember {
+    var catalogueRevision by remember { mutableStateOf(0) }
+    val installed = remember(refreshEpoch, catalogueRevision) { InkShelf2PersonalEvents.catalogue(context) }
+    var createEvent by remember { mutableStateOf(false) }
+    var eventCovers by remember(refreshEpoch, catalogueRevision) {
         mutableStateOf(installed.mapNotNull { guide ->
             InkShelf2GuidesData.cachedEventCover(context, guide)?.let { guide.id to it }
         }.toMap())
     }
     val catalogue = installed.map { guide -> guide.copy(imageUrl = eventCovers[guide.id]) }
+    if (createEvent) InkShelf2CreateEventDialog(onDismiss = { createEvent = false }, onCreated = {
+        createEvent = false
+        catalogueRevision++
+    })
     val newlyAdded = remember(context, installed) { InkShelf2GuidesData.newlyAddedGuideIds(context, installed) }
     var timeline by rememberSaveable { mutableStateOf(InkShelf2GuidesData.timelineEnabled(context)) }
     var shelf by rememberSaveable { mutableStateOf<String?>(null) }
@@ -116,7 +122,7 @@ internal fun InkShelf2GuidesScreen(
     var guideRevision by remember { mutableStateOf(0) }
     var progressReady by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf<Map<Int, InkShelf2GuideProgress.EventState>>(emptyMap()) }
-    LaunchedEffect(refreshEpoch, installed, guideRevision) {
+    LaunchedEffect(refreshEpoch, installed, guideRevision, catalogueRevision) {
         progressReady = false
         try {
             progress = InkShelf2GuideProgress.load(context, installed)
@@ -130,7 +136,7 @@ internal fun InkShelf2GuidesScreen(
     }
     var guideSearch by rememberSaveable { mutableStateOf("") }
     var guideFilter by rememberSaveable { mutableStateOf("All") }
-    val filters = listOf("All", "Marvel", "DC", "Started") + if (newlyAdded.isNotEmpty()) listOf("New") else emptyList()
+    val filters = listOf("All", "Marvel", "DC", "My Events", "Started") + if (newlyAdded.isNotEmpty()) listOf("New") else emptyList()
     val activeFilter = guideFilter.takeIf { it in filters } ?: "All"
     val verifiedStarted = (started + progress.filterValues { it.readIds.isNotEmpty() || it.partialIds.isNotEmpty() }.keys)
         .intersect(catalogue.map { it.id }.toSet())
@@ -194,7 +200,7 @@ internal fun InkShelf2GuidesScreen(
     val openGuide: (InkShelf2Guide) -> Unit = { item -> chosen = item }
     val inProgress = catalogue.filter { guide ->
         if (guide.id !in verifiedStarted) false else {
-            val issues = guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
+            val issues = InkShelf2PersonalEvents.order(context, guide)
             val read = InkShelf2GuideProgress.effectiveRead(context, guide.id, progress[guide.id] ?: InkShelf2GuideProgress.EventState())
             val path = InkShelf2GuideReadingSelection.issuesForMode(issues, InkShelf2GuidesData.essentialMode(context, guide.id))
             InkShelf2GuideReadingSelection.hasUnread(path, read)
@@ -207,16 +213,18 @@ internal fun InkShelf2GuidesScreen(
             when (activeFilter) {
                 "Marvel", "DC" -> guide.publisher.equals(activeFilter, true)
                 "Started" -> guide.id in verifiedStarted
+                "My Events" -> guide.type == "CUSTOM"
                 "New" -> guide.id in newlyAdded
                 else -> true
             }
     }
     val browsing = finding.isNotBlank() || activeFilter != "All"
     val modern = catalogue.filter { (InkShelf2GuidesData.publicationYear(it) ?: 0) >= 2015 }
-    val classics = catalogue.filter { (InkShelf2GuidesData.publicationYear(it) ?: 0) < 2015 }
+    val classics = catalogue.filter { it.type != "CUSTOM" && (InkShelf2GuidesData.publicationYear(it) ?: 0) < 2015 }
     val newestFirst = compareByDescending<InkShelf2Guide> { InkShelf2GuidesData.publicationYear(it) ?: 0 }.thenBy { it.name }
     val shelves = listOf(
         "Continue Reading" to inProgress,
+        "My Events" to catalogue.filter { it.type == "CUSTOM" },
         "Recently Added" to catalogue.filter { it.id in newlyAdded }.sortedWith(newestFirst),
         "Marvel" to modern.filter { it.publisher == "Marvel" }.sortedWith(newestFirst),
         "DC" to modern.filter { it.publisher == "DC" }.sortedWith(newestFirst),
@@ -236,10 +244,12 @@ internal fun InkShelf2GuidesScreen(
         verticalArrangement = Arrangement.spacedBy(17.dp),
     ) {
         item(key = "guides-page-heading") {
-            InkShelf2PageHeading(
-                shelf ?: "Reading Guides",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
-            )
+            Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { InkShelf2PageHeading(shelf ?: "Reading Guides") }
+                if (shelf == null) TextButton(onClick = { createEvent = true }) {
+                    Text("+ Create Event", color = InkShelf2Colors.AccentLight)
+                }
+            }
         }
         if (shelf != null) {
             item(key = "shelf-back") {
@@ -416,8 +426,8 @@ private fun InkShelf2EventCoverCard(
     isNew: Boolean = false,
 ) {
     val context = LocalContext.current
-    val all = remember(guide.batcaveSlug) {
-        guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
+    val all = remember(guide.id, progress) {
+        InkShelf2PersonalEvents.order(context, guide)
     }
     val read = InkShelf2GuideProgress.effectiveRead(context, guide.id, progress ?: InkShelf2GuideProgress.EventState())
     val path = InkShelf2GuideReadingSelection.issuesForMode(all, InkShelf2GuidesData.essentialMode(context, guide.id))
@@ -467,7 +477,12 @@ private fun InkShelf2GuideDetails(
     var hasMore by remember(guide.id) { mutableStateOf(true) }
     var loading by remember(guide.id) { mutableStateOf(false) }
     var essential by remember(guide.id) { mutableStateOf(InkShelf2GuidesData.essentialMode(context, guide.id)) }
-    var description by remember(guide.id) { mutableStateOf<String?>(null) }
+    var description by remember(guide.id) { mutableStateOf<String?>(guide.description.takeIf { it.isNotBlank() }) }
+    var editOrder by remember(guide.id) { mutableStateOf(false) }
+    if (editOrder) InkShelf2EditEventDialog(guide, onDismiss = { editOrder = false }, onChanged = {
+        all = InkShelf2PersonalEvents.order(context, guide)
+        onProgressChanged()
+    })
     var manualRevision by remember(guide.id) { mutableStateOf(0) }
     var optionsOpen by remember(guide.id) { mutableStateOf(false) }
     var relatedExpanded by remember(guide.id) { mutableStateOf(true) }
@@ -542,10 +557,10 @@ private fun InkShelf2GuideDetails(
         }
     }
 
-    LaunchedEffect(guide.id) {
-        repeat(8) {
-            if (hasMore) loadPage()
-        }
+    LaunchedEffect(guide.id, refreshEpoch) {
+        all = InkShelf2PersonalEvents.order(context, guide)
+        hasMore = false
+        loading = false
     }
     LaunchedEffect(guide.batcaveSlug) {
         val slug = guide.batcaveSlug
@@ -629,7 +644,7 @@ private fun InkShelf2GuideDetails(
         title = guide.name,
         subtitle = guide.publisher.uppercase() + " · EVENT" +
             (InkShelf2GuidesData.publicationYear(guide)?.let { " · $it" } ?: ""),
-        attribution = if (all.isEmpty()) "Loading reading order…" else
+        attribution = if (all.isEmpty()) "No issues yet · Add issues from comic details" else
             all.size.toString() + " issues · " + completed + " of " + selected.size + " read",
         padding = PaddingValues(
             top = padding.calculateTopPadding(),
@@ -656,6 +671,10 @@ private fun InkShelf2GuideDetails(
                         InkShelf2GuidesData.setDisplayOption(context, guide.id, "spoilers", spoilerSafe)
                         optionsOpen = false
                     },
+                )
+                DropdownMenuItem(
+                    text = { Text("Edit reading order") },
+                    onClick = { optionsOpen = false; editOrder = true },
                 )
                 DropdownMenuItem(
                     text = { Text("Reset event progress") },
@@ -702,7 +721,8 @@ private fun InkShelf2GuideDetails(
                         label = when {
                             currentlyOpening -> "Opening Issue"
                             resetting -> "Resetting Progress"
-                            !progressReady || all.isEmpty() -> "Loading Progress"
+                            !progressReady -> "Loading Progress"
+                            all.isEmpty() -> "No issues yet"
                             nextIssue == null -> "Unavailable"
                             finished -> "Read Again"
                             hasProgress -> "Continue Reading"
@@ -959,8 +979,8 @@ private fun InkShelf2EventTimelineRow(
     onOpen: () -> Unit,
 ) {
     val context = LocalContext.current
-    val order = remember(guide.batcaveSlug) {
-        guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
+    val order = remember(guide.id, progress) {
+        InkShelf2PersonalEvents.order(context, guide)
     }
     val read = InkShelf2GuideProgress.effectiveRead(context, guide.id,
         progress ?: InkShelf2GuideProgress.EventState())

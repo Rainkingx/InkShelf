@@ -315,13 +315,14 @@ class InkShelf2Activity : AppCompatActivity() {
                         try {
                             var matchDiagnostic = ""
                             val local = try {
-                                val guide = InkShelf2BatCaveGuides.verified().firstOrNull { it.id == guideId }
+                                val guide = InkShelf2PersonalEvents.catalogue(applicationContext).firstOrNull { it.id == guideId }
                                 if (guide == null) null else InkShelf2GuideProgress.load(applicationContext, listOf(guide))[guideId]
                             } catch (cancel: CancellationException) {
                                 throw cancel
                             } catch (_: Exception) { null }
                             val savedTarget = local?.let {
-                                InkShelf2GuideProgress.resumeTarget(applicationContext, guideId, requestedIssue.id, it, enabledSourceIds)
+                                InkShelf2GuideProgress.resumeTarget(applicationContext, guideId, requestedIssue.id, it,
+                                    if (requestedIssue.explicitSource == LocalSource.ID) enabledSourceIds + LocalSource.ID else enabledSourceIds)
                             }
                             val offlineTarget = local?.let {
                                 try {
@@ -333,7 +334,7 @@ class InkShelf2Activity : AppCompatActivity() {
                             // The pinned source owns the saved page; offline duplicates are fallback only.
                             val resume = savedTarget ?: offlineTarget
                             val reading = resume?.let { InkShelf2GuideAutoReader.Resolved(it.manga, it.chapter) }
-                                ?: InkShelf2GuideAutoReader.resolve(
+                                ?: if (requestedIssue.explicitSource != null) null else InkShelf2GuideAutoReader.resolve(
                                 applicationContext,
                                 sourcesEngine, enabledSources, requestedIssue,
                                 onDiagnostic = { matchDiagnostic = it },
@@ -386,8 +387,8 @@ class InkShelf2Activity : AppCompatActivity() {
                 val guideId = fields.getOrNull(0)?.toIntOrNull() ?: return@LaunchedEffect
                 val issueId = fields.getOrNull(1)?.toIntOrNull() ?: return@LaunchedEffect
                 val essential = fields.getOrNull(2) == "true"
-                val guide = InkShelf2BatCaveGuides.verified().firstOrNull { it.id == guideId } ?: return@LaunchedEffect
-                val all = guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
+                val guide = InkShelf2PersonalEvents.catalogue(applicationContext).firstOrNull { it.id == guideId } ?: return@LaunchedEffect
+                val all = InkShelf2PersonalEvents.order(applicationContext, guide)
                 val order = InkShelf2GuideReadingSelection.issuesForMode(all, essential)
                 val state = try {
                     InkShelf2GuideProgress.load(applicationContext, listOf(guide))[guideId] ?: InkShelf2GuideProgress.EventState()
@@ -964,6 +965,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         onResumeDownloads = { resumeDownloads() },
                         onDeleteIssueDownload = { chapter -> removeOfflineIssue(comic, chapter) },
                         onSave = { saveComic(comic) },
+                        onEventChanged = { refreshEpoch += 1 },
                         onResetReading = { chapterId ->
                             lifecycleScope.launch {
                                 try {
@@ -1259,7 +1261,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
-                        savedGuides = InkShelf2BatCaveGuides.verified().filter { it.id in savedGuideIds }
+                        savedGuides = InkShelf2PersonalEvents.catalogue(applicationContext).filter { it.id in savedGuideIds }
                             .map { it.copy(imageUrl = InkShelf2GuidesData.cachedEventCover(applicationContext, it)) },
                         onOpenGuide = { guideId ->
                             openTab(InkShelf2Tab.GUIDES)
@@ -1426,7 +1428,7 @@ class InkShelf2Activity : AppCompatActivity() {
         issues: List<InkShelf2GuideIssue>,
         enabledSourceIds: Set<Long>,
     ): Int {
-        val guide = InkShelf2BatCaveGuides.verified().firstOrNull { it.id == guideId } ?: return 0
+        val guide = InkShelf2PersonalEvents.catalogue(applicationContext).firstOrNull { it.id == guideId } ?: return 0
         val progress = InkShelf2GuideProgress.load(applicationContext, listOf(guide))[guideId] ?: return 0
         downloadManager.awaitDownloadCacheReady()
         val chosen = withContext(Dispatchers.IO) {

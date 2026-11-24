@@ -2076,7 +2076,12 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
                     ),
                 )
             }
-        MaterialMenuSheet(this, items) { _, item ->
+        val eventItems = if (isEventReading) items + MaterialMenuSheet.MenuSheetItem(
+            8, R.drawable.ic_photo_24dp, R.string.inkshelf_set_event_cover,
+        ) + if (extraPage != null) listOf(MaterialMenuSheet.MenuSheetItem(
+            9, R.drawable.ic_outline_photo_24dp, R.string.inkshelf_set_second_event_cover,
+        )) else emptyList() else items
+        MaterialMenuSheet(this, eventItems) { _, item ->
             when (item) {
                 0 -> shareImage(page)
                 1 -> saveImage(page)
@@ -2084,6 +2089,8 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
                 3 -> extraPage?.let { shareImage(it) }
                 4 -> extraPage?.let { saveImage(it) }
                 5 -> extraPage?.let { showSetCoverPrompt(it) }
+                8 -> setEventCover(page)
+                9 -> extraPage?.let { setEventCover(it) }
                 6, 7 ->
                     extraPage?.let { secondPage ->
                         (viewer as? PagerViewer)?.let { viewer ->
@@ -2140,6 +2147,30 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
      */
     private fun shareImage(page: ReaderPage) {
         viewModel.shareImage(page)
+    }
+
+    private fun setEventCover(page: ReaderPage) {
+        if (!isEventReading || page.status != Page.State.READY) return
+        val stream = page.stream ?: return
+        val guideId = intent.getIntExtra(EVENT_GUIDE_ID, 0)
+        materialAlertDialog()
+            .setMessage(R.string.inkshelf_set_event_cover)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            stream().use {
+                                eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PersonalEvents.setCover(applicationContext, guideId, it)
+                            }
+                        }
+                        toast(R.string.cover_updated)
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        toast(R.string.failed_to_update_cover)
+                    }
+                }
+            }.setNegativeButton(android.R.string.cancel, null).show()
     }
 
     private fun showSetCoverPrompt(page: ReaderPage) {
