@@ -33,6 +33,22 @@ internal object InkShelf2GuideChapterFinder {
 
     fun find(issue: InkShelf2GuideIssue, chapters: List<Chapter>): Found? {
         if (issue.number.equals("Full", ignoreCase = true)) {
+            val special = issue.issueLabel
+                ?.takeUnless { it.equals("One-shot", true) }
+                ?.trim()?.takeIf { it.isNotBlank() }
+            if (special != null) {
+                val matches = chapters.filter {
+                    it.name.contains(special, ignoreCase = true)
+                }
+                if (matches.size == 1) {
+                    return Found(matches.single(), grouped = false)
+                }
+                // Never open an arbitrary issue when a named special is missing.
+                return null
+            }
+            // A genuine standalone comic may label its only chapter "Full",
+            // "One-shot" or simply use the title, not issue #1.
+            if (chapters.size == 1) return Found(chapters.single(), grouped = false)
             val standalone = chapters.filterNot { nonRegular.containsMatchIn(it.name) }
             return if (standalone.size == 1) Found(standalone.single(), grouped = false) else null
         }
