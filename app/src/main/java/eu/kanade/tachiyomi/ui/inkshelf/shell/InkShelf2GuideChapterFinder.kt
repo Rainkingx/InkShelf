@@ -33,7 +33,7 @@ internal object InkShelf2GuideChapterFinder {
 
     fun find(issue: InkShelf2GuideIssue, chapters: List<Chapter>): Found? {
         val number = issue.number.trim().removePrefix("#").toIntOrNull()
-            ?.takeIf { it in 1..999 } ?: return null
+            ?.takeIf { it in 0..999 } ?: return null
 
         val exact = chapters.filter { chapter ->
             !nonRegular.containsMatchIn(chapter.name) &&
