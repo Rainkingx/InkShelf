@@ -118,7 +118,9 @@ internal fun InkShelf2GuideIssuePickerScreen(
                     val remoteChapters = withTimeoutOrNull(14_000L) {
                         batcave.getChapterList(probe)
                     }.orEmpty()
-                    if (InkShelf2GuideChapterFinder.find(target, remoteChapters) != null) {
+                    // getChapterList yields extension SChapter objects; after
+                    // J2K synchronizes them we can safely verify DB Chapter IDs.
+                    if (remoteChapters.isNotEmpty()) {
                         val (resolved, chapters) = engine.ensureIssues(probe)
                         val exact = InkShelf2GuideChapterFinder.find(target, chapters)
                         if (exact != null) {
