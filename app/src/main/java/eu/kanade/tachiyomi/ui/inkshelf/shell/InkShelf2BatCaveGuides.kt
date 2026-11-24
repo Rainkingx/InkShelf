@@ -49,6 +49,7 @@ internal object InkShelf2BatCaveGuides {
         guide("civil-war-2006", "Marvel Civil War", "Marvel"),
         guide("civil-war-ii", "Civil War II", "Marvel"),
         guide("house-of-m", "House of M", "Marvel"),
+        guide("secret-wars-2015", "Secret Wars (2015)", "Marvel"),
     )
 
     private suspend fun html(context: Context, url: String, maxSize: Int = 900_000): String? =
