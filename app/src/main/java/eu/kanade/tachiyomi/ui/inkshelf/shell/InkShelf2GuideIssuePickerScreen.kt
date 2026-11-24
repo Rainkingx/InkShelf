@@ -49,9 +49,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.source.CatalogueSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /**
  * Dedicated Reading Guide issue resolver, NOT a general Discover search.
@@ -67,6 +69,7 @@ internal fun InkShelf2GuideIssuePickerScreen(
     padding: PaddingValues,
     onBack: () -> Unit,
     onOpenComic: (Manga) -> Unit,
+    onOpenExactIssue: (Manga, Chapter) -> Unit,
 ) {
     val context = LocalContext.current
     val engine = remember { InkShelf2SourcesEngine() }
@@ -97,7 +100,40 @@ internal fun InkShelf2GuideIssuePickerScreen(
         message = null
         showOtherRuns = false
         try {
-            target = InkShelf2GuidesData.resolveIssueEdition(context, requestedIssue)
+            target = if (requestedIssue.batcaveSeriesPath != null) requestedIssue
+                else InkShelf2GuidesData.resolveIssueEdition(context, requestedIssue)
+            // BatCave events expose the real series page path alongside the
+            // ordered issue. Probe that exact path using the installed BatCave
+            // extension, never through a browser or a synthetic library row.
+            val batcave = sources.firstOrNull {
+                it.name.contains("batcave", ignoreCase = true)
+            }
+            val linkedPath = target.batcaveSeriesPath
+            if (searchEpoch == 0 && batcave != null && linkedPath != null &&
+                Regex("""^/\d{2,9}-[a-z0-9-]+\.html$""").matches(linkedPath) &&
+                target.number.toIntOrNull() != null
+            ) {
+                val probe = Manga.create(linkedPath, target.series, batcave.id)
+                try {
+                    val remoteChapters = withTimeout(14_000L) {
+                        batcave.getChapterList(probe)
+                    }
+                    if (InkShelf2GuideChapterFinder.find(target, remoteChapters) != null) {
+                        val (resolved, chapters) = engine.ensureIssues(probe)
+                        val exact = InkShelf2GuideChapterFinder.find(target, chapters)
+                        if (exact != null) {
+                            navigated = true
+                            onOpenExactIssue(resolved, exact.chapter)
+                            return@LaunchedEffect
+                        }
+                    }
+                    message = "The BatCave link could not verify this exact issue. Searching source titles instead."
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    message = "The BatCave direct link is unavailable. Trying normal source matching."
+                }
+            }
             // Resume a previously confirmed Metron-series-to-source link.
             // Recheck this exact issue: a source might not contain every tie-in.
             if (searchEpoch == 0) {
@@ -112,7 +148,8 @@ internal fun InkShelf2GuideIssuePickerScreen(
                             val (resolved, chapters) = engine.ensureIssues(linked)
                             if (InkShelf2GuideChapterFinder.find(target, chapters) != null) {
                                 navigated = true
-                                onOpenComic(resolved)
+                                val exact = InkShelf2GuideChapterFinder.find(target, chapters)
+                                if (exact != null) onOpenExactIssue(resolved, exact.chapter)
                                 return@LaunchedEffect
                             }
                             message = "Your linked source does not list this issue. Looking for another source."
@@ -126,7 +163,10 @@ internal fun InkShelf2GuideIssuePickerScreen(
             }
             val lookup = query.trim()
             if (lookup.length >= 2 && enabledIds.isNotEmpty()) {
-                val found = engine.searchAcross(sources, lookup)
+                val orderedSources = sources.sortedBy {
+                    if (it.name.contains("batcave", ignoreCase = true)) 0 else 1
+                }
+                val found = engine.searchAcross(orderedSources, lookup)
                 failedSources = found.failedSources
                 results = found.results
                 val verifiedTitles = results.filter {
@@ -141,7 +181,8 @@ internal fun InkShelf2GuideIssuePickerScreen(
                         if (InkShelf2GuideChapterFinder.find(target, chapters) != null) {
                             InkShelf2GuideSourceLinks.put(context, target, resolved)
                             navigated = true
-                            onOpenComic(resolved)
+                            val exact = InkShelf2GuideChapterFinder.find(target, chapters)
+                            if (exact != null) onOpenExactIssue(resolved, exact.chapter)
                             return@LaunchedEffect
                         }
                         message = "The matching series was found, but issue #" +
@@ -232,7 +273,8 @@ internal fun InkShelf2GuideIssuePickerScreen(
                     .padding(15.dp),
                 verticalArrangement = Arrangement.spacedBy(7.dp),
             ) {
-                Text("METRON READING ORDER", color = InkShelf2Colors.AccentLight,
+                Text(if (target.batcaveSeriesPath != null) "BATCAVE EVENT ORDER"
+                    else "METRON READING ORDER", color = InkShelf2Colors.AccentLight,
                     fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Text(target.displayName, color = InkShelf2Colors.Text,
                     fontSize = 19.sp, fontWeight = FontWeight.Bold)
@@ -240,7 +282,7 @@ internal fun InkShelf2GuideIssuePickerScreen(
                     if (target.yearBegan != null)
                         "Matching series start year: " + target.yearBegan +
                             " · Requested issue: #" + target.number
-                    else "Series year unknown. Confirm the edition before reading.",
+                    else "The edition year needs confirmation before automatic reading.",
                     color = InkShelf2Colors.Muted, fontSize = 12.sp,
                 )
                 Text("Comic series are checked against your installed extensions — not just their covers.",
