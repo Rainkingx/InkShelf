@@ -837,7 +837,7 @@ private fun InkShelf2GuideDetails(
                         nextIssue == null -> "LOADING READING ORDER…"
                         completed == selected.size -> "START AGAIN"
                         completed > 0 -> "CONTINUE READING"
-                        else -> "START READING",
+                        else -> "START READING"
                     },
                     onClick = { if (nextIssue != null) onReadIssue(nextIssue) },
                     enabled = nextIssue != null && !currentlyOpening,
