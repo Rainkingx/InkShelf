@@ -72,6 +72,8 @@ internal fun InkShelf2GuidesScreen(
 ) {
     val context = LocalContext.current
     var guides by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
+    var batcaveGuides by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
+    var batcaveLoading by remember { mutableStateOf(true) }
     var loading by remember { mutableStateOf(true) }
     var chosen by remember { mutableStateOf<InkShelf2Guide?>(null) }
     var started by remember { mutableStateOf(InkShelf2GuidesData.startedGuides(context)) }
@@ -111,6 +113,17 @@ internal fun InkShelf2GuidesScreen(
         }
     }
     BackHandler(enabled = chosen != null) { chosen = null }
+    LaunchedEffect(Unit) {
+        try {
+            batcaveGuides = InkShelf2BatCaveGuides.catalogue(context)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Metron remains independent if the event website is blocked.
+        } finally {
+            batcaveLoading = false
+        }
+    }
     LaunchedEffect(Unit) {
         try {
             guides = InkShelf2GuidesData.lists(context)
@@ -165,7 +178,7 @@ internal fun InkShelf2GuidesScreen(
         return
     }
 
-    val catalogue = (guides + focused + featured.map { it.guide } + remoteResults)
+    val catalogue = (batcaveGuides + guides + focused + featured.map { it.guide } + remoteResults)
         .distinctBy { it.id }
     val curated = InkShelf2GuideFocus.choose(catalogue)
     val modern = InkShelf2GuideFocus.choose(catalogue, InkShelf2GuideFocus.Era.MODERN)
@@ -183,18 +196,20 @@ internal fun InkShelf2GuidesScreen(
                 guide.name, guide.publisher, guide.author, guide.attribution,
             ).any { it.contains(finding, ignoreCase = true) }) &&
                 when (guideFilter) {
-                    "Marvel" -> (finding.isNotBlank() ||
+                    "Marvel" -> (finding.isNotBlank() || guide.batcaveSlug != null ||
                         InkShelf2GuideFocus.identify(guide)?.era == InkShelf2GuideFocus.Era.MODERN) &&
                         guide.publisher.equals("marvel", ignoreCase = true)
-                    "DC" -> (finding.isNotBlank() ||
+                    "DC" -> (finding.isNotBlank() || guide.batcaveSlug != null ||
                         InkShelf2GuideFocus.identify(guide)?.era == InkShelf2GuideFocus.Era.MODERN) &&
                         guide.publisher.equals("dc", ignoreCase = true)
                     "Classics" -> InkShelf2GuideFocus.identify(guide)?.era ==
                         InkShelf2GuideFocus.Era.CLASSIC
                     "Started" -> guide.id in started
                     "Archive" -> InkShelf2GuideFocus.identify(guide) == null
-                    "Popular" -> finding.isNotBlank() || guide.id in curated.map { it.id }
-                    else -> finding.isNotBlank() || guide.id in curated.map { it.id }
+                    "Popular" -> finding.isNotBlank() || guide.batcaveSlug != null ||
+                        guide.id in curated.map { it.id }
+                    else -> finding.isNotBlank() || guide.batcaveSlug != null ||
+                        guide.id in curated.map { it.id }
                 }
         }
         .sortedWith(
@@ -232,10 +247,11 @@ internal fun InkShelf2GuidesScreen(
                 )
             } else {
                 InkShelf2GuidesHero(
-                    guideCount = guides.size,
+                    guideCount = catalogue.size,
                     startedCount = started.size,
                     onExplore = {
-                        val first = continuation ?: popular.firstOrNull() ?: classics.firstOrNull()
+                        val first = continuation ?: batcaveGuides.firstOrNull()
+                            ?: popular.firstOrNull() ?: classics.firstOrNull()
                         if (first != null) openGuide(first) else onMetronSettings()
                     },
                 )
@@ -290,15 +306,15 @@ internal fun InkShelf2GuidesScreen(
                 }
             }
         }
-        if (!connected) {
+        if (!connected && batcaveGuides.isEmpty() && !batcaveLoading) {
             item {
                 InkShelf2GuideNotice(
-                    "Connect your Metron token in Menu to load real community reading orders.",
+                    "BatCave event pages are unavailable. Connect Metron for another guide catalogue.",
                     onClick = onMetronSettings,
                     action = "Connect Metron",
                 )
             }
-        } else if (guides.isEmpty()) {
+        } else if (guides.isEmpty() && connected && batcaveGuides.isEmpty()) {
             item {
                 InkShelf2GuideNotice(
                     if (loading) "Loading genuine Marvel and DC reading orders…"
@@ -311,7 +327,7 @@ internal fun InkShelf2GuidesScreen(
         if (browsingResults) {
             item(key = "guide-filter-summary") {
                 Text(
-                    if (searching) "Searching Metron…"
+                    if (searching || batcaveLoading) "Searching guides…"
                     else "Reading Guides (" + matching.size + ")",
                     modifier = Modifier.padding(horizontal = 17.dp),
                     color = InkShelf2Colors.Text,
@@ -340,6 +356,13 @@ internal fun InkShelf2GuidesScreen(
                 )
             }
         } else {
+        if (batcaveGuides.isNotEmpty()) {
+            item(key = "batcave-events-shelf") {
+                InkShelf2SectionHeading("BatCave Event Reading Orders", onClick = null)
+                Spacer(Modifier.height(10.dp))
+                InkShelf2GuideShelf(batcaveGuides.take(12), openGuide, started)
+            }
+        }
         if (continuation != null) {
             item {
                 InkShelf2SectionHeading("Continue Your Guide", onClick = null)
@@ -383,7 +406,7 @@ internal fun InkShelf2GuidesScreen(
                 InkShelf2GuideShelf(classics, openGuide, started)
             }
         }
-        if (modern.isEmpty() && !loading) {
+        if (modern.isEmpty() && batcaveGuides.isEmpty() && !loading && !batcaveLoading) {
             item {
                 Text(
                     "No featured modern Metron lists are available yet. Search for an event by name " +
@@ -686,7 +709,9 @@ private fun InkShelf2GuideDetails(
         if (loading || !hasMore) return
         loading = true
         try {
-            val loaded = InkShelf2GuidesData.issues(context, guide.id, nextPage)
+            val loaded = guide.batcaveSlug?.let {
+                InkShelf2BatCaveGuides.issues(context, it, nextPage)
+            } ?: InkShelf2GuidesData.issues(context, guide.id, nextPage)
             if (loaded.issues.isNotEmpty()) {
                 all = (all + loaded.issues).distinctBy { it.id }.sortedBy { it.position }
                 nextPage += 1
@@ -737,8 +762,10 @@ private fun InkShelf2GuideDetails(
             ) {
                 Text(guide.name, color = InkShelf2Colors.Text, fontSize = 23.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Order by " + (guide.author.ifBlank { "a Metron contributor" }) +
-                        if (guide.attribution.isBlank()) "" else " · " + guide.attribution,
+                    if (guide.batcaveSlug != null)
+                        "BatCave event order · verified series links where available"
+                    else "Order by " + guide.author.ifBlank { "a Metron contributor" } +
+                        (if (guide.attribution.isBlank()) "" else " · " + guide.attribution),
                     color = InkShelf2Colors.Muted,
                     fontSize = 11.sp,
                 )
@@ -782,6 +809,10 @@ private fun InkShelf2GuideDetails(
                             fontSize = 11.sp,
                         )
                     }
+                }
+                if (guide.batcaveSlug != null && all.isEmpty() && !loading) {
+                    Text("This BatCave event page is unavailable or did not provide readable issue links. Try again when the site is reachable.",
+                        color = InkShelf2Colors.Muted, fontSize = 12.sp)
                 }
                 if (nextUnread != null) {
                     InkShelf2ActionButton(
