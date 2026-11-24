@@ -115,6 +115,19 @@ internal object InkShelf2BatCaveGuides {
                 .build()
             client.newCall(request).execute().use { reply ->
                 val status = "HTTP ${reply.code}"
+                if (reply.code in setOf(301, 302, 303, 307, 308)) {
+                    val location = reply.header("Location")
+                    val destination = location?.let { request.url.resolve(it) }
+                    // Display the destination without query parameters,
+                    // fragments or credentials. Do not follow the redirect.
+                    val display = destination?.let {
+                        "${it.scheme}://${it.host}${it.encodedPath}".take(220)
+                    } ?: if (location.isNullOrBlank()) "(missing Location header)"
+                        else "(invalid Location header)"
+                    return@use "$status · Redirect\nDestination: $display\n" +
+                        if (destination?.encodedQuery != null) "Query parameters omitted · Not followed"
+                        else "Redirect not followed"
+                }
                 if (!reply.isSuccessful) {
                     return@use "$status · Catalogue request unsuccessful"
                 }
