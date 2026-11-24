@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import eu.kanade.tachiyomi.data.database.DatabaseHelper
 import eu.kanade.tachiyomi.data.database.models.Chapter
@@ -42,11 +43,13 @@ internal object InkShelf2GuideAutoReader {
      * successful direct chapter in an isolated non-favourite guide record so
      * the canonical series, library entries and reading progress stay intact.
      */
+    private data class PilotResult(val resolved: Resolved?, val detail: String)
+
     private suspend fun resolveDirectPilot(
         source: CatalogueSource,
         issue: InkShelf2GuideIssue,
-    ): Resolved? {
-        val path = issue.batcaveIssuePath ?: return null
+    ): PilotResult {
+        val path = issue.batcaveIssuePath ?: return PilotResult(null, "No issue URL")
         val chapter = Chapter.create().apply {
             url = path
             name = "${issue.series} #${issue.number}"
@@ -56,10 +59,10 @@ internal object InkShelf2GuideAutoReader {
             source_order = 0
         }
         return try {
-            val readable = withTimeoutOrNull(15_000L) {
-                source.getPageList(chapter).isNotEmpty()
-            } ?: false
-            if (!readable) return null
+            val pages = withTimeoutOrNull(15_000L) {
+                source.getPageList(chapter)
+            } ?: return PilotResult(null, "Timed out after 15 seconds")
+            if (pages.isEmpty()) return PilotResult(null, "Extension returned zero pages")
 
             val database: DatabaseHelper = Injekt.get()
             val manga = database.getManga(path, source.id).executeAsBlocking()
@@ -69,17 +72,24 @@ internal object InkShelf2GuideAutoReader {
                     genre = "Comic"
                     id = database.insertManga(this).executeAsBlocking().insertedId()
                 }
-            val mangaId = manga.id ?: return null
+            val mangaId = manga.id ?: return PilotResult(null, "Missing reader series ID")
             val saved = database.getChapter(path, mangaId).executeAsBlocking()
                 ?: chapter.apply {
                     manga_id = mangaId
                     id = database.insertChapter(this).executeAsBlocking().insertedId()
                 }
-            if (saved.id != null) Resolved(manga, saved) else null
+            if (saved.id != null) PilotResult(Resolved(manga, saved), "${pages.size} pages")
+            else PilotResult(null, "Missing reader chapter ID")
         } catch (cancel: CancellationException) {
             throw cancel
-        } catch (_: Exception) {
-            null
+        } catch (error: Exception) {
+            Log.w("InkShelfGuide", "Direct event probe failed", error)
+            val status = Regex("""\b(401|403|404|408|429|500|502|503|504)\b""")
+                .find(error.message.orEmpty())?.value
+            val detail = if (status != null) "HTTP $status"
+                else error.javaClass.simpleName + ": " +
+                    error.message.orEmpty().replace(Regex("""\s+"""), " ").take(90)
+            PilotResult(null, detail)
         }
     }
 
@@ -103,20 +113,23 @@ internal object InkShelf2GuideAutoReader {
         // Pilot only: the first event-reader link was confirmed on-device.
         // Other bundled positions are not verified URL-to-issue mappings.
         // Keep all other guide issues on the existing matching path.
-        if (preferred != null && issue.position == 1 &&
+        val pilot = issue.position == 1 &&
             issue.batcaveIssuePath == "/event/house-of-m/1" &&
             issue.series.equals("Excalibur", ignoreCase = true) && issue.number == "13"
-        ) {
+        var pilotFailure: String? = null
+        if (preferred != null && pilot) {
             val direct = resolveDirectPilot(preferred, issue)
-            withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    context.applicationContext,
-                    if (direct != null) "Guide: direct URL opened"
-                    else "Guide: direct URL unavailable; using existing match",
-                    Toast.LENGTH_LONG,
-                ).show()
+            Log.i("InkShelfGuide", "Event probe: ${direct.detail}")
+            if (direct.resolved != null) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context.applicationContext,
+                        "Guide: direct URL opened (${direct.detail})", Toast.LENGTH_LONG).show()
+                }
+                return@withContext direct.resolved
             }
-            if (direct != null) return@withContext direct
+            pilotFailure = direct.detail
+        } else if (pilot) {
+            pilotFailure = "BatCave source not enabled"
         }
         val store = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val cacheKey = key(issue)
@@ -125,7 +138,20 @@ internal object InkShelf2GuideAutoReader {
             withTimeoutOrNull(35_000L) {
                 val (actual, chapters) = engine.ensureIssues(comic)
                 val chapter = InkShelf2GuideChapterFinder.find(issue, chapters)?.chapter
-                if (chapter?.id != null) Resolved(actual, chapter) else null
+                if (chapter?.id != null) {
+                    if (pilot && pilotFailure != null) {
+                        val matchedSource = sources.firstOrNull { it.id == actual.source }?.name
+                            ?: actual.source.toString()
+                        Log.i("InkShelfGuide",
+                            "Fallback source=$matchedSource series=${actual.url} chapter=${chapter.url}")
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context.applicationContext,
+                                "Direct: $pilotFailure\nFallback: $matchedSource",
+                                Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    Resolved(actual, chapter)
+                } else null
             }
         } catch (cancel: CancellationException) {
             throw cancel
@@ -216,6 +242,12 @@ internal object InkShelf2GuideAutoReader {
                 // wrong run, even if both runs contain the same issue number.
                 if (eligible.size != 1) continue
                 verify(eligible.single())?.let { return@withContext remember(it) }
+            }
+        }
+        if (pilot && pilotFailure != null) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context.applicationContext,
+                    "Direct: $pilotFailure; no fallback match", Toast.LENGTH_LONG).show()
             }
         }
         null
