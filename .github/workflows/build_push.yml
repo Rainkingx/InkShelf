@@ -53,7 +53,7 @@ jobs:
         run: ./gradlew :app:assembleDevDebug -x :app:formatKotlinMain
 
       - name: Test InkShelf 2.0 news and BatCave reading guides
-        run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' -x :app:formatKotlinMain
+        run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' -x :app:formatKotlinMain
 
       - name: Prepare InkShelf 2.0 APK
         run: |
