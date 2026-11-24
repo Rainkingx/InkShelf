@@ -53,7 +53,7 @@ import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.source.CatalogueSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Dedicated Reading Guide issue resolver, NOT a general Discover search.
@@ -115,9 +115,9 @@ internal fun InkShelf2GuideIssuePickerScreen(
             ) {
                 val probe = Manga.create(linkedPath, target.series, batcave.id)
                 try {
-                    val remoteChapters = withTimeout(14_000L) {
+                    val remoteChapters = withTimeoutOrNull(14_000L) {
                         batcave.getChapterList(probe)
-                    }
+                    }.orEmpty()
                     if (InkShelf2GuideChapterFinder.find(target, remoteChapters) != null) {
                         val (resolved, chapters) = engine.ensureIssues(probe)
                         val exact = InkShelf2GuideChapterFinder.find(target, chapters)
