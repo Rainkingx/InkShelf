@@ -89,6 +89,9 @@ internal fun InkShelf2GuidesScreen(
     var searching by remember { mutableStateOf(false) }
     var featured by remember { mutableStateOf<List<InkShelf2FeaturedGuide>>(emptyList()) }
     var focused by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
+    val diagnosticScope = rememberCoroutineScope()
+    var diagnosticRunning by remember { mutableStateOf(false) }
+    var diagnosticResult by remember { mutableStateOf<String?>(null) }
     val connected = InkShelf2GuidesData.configured(context)
     // Local hits appear immediately; server search extends beyond the first
     // page of events. Cancellation prevents stale results replacing new ones.
@@ -324,6 +327,36 @@ internal fun InkShelf2GuidesScreen(
                             )
                         }
                     }
+                }
+            }
+        }
+        item(key = "event-catalogue-diagnostic") {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                TextButton(
+                    enabled = !diagnosticRunning,
+                    onClick = {
+                        diagnosticRunning = true
+                        diagnosticResult = null
+                        diagnosticScope.launch {
+                            try {
+                                diagnosticResult = InkShelf2BatCaveGuides.catalogueDiagnostic()
+                            } finally {
+                                diagnosticRunning = false
+                            }
+                        }
+                    },
+                ) {
+                    Text(
+                        if (diagnosticRunning) "Testing event catalogue…" else "Test event catalogue",
+                        color = InkShelf2Colors.AccentLight,
+                        fontSize = 12.sp,
+                    )
+                }
+                diagnosticResult?.let { result ->
+                    Text(result, color = InkShelf2Colors.Text, fontSize = 12.sp)
                 }
             }
         }
