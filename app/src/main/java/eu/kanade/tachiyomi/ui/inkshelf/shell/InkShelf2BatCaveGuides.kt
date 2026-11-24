@@ -136,7 +136,7 @@ internal object InkShelf2BatCaveGuides {
             } ?: return@mapNotNull null
             // The adjacent series hyperlink is often only a ↗ glyph.
             // The issue's primary anchor carries the *series name* and #number.
-            val rawLabel = eventAnchor.text().trim()
+            val rawLabel = target.text().trim()
                 .replace(Regex("^\\s*" + pos + "\\s*"), "").trim()
             val originalTitle = seriesLink.text().trim()
             val withoutIssue = rawLabel
