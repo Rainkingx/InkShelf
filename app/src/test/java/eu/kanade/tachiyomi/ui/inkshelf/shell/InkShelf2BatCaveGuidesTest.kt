@@ -77,6 +77,42 @@ class InkShelf2BatCaveGuidesTest {
     }
 
     @Test
+    fun civilWarEssentialIssuesOnSecondPageKeepShortPath() {
+        val first = """
+            <h2>Start here: the short path</h2>
+            <ol><li>Civil War #6</li><li>Civil War #7</li></ol>
+        """.trimIndent()
+        val second = """
+            <ol><li><a href="https://batcave.biz/event/civil-war-2006/113">
+              113Civil War (2006)Issue #6</a>
+              <a href="https://batcave.biz/10055-civil-war-2006.html">↗</a>
+            </li></ol>
+        """.trimIndent()
+        val parsed = InkShelf2BatCaveGuides.parseIssues(
+            second, "civil-war-2006", 2, first,
+        )
+        assertEquals(1, parsed.issues.size)
+        assertTrue(parsed.issues.first().isEssential)
+        assertEquals("/10055-civil-war-2006.html",
+            parsed.issues.first().batcaveSeriesPath)
+    }
+
+    @Test
+    fun missingEventTieInRemainsInReadingOrderWithoutInventingSource() {
+        val html = """
+            <ol>
+             <li>64 Daily Bugle Special Edition: Civil War #1 not on the site yet</li>
+             <li><a href="/event/civil-war-2006/65">65Civil War: Front Line Issue #4</a>
+                 <a href="/11677-civil-war-front-line.html">↗</a></li>
+            </ol>
+        """.trimIndent()
+        val parsed = InkShelf2BatCaveGuides.parseIssues(html, "civil-war-2006", 1)
+        assertEquals(listOf(64, 65), parsed.issues.map { it.position })
+        assertEquals(null, parsed.issues.first().batcaveSeriesPath)
+        assertEquals("1", parsed.issues.first().number)
+    }
+
+    @Test
     fun paginationAndUnrelatedLinkCannotSpoofAnotherEvent() {
         val html = """
             <ol>
