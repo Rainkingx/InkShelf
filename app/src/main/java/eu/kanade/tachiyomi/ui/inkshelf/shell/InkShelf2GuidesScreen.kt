@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import androidx.activity.compose.BackHandler
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,12 +29,15 @@ import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -152,6 +156,7 @@ internal fun InkShelf2GuidesScreen(
                 started = InkShelf2GuidesData.startedGuides(context)
             },
             progressReady = progressReady,
+            onProgressChanged = { guideRevision++ },
             saved = selected.id in savedGuideIds,
             onSave = { onSaveGuide(selected.id, selected.id !in savedGuideIds) },
             enabledSourceIds = enabledSourceIds,
@@ -361,6 +366,7 @@ private fun InkShelf2GuideDetails(
     onReadIssue: (InkShelf2GuideIssue) -> Unit,
     progress: InkShelf2GuideProgress.EventState,
     progressReady: Boolean,
+    onProgressChanged: () -> Unit,
     refreshEpoch: Int,
     openingIssueId: Int?,
     readingError: String?,
@@ -379,6 +385,53 @@ private fun InkShelf2GuideDetails(
     var essential by remember(guide.id) { mutableStateOf(InkShelf2GuidesData.essentialMode(context, guide.id)) }
     var description by remember(guide.id) { mutableStateOf<String?>(null) }
     var manualRevision by remember(guide.id) { mutableStateOf(0) }
+    var optionsOpen by remember(guide.id) { mutableStateOf(false) }
+    var confirmReset by remember(guide.id) { mutableStateOf(false) }
+    var resetting by remember(guide.id) { mutableStateOf(false) }
+    var hideRead by remember(guide.id) { mutableStateOf(InkShelf2GuidesData.displayOption(context, guide.id, "hide_read")) }
+    var spoilerSafe by remember(guide.id) { mutableStateOf(InkShelf2GuidesData.displayOption(context, guide.id, "spoilers")) }
+    var localArtwork by remember(guide.id) { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    var artworkReady by remember(guide.id, all, refreshEpoch) { mutableStateOf(false) }
+    LaunchedEffect(guide.id, all, refreshEpoch) {
+        if (all.isNotEmpty()) {
+            try {
+                localArtwork = InkShelf2CachedGuideArtwork.load(all)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                localArtwork = emptyMap()
+            } finally {
+                artworkReady = true
+            }
+        }
+    }
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text("Reset event progress?") },
+            text = { Text("Reset the complete event, not just the selected reading mode. Matched issues become unread and restart on page one. This also affects shared Library progress. Downloads and bookmarks are kept. Grouped multi-issue chapters are not reset.") },
+            confirmButton = { TextButton(onClick = {
+                confirmReset = false
+                resetting = true
+                scope.launch {
+                    try {
+                        val result = InkShelf2ReadingReset.event(context, guide)
+                        manualRevision++
+                        onProgressChanged()
+                        Toast.makeText(context, "Reset ${result.reset} matched chapters" +
+                            if (result.groupedSkipped > 0) "; ${result.groupedSkipped} grouped entries skipped" else "", Toast.LENGTH_LONG).show()
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "Could not reset event", Toast.LENGTH_LONG).show()
+                    } finally {
+                        resetting = false
+                    }
+                }
+            }) { Text("Reset") } },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
+        )
+    }
     val readIds = remember(guide.id, progress, manualRevision, refreshEpoch) {
         InkShelf2GuideProgress.effectiveRead(context, guide.id, progress)
     }
@@ -423,6 +476,7 @@ private fun InkShelf2GuideDetails(
     }
 
     val selected = InkShelf2GuideReadingSelection.issuesForMode(all, essential)
+    val visibleIssues = if (hideRead) selected.filterNot { it.id.toString() in readIds } else selected
     // Only batch series with multiple needed covers. One-off tie-ins use one exact request.
     val multiIssueSeries = remember(selected) {
         selected.mapNotNull(InkShelf2GuidesData::issueArtworkKey)
@@ -496,6 +550,34 @@ private fun InkShelf2GuideDetails(
             bottom = padding.calculateBottomPadding() + 25.dp,
         ),
         onBack = onBack,
+        topActions = {
+            IconButton(onClick = { optionsOpen = true }) {
+                Icon(Icons.Outlined.MoreVert, "Event options", tint = Color.White)
+            }
+            DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(if (hideRead) "Show completed issues" else "Hide completed issues") },
+                    onClick = {
+                        hideRead = !hideRead
+                        InkShelf2GuidesData.setDisplayOption(context, guide.id, "hide_read", hideRead)
+                        optionsOpen = false
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(if (spoilerSafe) "Turn off spoiler protection" else "Turn on spoiler protection") },
+                    onClick = {
+                        spoilerSafe = !spoilerSafe
+                        InkShelf2GuidesData.setDisplayOption(context, guide.id, "spoilers", spoilerSafe)
+                        optionsOpen = false
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Reset event progress") },
+                    enabled = progressReady && !resetting && !currentlyOpening && all.isNotEmpty(),
+                    onClick = { optionsOpen = false; confirmReset = true },
+                )
+            }
+        },
     ) {
         item(key = "event-details") {
             Column(
@@ -503,7 +585,8 @@ private fun InkShelf2GuideDetails(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    description ?: "Explore this event in its intended reading order. " +
+                    if (spoilerSafe) "Spoiler protection is on. Unread issue artwork and the event synopsis are hidden."
+                    else description ?: "Explore this event in its intended reading order. " +
                         "Choose the main storyline or every available tie-in, then start reading.",
                     color = InkShelf2Colors.Muted, fontSize = 13.sp, lineHeight = 19.sp,
                     maxLines = 3, overflow = TextOverflow.Ellipsis,
@@ -532,6 +615,7 @@ private fun InkShelf2GuideDetails(
                     InkShelf2DetailQuickAction(
                         label = when {
                             currentlyOpening -> "Opening Issue"
+                            resetting -> "Resetting Progress"
                             !progressReady || all.isEmpty() -> "Loading Progress"
                             nextIssue == null -> "Unavailable"
                             finished -> "Read Again"
@@ -541,7 +625,7 @@ private fun InkShelf2GuideDetails(
                         icon = Icons.Filled.PlayArrow,
                         highlight = true,
                         onClick = { if (nextIssue != null && !nextIssue.sourceUnavailable) onReadIssue(nextIssue) },
-                        enabled = progressReady && nextIssue != null && !currentlyOpening,
+                        enabled = progressReady && nextIssue != null && !currentlyOpening && !resetting,
                         modifier = Modifier.weight(1f),
                     )
                     InkShelf2DetailQuickAction(
@@ -590,7 +674,8 @@ private fun InkShelf2GuideDetails(
                 Text(if (essential) "Essential Reading" else "Complete Reading Order",
                     color = InkShelf2Colors.Text,
                     fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text(selected.size.toString() + (if (hasMore) "+ listed issues" else " listed issues") +
+                Text((if (hideRead) "${visibleIssues.size} of ${selected.size} shown · completed hidden"
+                    else selected.size.toString() + (if (hasMore) "+ listed issues" else " listed issues")) +
                     " · Tap an available issue to read",
                     color = InkShelf2Colors.Muted, fontSize = 12.sp)
             }
@@ -614,8 +699,13 @@ private fun InkShelf2GuideDetails(
                     }
                 }
             }
+        } else if (visibleIssues.isEmpty()) {
+            item {
+                Text("All listed issues are completed. Show completed issues from the event menu.",
+                    modifier = Modifier.padding(horizontal = 16.dp), color = InkShelf2Colors.Muted, fontSize = 13.sp)
+            }
         } else {
-            items(selected, key = { it.id }) { issue ->
+            items(visibleIssues, key = { it.id }) { issue ->
                 val checked = issue.id.toString() in readIds
                 Row(
                     modifier = Modifier.fillMaxWidth()
@@ -625,14 +715,16 @@ private fun InkShelf2GuideDetails(
                             if (checked) InkShelf2Colors.AccentLight.copy(alpha = 0.45f)
                             else InkShelf2Colors.Border,
                             RoundedCornerShape(13.dp))
-                        .clickable(enabled = !currentlyOpening && !issue.sourceUnavailable) { onReadIssue(issue) }
+                        .clickable(enabled = !resetting && !currentlyOpening && !issue.sourceUnavailable) { onReadIssue(issue) }
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     InkShelf2GuideIssueArtwork(
-                        issue, progress.issues[issue.id]?.coverUrl, checked,
+                        issue, progress.issues[issue.id]?.coverUrl ?: localArtwork[issue.id], checked,
                         batch = InkShelf2GuidesData.issueArtworkKey(issue)?.seriesKey in multiIssueSeries,
+                        allowArtwork = !spoilerSafe || checked,
+                        allowLookup = artworkReady && progressReady,
                     )
                     Icon(
                         Icons.Outlined.CheckCircleOutline,
@@ -648,7 +740,8 @@ private fun InkShelf2GuideDetails(
                             fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text("STEP " + issue.position +
-                            if (checked) " · READ" else if (issue.id in progress.partialIds) " · IN PROGRESS" else " · " + issue.role.ifBlank { "ISSUE" },
+                            " · " + (if (issue.isEssential) "ESSENTIAL" else "TIE-IN") +
+                            (if (checked) " · READ" else if (issue.id in progress.partialIds) " · IN PROGRESS" else ""),
                             color = InkShelf2Colors.Muted, fontSize = 10.sp)
                     }
                     val state = offline[issue.id]
@@ -703,6 +796,8 @@ private fun InkShelf2GuideIssueArtwork(
     sourceCover: String?,
     read: Boolean,
     batch: Boolean,
+    allowArtwork: Boolean,
+    allowLookup: Boolean,
 ) {
     val context = LocalContext.current
     val key = remember(issue) { InkShelf2GuidesData.issueArtworkKey(issue) }
@@ -710,9 +805,10 @@ private fun InkShelf2GuideIssueArtwork(
         mutableStateOf(sourceCover ?: key?.let { InkShelf2GuidesData.cachedIssueCover(context, it) })
     }
     var batchFinished by remember(issue, sourceCover, batch) { mutableStateOf(!batch) }
-    DisposableEffect(issue, sourceCover, batch) {
+    DisposableEffect(issue, sourceCover, batch, allowArtwork, allowLookup) {
         var active = true
-        if (cover == null && batch && key != null) {
+        if (allowArtwork && allowLookup && cover == null && batch && key != null) {
+            batchFinished = false
             InkShelfMetronCovers.requestIssueCover(
                 context = context,
                 title = key.title + " (" + key.year + ")",
@@ -726,13 +822,13 @@ private fun InkShelf2GuideIssueArtwork(
         } else batchFinished = true
         onDispose { active = false }
     }
-    LaunchedEffect(issue, sourceCover, batchFinished) {
-        if (batchFinished && cover == null && key != null) {
+    LaunchedEffect(issue, sourceCover, batchFinished, allowArtwork, allowLookup) {
+        if (allowArtwork && allowLookup && batchFinished && cover == null && key != null) {
             cover = InkShelf2GuidesData.issueCover(context, issue)
         }
     }
     InkShelf2IssueArtworkFrame(
-        imageUrl = cover,
+        imageUrl = if (allowArtwork) cover else null,
         title = issue.displayName,
         fallbackLabel = if (issue.number.equals("Full", true)) "ISSUE" else "#" + issue.number,
         read = read,

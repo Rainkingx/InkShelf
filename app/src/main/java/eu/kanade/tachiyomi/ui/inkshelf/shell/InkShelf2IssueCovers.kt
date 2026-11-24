@@ -91,7 +91,7 @@ private fun IssueArtwork(
     // Use that first; only ask Metron to fill genuine cover gaps.
     val sourceCover = InkShelfIssueMetadata.from(chapter).coverUrl
     val imageUrl = sourceCover ?: cover
-    DisposableEffect(context, manga.source, manga.url, chapter.name, issue, anchorIssueNumber) {
+    DisposableEffect(context, manga.source, manga.url, chapter.name, issue, anchorIssueNumber, sourceCover) {
         var active = true
         if (sourceCover == null && issue != null) {
             InkShelfMetronCovers.requestIssueCover(

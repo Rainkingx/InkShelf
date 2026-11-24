@@ -44,11 +44,14 @@ import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -610,6 +613,7 @@ internal fun InkShelf2DetailPage(
     attribution: String,
     padding: PaddingValues,
     onBack: () -> Unit,
+    topActions: @Composable () -> Unit = {},
     content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     LazyColumn(
@@ -637,6 +641,7 @@ internal fun InkShelf2DetailPage(
                 ) {
                     Icon(Icons.Outlined.ArrowBack, "Back", tint = Color.White)
                 }
+                Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) { topActions() }
                 Row(
                     modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
                     verticalAlignment = Alignment.Bottom,
@@ -697,6 +702,7 @@ internal fun InkShelf2DetailsScreen(
     onResumeDownloads: () -> Unit,
     onDeleteIssueDownload: (Chapter) -> Unit,
     onSave: () -> Unit,
+    onResetReading: (Long?) -> Unit = {},
     similarComics: List<InkShelf2SimilarPick>,
     onSimilarComic: (Manga) -> Unit,
 ) {
@@ -767,6 +773,27 @@ internal fun InkShelf2DetailsScreen(
     var downloadChoicesOpen by rememberSaveable(manga.source, manga.url) { mutableStateOf(false) }
     var issueActions by remember(manga.source, manga.url) { mutableStateOf<Chapter?>(null) }
     var issueToRemove by remember(manga.source, manga.url) { mutableStateOf<Chapter?>(null) }
+    var comicMenu by remember(manga.source, manga.url) { mutableStateOf(false) }
+    var resetSeries by remember(manga.source, manga.url) { mutableStateOf(false) }
+    var resetIssue by remember(manga.source, manga.url) { mutableStateOf<Chapter?>(null) }
+    if (resetSeries || resetIssue != null) {
+        val single = resetIssue
+        AlertDialog(
+            onDismissRequest = { resetSeries = false; resetIssue = null },
+            title = { Text(if (single == null) "Reset comic progress?" else "Reset issue progress?") },
+            text = { Text(
+                (if (single == null) "All loaded issues in this source edition will become unread and start at page one."
+                else "${single.name} will become unread and start at page one.") +
+                    " Downloads, bookmarks and Library entries are kept. Shared event progress may also change.",
+            ) },
+            confirmButton = { TextButton(onClick = {
+                resetSeries = false
+                resetIssue = null
+                onResetReading(single?.id)
+            }) { Text("Reset") } },
+            dismissButton = { TextButton(onClick = { resetSeries = false; resetIssue = null }) { Text("Cancel") } },
+        )
+    }
     val chosenIssue = issueActions
     if (chosenIssue != null) {
         val hasOffline = chosenIssue.id in downloadedChapterIds
@@ -795,6 +822,10 @@ internal fun InkShelf2DetailsScreen(
                         issueActions = null
                         onChapter(chosenIssue)
                     }) { Text("Read issue") }
+                    TextButton(enabled = chosenIssue.id != null, onClick = {
+                        issueActions = null
+                        resetIssue = chosenIssue
+                    }) { Text("Reset issue progress") }
                 }
             },
             confirmButton = {
@@ -870,6 +901,18 @@ internal fun InkShelf2DetailsScreen(
         attribution = if (sourceName.isNullOrBlank()) "Source not installed" else "Source: $sourceName",
         padding = padding,
         onBack = onBack,
+        topActions = {
+            IconButton(onClick = { comicMenu = true }) {
+                Icon(Icons.Outlined.MoreVert, "Comic options", tint = Color.White)
+            }
+            DropdownMenu(expanded = comicMenu, onDismissRequest = { comicMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Reset reading progress") },
+                    enabled = chapters.isNotEmpty() && !isLoadingIssues,
+                    onClick = { comicMenu = false; resetSeries = true },
+                )
+            }
+        },
     ) {
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {

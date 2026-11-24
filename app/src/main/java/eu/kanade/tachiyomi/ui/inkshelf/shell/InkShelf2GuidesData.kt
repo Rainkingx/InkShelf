@@ -430,6 +430,23 @@ internal object InkShelf2GuidesData {
             }
         }
 
+    fun clearReadingMarks(context: Context, guideId: Int) {
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val opened = prefs.getStringSet("started_reader_v2", emptySet())?.toSet().orEmpty()
+        prefs.edit().remove("read_" + guideId).remove("manual_unread_" + guideId)
+            .remove("last_opened_" + guideId).remove("last_opened_at_" + guideId)
+            .putStringSet("started_reader_v2", opened - guideId.toString()).apply()
+    }
+
+    fun displayOption(context: Context, guideId: Int, option: String): Boolean =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean("display_" + option + "_" + guideId, false)
+
+    fun setDisplayOption(context: Context, guideId: Int, option: String, value: Boolean) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean("display_" + option + "_" + guideId, value).apply()
+    }
+
     fun savedGuideIds(context: Context): Set<Int> =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getStringSet("saved_events_v1", emptySet())?.mapNotNull(String::toIntOrNull)?.toSet().orEmpty()

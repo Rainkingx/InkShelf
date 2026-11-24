@@ -956,6 +956,19 @@ class InkShelf2Activity : AppCompatActivity() {
                         onResumeDownloads = { resumeDownloads() },
                         onDeleteIssueDownload = { chapter -> removeOfflineIssue(comic, chapter) },
                         onSave = { saveComic(comic) },
+                        onResetReading = { chapterId ->
+                            lifecycleScope.launch {
+                                try {
+                                    val count = InkShelf2ReadingReset.comic(comic, chapterId)
+                                    refreshEpoch += 1
+                                    Toast.makeText(this@InkShelf2Activity, "Reset $count issue(s)", Toast.LENGTH_SHORT).show()
+                                } catch (cancel: CancellationException) {
+                                    throw cancel
+                                } catch (_: Exception) {
+                                    Toast.makeText(this@InkShelf2Activity, "Could not reset progress", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
                         similarComics = similarPicks,
                         onSimilarComic = { related ->
                             // This is exactly the same source-aware navigation
