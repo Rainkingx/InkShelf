@@ -1024,11 +1024,14 @@ class ReaderViewModel(
                         R.string.cover_updated
                         SetAsCoverResult.Success
                     } else {
-                        if (manga.favorite) {
-                            coverCache.setCustomCoverToCache(manga, stream())
-                            SetAsCoverResult.Success
+                        // Reader series already have a database identity even
+                        // when they are not favourites. Save a local override
+                        // without adding the series to the Library.
+                        if (manga.id == null) {
+                            SetAsCoverResult.Error
                         } else {
-                            SetAsCoverResult.AddToLibraryFirst
+                            stream().use { coverCache.setCustomCoverToCache(manga, it) }
+                            SetAsCoverResult.Success
                         }
                     }
                 } catch (e: Exception) {
@@ -1043,7 +1046,6 @@ class ReaderViewModel(
      */
     enum class SetAsCoverResult {
         Success,
-        AddToLibraryFirst,
         Error,
     }
 

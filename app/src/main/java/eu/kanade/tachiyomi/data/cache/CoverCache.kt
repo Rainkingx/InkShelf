@@ -168,10 +168,18 @@ class CoverCache(
         manga: Manga,
         inputStream: InputStream,
     ) {
-        getCustomCoverFile(manga).outputStream().use {
-            inputStream.copyTo(it)
-            context.imageLoader.removeCoverFromMemory(manga)
+        require(manga.id != null) { "A stored series is required for a custom cover" }
+        val target = getCustomCoverFile(manga)
+        val file = android.util.AtomicFile(target)
+        val output = file.startWrite()
+        try {
+            inputStream.copyTo(output)
+            file.finishWrite(output)
+        } catch (e: Exception) {
+            file.failWrite(output)
+            throw e
         }
+        context.imageLoader.removeCoverFromMemory(manga)
     }
 
     /**

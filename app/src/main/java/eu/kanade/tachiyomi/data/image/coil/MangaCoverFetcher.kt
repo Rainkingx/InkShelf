@@ -47,7 +47,16 @@ class MangaCoverFetcher(
     private lateinit var url: String
 
     override suspend fun fetch(): FetchResult {
-        // diskCacheKey is thumbnail_url
+        // Custom overrides also work when an online series has no original
+        // thumbnail. Do not let an unsaved search result use a null-ID file.
+        val shouldFetchRemotely = options.networkCachePolicy.readEnabled && !options.diskCachePolicy.readEnabled
+        if (!shouldFetchRemotely && manga.id != null && (options.parameters.value(useCustomCover) ?: true)) {
+            val custom = coverCache.getCustomCoverFile(manga)
+            if (custom.exists()) {
+                setRatioAndColorsInScope(manga, custom)
+                return fileLoader(custom)
+            }
+        }
         url = manga.thumbnail_url ?: error("No cover specified")
         return when (getResourceType(url)) {
             Type.URL -> httpLoader()
@@ -63,15 +72,6 @@ class MangaCoverFetcher(
         val diskRead = options.diskCachePolicy.readEnabled
         val networkRead = options.networkCachePolicy.readEnabled
         val shouldFetchRemotely = networkRead && !diskRead
-        val useCustomCover = options.parameters.value(useCustomCover) ?: true
-        // Use custom cover if exists
-        if (!shouldFetchRemotely) {
-            val customCoverFile by lazy { coverCache.getCustomCoverFile(manga) }
-            if (useCustomCover && customCoverFile.exists()) {
-                setRatioAndColorsInScope(manga, customCoverFile)
-                return fileLoader(customCoverFile)
-            }
-        }
         val coverFile = coverCache.getCoverFile(manga)
         if (!shouldFetchRemotely && coverFile.exists() && options.diskCachePolicy.readEnabled) {
             if (!manga.favorite) {

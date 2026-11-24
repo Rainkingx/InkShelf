@@ -94,7 +94,6 @@ import eu.kanade.tachiyomi.ui.base.MaterialMenuSheet
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.main.SearchActivity
-import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.AddToLibraryFirst
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Error
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Success
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
@@ -2242,7 +2241,6 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
         toast(
             when (result) {
                 Success -> R.string.cover_updated
-                AddToLibraryFirst -> R.string.must_be_in_library_to_edit
                 Error -> R.string.failed_to_update_cover
             },
         )
