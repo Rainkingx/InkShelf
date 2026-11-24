@@ -6,6 +6,7 @@ import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.source.CatalogueSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -37,6 +38,7 @@ internal object InkShelf2GuideAutoReader {
         engine: InkShelf2SourcesEngine,
         sources: List<CatalogueSource>,
         requested: InkShelf2GuideIssue,
+        onDiagnostic: (String) -> Unit = {},
     ): Resolved? = withContext(Dispatchers.IO) {
         if (requested.sourceUnavailable || sources.isEmpty() || (requested.number.toIntOrNull() == null &&
                 !requested.number.equals("Full", ignoreCase = true))) {
@@ -52,23 +54,45 @@ internal object InkShelf2GuideAutoReader {
         val store = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val cacheKey = issue.batcaveSeriesPath?.takeIf(InkShelf2GuideAutoMatch::isSafeSeriesPath)
             ?.let { "saved-path:" + it } ?: key(issue)
-        val tried = mutableSetOf<Pair<Long, String>>()
+        // A discovered native record may differ from the synthetic initial
+        // lookup even when both resolve to the same web page.
+        val tried = mutableSetOf<Triple<Long, String, String>>()
+        var bestDiagnostic = ""
+        var bestDiagnosticScore = -1
+        fun note(score: Int, message: String) {
+            if (score > bestDiagnosticScore) {
+                bestDiagnosticScore = score
+                bestDiagnostic = message
+            }
+        }
 
         suspend fun verify(comic: Manga): Resolved? = try {
-            if (!tried.add(comic.source to canonicalPath(comic.url))) null else
+            if (!tried.add(Triple(comic.source, comic.url, comic.title))) null else
                 withTimeoutOrNull(45_000L) {
                     val (actual, chapters) = engine.ensureIssues(comic)
+                    val sourceName = sources.firstOrNull { it.id == comic.source }?.name ?: "Source"
+                    val labels = chapters.take(8).joinToString(", ") { it.name.take(48) }
+                    note(if (chapters.isEmpty()) 1 else 2,
+                        "$sourceName: ${chapters.size} chapters" +
+                            if (labels.isBlank()) "" else " ($labels)")
                     val chapter = InkShelf2GuideChapterFinder.find(issue, chapters)?.chapter
                     if (chapter?.id != null) Resolved(actual, chapter)
                     else if (chapters.isNotEmpty()) {
                         val (refreshed, freshChapters) = engine.ensureIssues(actual, refreshCached = true)
+                        val retryLabels = freshChapters.take(8).joinToString(", ") { it.name.take(48) }
+                        note(3, "$sourceName after refresh: ${freshChapters.size} chapters" +
+                            if (retryLabels.isBlank()) "" else " ($retryLabels)")
                         val retry = InkShelf2GuideChapterFinder.find(issue, freshChapters)?.chapter
                         if (retry?.id != null) Resolved(refreshed, retry) else null
                     } else null
                 }
+        } catch (timeout: TimeoutCancellationException) {
+            note(0, "Chapter lookup timed out.")
+            null
         } catch (cancel: CancellationException) {
             throw cancel
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            note(0, "Chapter lookup failed (" + error.javaClass.simpleName + ").")
             null
         }
 
@@ -116,6 +140,9 @@ internal object InkShelf2GuideAutoReader {
             for (query in queries) {
                 val found = try {
                     engine.searchAcross(listOf(source), query).results
+                } catch (_: TimeoutCancellationException) {
+                    note(0, source.name + ": search timed out.")
+                    emptyList()
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
@@ -148,6 +175,7 @@ internal object InkShelf2GuideAutoReader {
                 verify(eligible.single())?.let { return@withContext remember(it) }
             }
         }
+        onDiagnostic(bestDiagnostic.ifBlank { "No matching series returned by enabled sources." })
         null
     }
 }

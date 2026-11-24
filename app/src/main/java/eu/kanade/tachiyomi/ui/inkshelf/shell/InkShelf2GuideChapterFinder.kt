@@ -21,6 +21,21 @@ internal object InkShelf2GuideChapterFinder {
         RegexOption.IGNORE_CASE,
     )
 
+    // A regular chapter can have an internal sequence number that conflicts
+    // with another chapter's printed number. The printed label is stronger.
+    private val printedIssue = Regex(
+        """(?:^|[\s:(])(?:issue\s*#?|chapter\s*#?|ch\.?\s*#?|#)\s*0*(\d{1,3})(?![\d.])""",
+        RegexOption.IGNORE_CASE,
+    )
+    private val plainPrintedIssue = Regex("""^\s*0*(\d{1,3})\s*$""")
+    private fun printedNumber(chapter: Chapter): Int? =
+        printedIssue.find(chapter.name)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            ?: plainPrintedIssue.matchEntire(chapter.name)?.groupValues?.getOrNull(1)?.toIntOrNull()
+
+    private fun isGrouped(chapter: Chapter): Boolean =
+        numberedRange.containsMatchIn(chapter.name) ||
+            InkShelfComicIssueGaps.coveredNumbers(chapter).size > 1
+
     private fun inCombinedEntry(chapter: Chapter, number: Int): Boolean {
         if (nonRegular.containsMatchIn(chapter.name)) return false
         val match = numberedRange.find(chapter.name) ?: return false
@@ -55,10 +70,15 @@ internal object InkShelf2GuideChapterFinder {
         val number = issue.number.trim().removePrefix("#").toIntOrNull()
             ?.takeIf { it in 0..999 } ?: return null
 
-        val exact = chapters.filter { chapter ->
-            !nonRegular.containsMatchIn(chapter.name) &&
+        val regular = chapters.filterNot { nonRegular.containsMatchIn(it.name) }
+        val printed = regular.filter { printedNumber(it) == number && !isGrouped(it) }
+        if (printed.size == 1) return Found(printed.single(), grouped = false)
+        if (printed.size > 1) return null
+
+        val exact = regular.filter { chapter ->
+            printedNumber(chapter) == null &&
                 InkShelf2IssueNumbers.fromChapter(chapter) == number &&
-                !inCombinedEntry(chapter, number)
+                !isGrouped(chapter)
         }
         if (exact.size == 1) return Found(exact.single(), grouped = false)
         if (exact.size > 1) return null

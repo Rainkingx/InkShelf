@@ -1096,9 +1096,11 @@ class InkShelf2Activity : AppCompatActivity() {
                                 guideReadError = null
                                 lifecycleScope.launch {
                                     try {
+                                        var matchDiagnostic = ""
                                         val reading = InkShelf2GuideAutoReader.resolve(
                                             applicationContext,
                                             sourcesEngine, enabledSources, requestedIssue,
+                                            onDiagnostic = { matchDiagnostic = it },
                                         )
                                         if (reading != null) {
                                             openChapter(reading.manga, reading.chapter)
@@ -1106,7 +1108,8 @@ class InkShelf2Activity : AppCompatActivity() {
                                             guideReadError =
                                                 "Could not match " + requestedIssue.displayName +
                                                 " to a readable issue in the installed extensions. " +
-                                                "The guide order is unchanged."
+                                                "The guide order is unchanged." +
+                                                if (matchDiagnostic.isBlank()) "" else "\n" + matchDiagnostic
                                         }
                                     } catch (cancel: CancellationException) {
                                         throw cancel

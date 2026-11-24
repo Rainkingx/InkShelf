@@ -58,10 +58,13 @@ internal object InkShelf2GuideAutoMatch {
     fun queries(issue: InkShelf2GuideIssue): List<String> {
         val base = seriesName(issue.series)
         val year = issue.yearBegan ?: year(issue.series)
+        val articleAlias = if (key(base) == "war of the realms" && year == 2019 &&
+            !base.startsWith("The ", ignoreCase = true)) "The " + base else null
         return listOfNotNull(
             year?.let { base + " (" + it + ")" },
             issue.series,
             base,
-        ).map { it.trim() }.filter { it.length >= 2 }.distinct().take(3)
+            articleAlias,
+        ).map { it.trim() }.filter { it.length >= 2 }.distinct().take(4)
     }
 }

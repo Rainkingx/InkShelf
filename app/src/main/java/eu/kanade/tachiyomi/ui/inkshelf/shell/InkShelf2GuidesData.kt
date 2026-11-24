@@ -229,38 +229,45 @@ internal object InkShelf2GuidesData {
         val (title, year) = verifiedEventArt[slug] ?: return null
         return coverMutex.withLock {
             val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val key = "verified_event_cover_v2_" + slug
+            val key = if (slug == "king-in-black") "verified_event_cover_v3_" + slug
+                else "verified_event_cover_v2_" + slug
             val cached = prefs.getString(key, null)
+                ?: prefs.getString("verified_event_cover_v2_" + slug, null)?.takeIf { it.isNotBlank() }
                 ?: prefs.getString("verified_event_cover_v1_" + slug, null)?.takeIf { it.isNotBlank() }
             val age = System.currentTimeMillis() - prefs.getLong(key + "_time", 0L)
             val ttl = if (cached.isNullOrBlank()) 10L * 60 * 1000 else COVER_CACHE_MS
             if (cached != null && age in 0L until ttl) return@withLock imageUrl(cached)
             val secret = token(context) ?: return@withLock imageUrl(cached)
             try {
-                // At most one serialized, rate-limited issue search per event.
-                delay(2_650)
-                val result = JSONObject(get(
-                    "https://metron.cloud/api/issue/?series_name=" + Uri.encode(title) +
-                        "&series_year_began=" + year + "&number=1",
-                    secret,
-                ))
-                val rows = result.optJSONArray("results") ?: JSONArray()
-                val matches = (0 until rows.length()).mapNotNull { index ->
-                    val issue = rows.optJSONObject(index) ?: return@mapNotNull null
-                    val series = issue.optJSONObject("series") ?: return@mapNotNull null
-                    // The issue-list response may omit year_began. The exact
-                    // server-side series_year_began filter still applies; reject
-                    // a conflicting year whenever the API supplies one.
-                    val suppliedYear = series.optInt("year_began", 0)
-                    if (artTitle(series.optString("name")) != artTitle(title) ||
-                        (suppliedYear > 0 && suppliedYear != year) ||
-                        issue.optString("number").trim() != "1") return@mapNotNull null
-                    val id = issue.optInt("id", 0).takeIf { it > 0 } ?: return@mapNotNull null
-                    val url = imageUrl(issue.optString("image")) ?: return@mapNotNull null
-                    id to url
-                }.distinct()
-                val more = !result.isNull("next") && result.optString("next").isNotBlank()
-                val found = if (!more && matches.size == 1) matches.single().second else null
+                // King in Black #1 went on sale in Dec 2020, but its
+                // cover date is Feb 2021. Some catalogues use the latter.
+                val years = if (slug == "king-in-black") listOf(year, 2021) else listOf(year)
+                var found: String? = null
+                for (lookupYear in years) {
+                    delay(2_650)
+                    val result = JSONObject(get(
+                        "https://metron.cloud/api/issue/?series_name=" + Uri.encode(title) +
+                            "&series_year_began=" + lookupYear + "&number=1",
+                        secret,
+                    ))
+                    val rows = result.optJSONArray("results") ?: JSONArray()
+                    val matches = (0 until rows.length()).mapNotNull { index ->
+                        val issue = rows.optJSONObject(index) ?: return@mapNotNull null
+                        val series = issue.optJSONObject("series") ?: return@mapNotNull null
+                        val suppliedYear = series.optInt("year_began", 0)
+                        if (artTitle(series.optString("name")) != artTitle(title) ||
+                            (suppliedYear > 0 && suppliedYear != lookupYear) ||
+                            issue.optString("number").trim() != "1") return@mapNotNull null
+                        val id = issue.optInt("id", 0).takeIf { it > 0 } ?: return@mapNotNull null
+                        val url = imageUrl(issue.optString("image")) ?: return@mapNotNull null
+                        id to url
+                    }.distinct()
+                    val more = !result.isNull("next") && result.optString("next").isNotBlank()
+                    if (!more && matches.size == 1) {
+                        found = matches.single().second
+                        break
+                    }
+                }
                 val retained = found ?: imageUrl(cached)
                 prefs.edit().putString(key, retained ?: "")
                     .putLong(key + "_time", System.currentTimeMillis()).apply()
