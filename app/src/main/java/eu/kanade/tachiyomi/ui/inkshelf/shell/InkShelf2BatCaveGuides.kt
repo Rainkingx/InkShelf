@@ -1,19 +1,8 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.content.Context
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.supervisorScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import java.util.concurrent.TimeUnit
 
 /**
  * BatCave editorial event adapter. Metadata only; extension remains authoritative
@@ -21,8 +10,6 @@ import java.util.concurrent.TimeUnit
  */
 internal object InkShelf2BatCaveGuides {
     private const val BASE = "https://batcave.biz"
-    private const val PREFS = "inkshelf2_batcave_events_v1"
-    private const val TTL_MS = 12L * 60 * 60 * 1000
     private val validSlug = Regex("""[a-z0-9]+(?:-[a-z0-9]+)*""")
     private val issuePath = Regex("""^/event/([a-z0-9-]+)/(\d{1,5})/?$""")
     private val seriesPath = Regex("""^/\d{2,9}-[a-z0-9-]+\.html$""")
@@ -36,21 +23,15 @@ internal object InkShelf2BatCaveGuides {
             url.path else ""
     }.getOrDefault("")
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(6, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .callTimeout(13, TimeUnit.SECONDS)
-        .followRedirects(false)
-        .build()
-
     private fun guide(slug: String, name: String, publisher: String) = InkShelf2Guide(
         id = -(slug.hashCode().toLong().let { kotlin.math.abs(it) } % 2_000_000_000L).toInt() - 1,
         name = name, type = "EVENT", author = "BatCave event index",
         attribution = "BatCave reading order · Essential / Complete",
         rating = 0.0, publisher = publisher, batcaveSlug = slug,
     )
-    // These slugs were inspected on BatCave's published event pages.
+    // Blood Hunt is an on-demand pilot; availability is checked by the user.
     private val knownEvents = listOf(
+        guide("blood-hunt", "Blood Hunt", "Marvel"),
         guide("house-of-m", "House of M", "Marvel"),
         guide("blackest-night", "Blackest Night", "DC"),
         guide("civil-war-2006", "Marvel Civil War", "Marvel"),
@@ -59,110 +40,11 @@ internal object InkShelf2BatCaveGuides {
     )
     fun featured(): List<InkShelf2Guide> = knownEvents
 
-    private suspend fun html(context: Context, url: String, maxSize: Int = 900_000): String? =
-        withContext(Dispatchers.IO) {
-            if (!url.startsWith("$BASE/event/") && url != "$BASE/event") return@withContext null
-            val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val key = url.removePrefix(BASE).replace('/', '_')
-            val cached = prefs.getString(key, null)
-            val age = System.currentTimeMillis() - prefs.getLong(key + "_at", 0)
-            if (cached != null && age in 0 until TTL_MS) return@withContext cached
-            val fresh = try {
-                client.newCall(Request.Builder().url(url).get()
-                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36")
-                    .header("Accept", "text/html,application/xhtml+xml")
-                    .build()).execute().use { reply ->
-                    if (reply.code != 200 || !reply.header("Content-Type").orEmpty().contains("html", true))
-                        return@use null
-                    reply.body?.string()?.takeIf { it.length in 100..maxSize }
-                }
-            } catch (cancel: CancellationException) {
-                throw cancel
-            } catch (_: Exception) {
-                null
-            }
-            if (fresh != null) prefs.edit().putString(key, fresh)
-                .putLong(key + "_at", System.currentTimeMillis()).apply()
-            fresh ?: cached
-        }
-
-    suspend fun catalogue(context: Context): List<InkShelf2Guide> = supervisorScope {
-        val first = html(context, "$BASE/event/") ?: html(context, "$BASE/event")
-            ?: return@supervisorScope knownEvents
-        val front = parseCatalogue(first)
-        if (front.isEmpty()) return@supervisorScope knownEvents
-        val limiter = Semaphore(3)
-        val rest = (2..8).map { page ->
-            async {
-                limiter.withPermit {
-                    html(context, "$BASE/event/page/$page/")?.let(::parseCatalogue).orEmpty()
-                }
-            }
-        }.awaitAll().flatten()
-        (front + rest + knownEvents).distinctBy { it.batcaveSlug }.take(300)
-    }
-
-    /**
-     * One fresh public catalogue request. No cached data, reader requests,
-     * authentication workarounds or automatic retries. Diagnose the existing
-     * catalogue parser separately from its offline fallback.
-     */
-    suspend fun catalogueDiagnostic(): String = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder().url("$BASE/event/").get()
-                .header("User-Agent", "InkShelf/2.0 (event catalogue diagnostic)")
-                .header("Accept", "text/html,application/xhtml+xml")
-                .build()
-            client.newCall(request).execute().use { reply ->
-                val status = "HTTP ${reply.code}"
-                if (reply.code in setOf(301, 302, 303, 307, 308)) {
-                    val location = reply.header("Location")
-                    val destination = location?.let { request.url.resolve(it) }
-                    // Display the destination without query parameters,
-                    // fragments or credentials. Do not follow the redirect.
-                    val display = destination?.let {
-                        "${it.scheme}://${it.host}${it.encodedPath}".take(220)
-                    } ?: if (location.isNullOrBlank()) "(missing Location header)"
-                        else "(invalid Location header)"
-                    return@use "$status · Redirect\nDestination: $display\n" +
-                        if (destination?.encodedQuery != null) "Query parameters omitted · Not followed"
-                        else "Redirect not followed"
-                }
-                if (!reply.isSuccessful) {
-                    return@use "$status · Catalogue request unsuccessful"
-                }
-                val type = reply.header("Content-Type").orEmpty()
-                if (!type.contains("html", ignoreCase = true)) {
-                    return@use "$status · Unexpected content type: ${type.take(80)}"
-                }
-                val raw = reply.peekBody(900_001L).string()
-                if (raw.length > 900_000) return@use "$status · Catalogue exceeds test limit"
-                val guides = parseCatalogue(raw)
-                val doc = Jsoup.parse(raw, BASE)
-                val pagination = Regex("""^/event/page/(\d{1,3})/?$""")
-                val pages = doc.select("a[href]").mapNotNull {
-                    pagination.matchEntire(localPath(it.attr("href")))
-                        ?.groupValues?.get(1)?.toIntOrNull()
-                }.distinct().sorted()
-                val candidates = doc.select("a[href]").mapNotNull {
-                    cataloguePath.matchEntire(localPath(it.attr("href")))
-                        ?.groupValues?.get(1)?.takeUnless { slug -> slug in excluded }
-                }.distinct().size
-                val sample = guides.take(3).joinToString(", ") { it.name }
-                listOf(
-                    "$status · ${guides.size} events parsed",
-                    "${guides.count { it.publisher == "Marvel" }} Marvel · ${guides.count { it.publisher == "DC" }} DC",
-                    "$candidates candidate event links",
-                    "Pagination: " + pages.joinToString(", ").ifBlank { "none detected" },
-                    "Page title: " + doc.title().take(100).ifBlank { "(none)" },
-                    "Examples: " + sample.ifBlank { "(none)" },
-                ).joinToString("\n")
-            }
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (error: Exception) {
-            "Catalogue test failed: ${error.javaClass.simpleName} · ${error.message.orEmpty().take(120)}"
-        }
+    suspend fun catalogue(context: Context): List<InkShelf2Guide> {
+        // Retire the old raw-page cache. No background website requests.
+        context.getSharedPreferences("inkshelf2_batcave_events_v1", Context.MODE_PRIVATE)
+            .edit().clear().apply()
+        return knownEvents
     }
 
     internal fun parseCatalogue(raw: String): List<InkShelf2Guide> =
@@ -179,46 +61,17 @@ internal object InkShelf2BatCaveGuides {
         }.distinctBy { it.batcaveSlug }
 
     suspend fun issues(context: Context, slug: String, page: Int): InkShelf2GuidePage {
-        if (!validSlug.matches(slug) || page !in 1..30)
-            return InkShelf2GuidePage(emptyList(), false)
-        // The original event pages can reject app requests with HTTP 401 even
-        // while the installed comic extension remains fully functional.
-        // Trust the curated offline order for the House of M pilot.
         InkShelf2BundledEventOrders.get(slug, page)?.let { return it }
-        val url = if (page == 1) "$BASE/event/$slug/"
-            else "$BASE/event/$slug/list/$page/"
-        val raw = html(context, url) ?: return InkShelf2GuidePage(emptyList(), false)
-        // Essential entries can occur on later pages, but the short path is
-        // published only on page one. Carry its reference into page two etc.
-        val firstPage = if (page > 1) html(context, "$BASE/event/$slug/") else null
-        return parseIssues(raw, slug, page, firstPage)
+        return InkShelf2GuidePage(
+            if (page == 1) InkShelf2EventMetadataStore.read(context, slug).orEmpty() else emptyList(),
+            false,
+        )
     }
 
-    suspend fun synopsis(context: Context, slug: String): String? {
-        if (!validSlug.matches(slug)) return null
-        if (slug == "house-of-m") return "In House of M (2005), the Scarlet Witch reshapes reality into a world where mutants hold power. Follow the eight-issue main story or explore the crossover's tie-ins."
-        val raw = html(context, "$BASE/event/$slug/") ?: return null
-        val doc = Jsoup.parse(raw, BASE)
-        val description = doc.selectFirst("meta[property=og:description],meta[name=description]")
-            ?.attr("content")?.trim()?.replace(Regex("""\s+"""), " ")
-        return description?.takeIf {
-            it.length in 60..450 && !it.contains("Read comics online", ignoreCase = true)
-        }
-    }
+    suspend fun synopsis(context: Context, slug: String): String? =
+        if (slug == "house-of-m") "In House of M (2005), the Scarlet Witch reshapes reality into a world where mutants hold power. Follow the eight-issue main story or explore the crossover's tie-ins." else null
 
-    suspend fun coverUrl(context: Context, slug: String): String? {
-        if (!validSlug.matches(slug)) return null
-        val raw = html(context, "$BASE/event/$slug/") ?: return null
-        val doc = Jsoup.parse(raw, BASE)
-        val candidate = doc.selectFirst("meta[property=og:image]")?.attr("content")
-            ?.takeIf { it.isNotBlank() }
-            ?: doc.selectFirst("main img[src], article img[src]")?.absUrl("src")
-        val uri = runCatching { java.net.URI(candidate) }.getOrNull() ?: return null
-        return candidate?.takeIf {
-            uri.scheme == "https" && uri.host in setOf(
-                "img.batcave.biz", "batcave.biz", "www.batcave.biz")
-        }
-    }
+    suspend fun coverUrl(context: Context, slug: String): String? = null
 
     internal fun parseIssues(
         raw: String, slug: String, page: Int, firstPageHtml: String? = null,

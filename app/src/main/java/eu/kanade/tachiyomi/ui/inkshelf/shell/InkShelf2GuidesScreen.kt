@@ -74,8 +74,7 @@ internal fun InkShelf2GuidesScreen(
 ) {
     val context = LocalContext.current
     var guides by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
-    // Display known guides immediately, even if BatCave's event website is
-    // temporarily blocked. Background discovery adds the wider catalogue.
+    // Local event cards are immediate. Website metadata is imported on demand.
     var batcaveGuides by remember {
         mutableStateOf(InkShelf2BatCaveGuides.featured())
     }
@@ -89,9 +88,6 @@ internal fun InkShelf2GuidesScreen(
     var searching by remember { mutableStateOf(false) }
     var featured by remember { mutableStateOf<List<InkShelf2FeaturedGuide>>(emptyList()) }
     var focused by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
-    val diagnosticScope = rememberCoroutineScope()
-    var diagnosticRunning by remember { mutableStateOf(false) }
-    var diagnosticResult by remember { mutableStateOf<String?>(null) }
     val connected = InkShelf2GuidesData.configured(context)
     // Local hits appear immediately; server search extends beyond the first
     // page of events. Cancellation prevents stale results replacing new ones.
@@ -175,8 +171,21 @@ internal fun InkShelf2GuidesScreen(
         }
     }
 
+    var importRevision by remember { mutableStateOf(0) }
     val selected = chosen
     if (selected != null) {
+        val slug = selected.batcaveSlug
+        val needsImport = remember(selected.id, importRevision) {
+            slug != null && InkShelf2BundledEventOrders.get(slug, 1) == null &&
+                InkShelf2EventMetadataStore.read(context, slug) == null
+        }
+        if (slug != null && needsImport) {
+            InkShelf2EventImportScreen(selected, padding,
+                onBack = { chosen = null },
+                onSaved = { importRevision++ },
+                onProvider = { chosen = null; onMetronSettings() })
+            return
+        }
         InkShelf2GuideDetails(
             guide = selected,
             padding = padding,
@@ -263,9 +272,12 @@ internal fun InkShelf2GuidesScreen(
             )
         }
         item(key = "guides-hero") {
-            if (featured.isNotEmpty()) {
+            val eventHeroes = (listOf(InkShelf2FeaturedGuide("Blood Hunt",
+                batcaveGuides.first { it.batcaveSlug == "blood-hunt" })) + featured)
+                .distinctBy { it.guide.id }
+            if (eventHeroes.isNotEmpty()) {
                 InkShelf2FeaturedGuidesHero(
-                    featured = featured,
+                    featured = eventHeroes,
                     started = started,
                     onOpenGuide = openGuide,
                 )
@@ -327,36 +339,6 @@ internal fun InkShelf2GuidesScreen(
                             )
                         }
                     }
-                }
-            }
-        }
-        item(key = "event-catalogue-diagnostic") {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                TextButton(
-                    enabled = !diagnosticRunning,
-                    onClick = {
-                        diagnosticRunning = true
-                        diagnosticResult = null
-                        diagnosticScope.launch {
-                            try {
-                                diagnosticResult = InkShelf2BatCaveGuides.catalogueDiagnostic()
-                            } finally {
-                                diagnosticRunning = false
-                            }
-                        }
-                    },
-                ) {
-                    Text(
-                        if (diagnosticRunning) "Testing event catalogue…" else "Test event catalogue",
-                        color = InkShelf2Colors.AccentLight,
-                        fontSize = 12.sp,
-                    )
-                }
-                diagnosticResult?.let { result ->
-                    Text(result, color = InkShelf2Colors.Text, fontSize = 12.sp)
                 }
             }
         }
