@@ -21,7 +21,6 @@ internal object InkShelf2GuideAutoReader {
     data class Resolved(val manga: Manga, val chapter: Chapter)
 
     private const val PREFS = "inkshelf2_guide_series_links_v2"
-    private val safeSeriesPath = Regex("""^/\d{2,9}-[a-z0-9-]+\.html$""")
 
     private fun key(issue: InkShelf2GuideIssue): String =
         InkShelf2GuideAutoMatch.key(issue.series) + ":" +
@@ -39,7 +38,7 @@ internal object InkShelf2GuideAutoReader {
         sources: List<CatalogueSource>,
         requested: InkShelf2GuideIssue,
     ): Resolved? = withContext(Dispatchers.IO) {
-        if (sources.isEmpty() || (requested.number.toIntOrNull() == null &&
+        if (requested.sourceUnavailable || sources.isEmpty() || (requested.number.toIntOrNull() == null &&
                 !requested.number.equals("Full", ignoreCase = true))) {
             return@withContext null
         }
@@ -90,7 +89,7 @@ internal object InkShelf2GuideAutoReader {
         // Imported event indexes retain the source series path. Use it
         // as supplied; never construct paths from comic titles.
         val expectedPath = issue.batcaveSeriesPath
-        if (preferred != null && expectedPath != null && safeSeriesPath.matches(expectedPath)) {
+        if (preferred != null && expectedPath != null && InkShelf2GuideAutoMatch.isSafeSeriesPath(expectedPath)) {
             val remote = Manga.create(expectedPath, issue.series, preferred.id)
             val listed = try {
                 withTimeoutOrNull(13_000L) {
@@ -125,7 +124,7 @@ internal object InkShelf2GuideAutoReader {
                 }
                 if (found.isEmpty()) continue
 
-                if (expectedPath != null && safeSeriesPath.matches(expectedPath)) {
+                if (expectedPath != null && InkShelf2GuideAutoMatch.isSafeSeriesPath(expectedPath)) {
                     val linked = found.filter {
                         canonicalPath(it.manga.url) == expectedPath
                     }.distinctBy { it.manga.url }

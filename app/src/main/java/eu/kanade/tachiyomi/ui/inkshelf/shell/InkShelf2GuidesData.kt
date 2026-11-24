@@ -41,6 +41,8 @@ internal data class InkShelf2GuideIssue(
     val batcaveIssuePath: String? = null,
     // Optional named issue in a longer source series (e.g. Pulse: House of M Special).
     val issueLabel: String? = null,
+    // Explicitly unavailable in a saved source index; do not guess another edition.
+    val sourceUnavailable: Boolean = false,
 ) {
     val isEssential: Boolean get() =
         role.equals("Core Issue", true) || role.equals("Prologue", true) ||

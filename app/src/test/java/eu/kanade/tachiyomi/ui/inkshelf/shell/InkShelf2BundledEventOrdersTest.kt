@@ -107,4 +107,103 @@ class InkShelf2BundledEventOrdersTest {
         assertEquals(131, ids.distinct().size)
     }
 
+    @Test
+    fun savedEventsHaveEveryDeclaredPositionAndEssentialEntry() {
+        val expected = mapOf(
+            "absolute-power" to (32 to 5), "dark-nights-metal" to (26 to 8),
+            "infinite-crisis" to (98 to 7), "king-in-black" to (65 to 5),
+            "war-of-the-realms" to (63 to 6), "secret-invasion" to (126 to 13),
+            "secret-wars-2015" to (230 to 10),
+        )
+        assertEquals(expected.keys, InkShelf2SavedEventOrders.events.map { it.slug }.toSet())
+        expected.forEach { (slug, counts) ->
+            val page = InkShelf2BundledEventOrders.get(slug, 1)!!
+            assertEquals(slug, counts.first, page.issues.size)
+            assertEquals(slug, (1..counts.first).toList(), page.issues.map { it.position })
+            assertEquals(slug, counts.second, page.issues.count { it.isEssential })
+            assertFalse(page.more)
+            assertTrue(InkShelf2BundledEventOrders.get(slug, 2)!!.issues.isEmpty())
+            assertTrue(page.issues.filterNot { it.sourceUnavailable }.all {
+                it.batcaveIssuePath == "/event/$slug/${it.position}"
+            })
+            assertTrue(page.issues.filterNot { it.sourceUnavailable }.all {
+                InkShelf2GuideAutoMatch.isSafeSeriesPath(it.batcaveSeriesPath!!)
+            })
+            val ids = page.issues.filterNot { it.sourceUnavailable }.map { InkShelf2SavedEventOrders.websiteChapterId(slug, it.position) }
+            assertTrue(ids.all { it != null && it > 0 })
+            assertEquals(counts.first - page.issues.count { it.sourceUnavailable }, ids.distinct().size)
+        }
+    }
+
+    @Test
+    fun paginatedGuidesIncludeTheirFinalPagesAndEssentialIssues() {
+        val invasion = InkShelf2BundledEventOrders.get("secret-invasion", 1)!!.issues
+        assertEquals(126, invasion.last().position)
+        assertEquals("Secret Invasion Prologue", invasion[4].series)
+        assertEquals("Full", invasion[4].number)
+        assertTrue(invasion[4].isEssential)
+        assertEquals(listOf(1, 2, 3, 4, 5, 44, 45, 71, 84, 110, 118, 120, 122),
+            invasion.filter { it.isEssential }.map { it.position })
+        val wars = InkShelf2BundledEventOrders.get("secret-wars-2015", 1)!!.issues
+        assertEquals(230, wars.last().position)
+        assertEquals("Secret Wars Too", wars.last().series)
+        assertEquals("Full", wars.last().number)
+        assertEquals((0..9).map { it.toString() }, wars.filter { it.isEssential }.map { it.number })
+        assertEquals(listOf(3, 4, 24, 35, 156, 212, 218, 222, 223, 224),
+            wars.filter { it.isEssential }.map { it.position })
+    }
+
+    @Test
+    fun secretWarsUnavailableEntriesKeepPositionsWithoutInventedIdentity() {
+        val issues = InkShelf2BundledEventOrders.get("secret-wars-2015", 1)!!.issues
+        val unavailable = issues.filter { it.sourceUnavailable }
+        assertEquals(listOf(34, 79, 80, 81, 82, 139, 202, 216, 227), unavailable.map { it.position })
+        assertTrue(unavailable.all {
+            it.batcaveIssuePath == null && it.batcaveSeriesPath == null && it.yearBegan == null &&
+                InkShelf2SavedEventOrders.websiteChapterId("secret-wars-2015", it.position) == null
+        })
+        assertEquals(221, issues.count { !it.sourceUnavailable })
+        assertEquals("Old Man Logan", unavailable.first().series)
+        assertEquals("X-Men '92", unavailable[1].series)
+    }
+
+    @Test
+    fun castingOneShotIsPartOfMetalsEightEssentialEntries() {
+        val order = InkShelf2BundledEventOrders.get("dark-nights-metal", 1)!!.issues
+        val casting = order[1]
+        assertEquals("Dark Days: The Casting", casting.series)
+        assertEquals("Full", casting.number)
+        assertTrue(casting.isEssential)
+        assertEquals(listOf(1, 2, 3, 4, 14, 21, 23, 26), order.filter { it.isEssential }.map { it.position })
+    }
+
+    @Test
+    fun annualsAndFcbdRetainNamedChapterIdentity() {
+        val crisis = InkShelf2BundledEventOrders.get("infinite-crisis", 1)!!.issues
+        assertEquals("Teen Titans", crisis[74].series)
+        assertEquals("Full", crisis[74].number)
+        assertEquals("Annual 1", crisis[74].issueLabel)
+        assertEquals("Batman", crisis[82].series)
+        assertEquals("Annual 25", crisis[82].issueLabel)
+        val fcbd = InkShelf2BundledEventOrders.get("absolute-power", 1)!!.issues[1]
+        assertEquals("FCBD 2024 Collection", fcbd.series)
+        assertEquals("Full", fcbd.number)
+        assertEquals("Absolute Power", fcbd.issueLabel)
+        assertFalse(fcbd.isEssential)
+        assertEquals(230704, InkShelf2SavedEventOrders.websiteChapterId("absolute-power", 2))
+    }
+
+    @Test
+    fun sourceLabelsAndPathsAreRetainedWithoutHiddenLinkText() {
+        val king = InkShelf2BundledEventOrders.get("king-in-black", 1)!!.issues
+        assertEquals("5", king[61].number)
+        assertTrue(king[61].isEssential)
+        assertEquals("/3202-king-in-black-iron-man/doom.html", king[24].batcaveSeriesPath)
+        assertTrue(InkShelf2SavedEventOrders.events.flatMap { it.entries }.all {
+            !it.issue.series.contains("All issues of") && !it.issue.series.contains("↗")
+        })
+        val war = InkShelf2BundledEventOrders.get("war-of-the-realms", 1)!!.issues
+        assertEquals(listOf(3, 15, 23, 39, 43, 60), war.filter { it.isEssential }.map { it.position })
+    }
+
 }

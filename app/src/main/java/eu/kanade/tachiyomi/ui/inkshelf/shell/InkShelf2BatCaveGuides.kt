@@ -55,8 +55,7 @@ internal object InkShelf2BatCaveGuides {
         guide("blackest-night", "Blackest Night", "DC"),
         guide("civil-war-2006", "Marvel Civil War", "Marvel"),
         guide("civil-war-ii", "Civil War II", "Marvel"),
-        guide("secret-wars-2015", "Secret Wars (2015)", "Marvel"),
-    )
+    ) + InkShelf2SavedEventOrders.events.map { guide(it.slug, it.title, it.publisher) }
     fun featured(): List<InkShelf2Guide> = knownEvents
 
     private suspend fun html(context: Context, url: String, maxSize: Int = 900_000): String? =
@@ -134,6 +133,8 @@ internal object InkShelf2BatCaveGuides {
     suspend fun synopsis(context: Context, slug: String): String? {
         if (!validSlug.matches(slug)) return null
         if (slug == "house-of-m") return "In House of M (2005), the Scarlet Witch reshapes reality into a world where mutants hold power. Follow the eight-issue main story or explore the crossover's tie-ins."
+        // Saved reading-list metadata is complete locally; do not fetch event HTML for it.
+        if (InkShelf2SavedEventOrders.events.any { it.slug == slug }) return null
         val raw = html(context, "$BASE/event/$slug/") ?: return null
         val doc = Jsoup.parse(raw, BASE)
         val description = doc.selectFirst("meta[property=og:description],meta[name=description]")
@@ -145,6 +146,8 @@ internal object InkShelf2BatCaveGuides {
 
     suspend fun coverUrl(context: Context, slug: String): String? {
         if (!validSlug.matches(slug)) return null
+        // Saved reading-list metadata is complete locally; do not fetch event HTML for it.
+        if (InkShelf2SavedEventOrders.events.any { it.slug == slug }) return null
         val raw = html(context, "$BASE/event/$slug/") ?: return null
         val doc = Jsoup.parse(raw, BASE)
         val candidate = doc.selectFirst("meta[property=og:image]")?.attr("content")

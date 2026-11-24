@@ -1,0 +1,127 @@
+{
+  "verifiedOn": "2026-11-24",
+  "notes": [
+    "All seven events have every declared reading-order position; unavailable source entries retain their positions without invented links.",
+    "The Casting and Secret Invasion Prologue are #1 in their short paths and Full in their source rows.",
+    "Annuals and the named FCBD entry remain distinct from regular issue numbers.",
+    "No signed image URLs or account-specific page data retained."
+  ],
+  "events": [
+    {
+      "slug": "absolute-power",
+      "declaredComplete": 32,
+      "essential": 5,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/absolute-power/",
+          "sha256": "7476be2477cb67829c301dd1ff9abd3418d4697c9aff21d3003a9c9e7c89d374"
+        }
+      ]
+    },
+    {
+      "slug": "dark-nights-metal",
+      "declaredComplete": 26,
+      "essential": 8,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/dark-nights-metal/",
+          "sha256": "6c8538fe63b2593e081bb9b8af46eb955c6a130200762ee3450017868663c95f"
+        }
+      ]
+    },
+    {
+      "slug": "infinite-crisis",
+      "declaredComplete": 98,
+      "essential": 7,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/infinite-crisis/",
+          "sha256": "30329a0bc51e3d70db653c3f030200208e0a50ece731a262330a551f5e527d7e"
+        }
+      ]
+    },
+    {
+      "slug": "king-in-black",
+      "declaredComplete": 65,
+      "essential": 5,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/king-in-black/",
+          "sha256": "51f6b9fa87fff7a1da902f4db5c723ae4c193affb89630883de97f128bde0d95"
+        }
+      ]
+    },
+    {
+      "slug": "secret-invasion",
+      "declaredComplete": 126,
+      "essential": 13,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/secret-invasion/",
+          "sha256": "62a1ebed1978d37af836d2ebfde9d4996f109c9b1ce06dc8b7b0fe893e1eb7f5"
+        },
+        {
+          "page": 2,
+          "source": "https://batcave.biz/event/secret-invasion/list/2/",
+          "sha256": "cf46eea38470622d2b1deb8af9427e70cac2e28d600be836c9e7f0d4af68ef38"
+        }
+      ]
+    },
+    {
+      "slug": "secret-wars-2015",
+      "declaredComplete": 230,
+      "essential": 10,
+      "unavailablePositions": [
+        34,
+        79,
+        80,
+        81,
+        82,
+        139,
+        202,
+        216,
+        227
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/secret-wars-2015/",
+          "sha256": "d1485d2c2a4b687384667e7292e305910de60aa724b3b10fb3933442e15335aa"
+        },
+        {
+          "page": 2,
+          "source": "https://batcave.biz/event/secret-wars-2015/list/2/",
+          "sha256": "432e85ee740ce58d14196e85494f0a2e0f994b56f815f32338bf6adb56f4f064"
+        },
+        {
+          "page": 3,
+          "source": "https://batcave.biz/event/secret-wars-2015/list/3/",
+          "sha256": "99257222cc6e72df9872e0c85333c6a6752a69ff96b94bc965f0f0864f1e348d"
+        }
+      ]
+    },
+    {
+      "slug": "war-of-the-realms",
+      "declaredComplete": 63,
+      "essential": 6,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/war-of-the-realms/",
+          "sha256": "a2c53c25947cc59f6d2395c447adc1d54f0289082d99210691a82678bc900447"
+        }
+      ]
+    }
+  ]
+}

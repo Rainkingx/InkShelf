@@ -38,7 +38,7 @@ internal object InkShelf2GuideChapterFinder {
                 ?.trim()?.takeIf { it.isNotBlank() }
             if (special != null) {
                 val matches = chapters.filter {
-                    it.name.contains(special, ignoreCase = true)
+                    InkShelf2GuideAutoMatch.matchesSpecialLabel(it.name, special)
                 }
                 if (matches.size == 1) {
                     return Found(matches.single(), grouped = false)

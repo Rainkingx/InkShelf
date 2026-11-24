@@ -187,6 +187,9 @@ internal fun InkShelf2GuidesScreen(
 
     // Prefer the verified Civil War index without merging sequel events
     // or migrating progress by position from a different reading order.
+    val savedGuides = batcaveGuides.filter { guide ->
+        InkShelf2SavedEventOrders.events.any { it.slug == guide.batcaveSlug }
+    }
     val civilWar = batcaveGuides.firstOrNull { it.batcaveSlug == "civil-war-2006" }
     fun primaryGuide(item: InkShelf2Guide): InkShelf2Guide {
         val name = item.name.trim().lowercase(java.util.Locale.ROOT)
@@ -195,7 +198,10 @@ internal fun InkShelf2GuidesScreen(
             name in setOf("civil war", "civil war 2006", "marvel civil war",
                 "marvel civil war 2006", "civil war reading order",
                 "marvel civil war reading order")
-        ) civilWar else item
+        ) civilWar else if (item.batcaveSlug == null) {
+            val event = InkShelf2GuideFocus.identify(item)
+            savedGuides.firstOrNull { event != null && InkShelf2GuideFocus.identify(it) == event } ?: item
+        } else item
     }
     val catalogue = (batcaveGuides + guides + focused + featured.map { it.guide } + remoteResults)
         .map(::primaryGuide)
@@ -260,9 +266,11 @@ internal fun InkShelf2GuidesScreen(
             )
         }
         item(key = "guides-hero") {
-            if (featured.isNotEmpty()) {
+            val availableHeroes = (savedGuides.map { InkShelf2FeaturedGuide(it.name, it) } +
+                featured.map { it.copy(guide = primaryGuide(it.guide)) }).distinctBy { it.guide.id }
+            if (availableHeroes.isNotEmpty()) {
                 InkShelf2FeaturedGuidesHero(
-                    featured = featured,
+                    featured = availableHeroes,
                     started = started,
                     onOpenGuide = openGuide,
                 )
@@ -853,14 +861,19 @@ private fun InkShelf2GuideDetails(
                     label = when {
                         currentlyOpening -> "OPENING ISSUE…"
                         nextIssue == null -> "LOADING READING ORDER…"
+                        nextIssue.sourceUnavailable -> "ISSUE UNAVAILABLE"
                         completed == selected.size -> "START AGAIN"
                         completed > 0 -> "CONTINUE READING"
                         else -> "START READING"
                     },
-                    onClick = { if (nextIssue != null) onReadIssue(nextIssue) },
-                    enabled = nextIssue != null && !currentlyOpening,
+                    onClick = { if (nextIssue != null && !nextIssue.sourceUnavailable) onReadIssue(nextIssue) },
+                    enabled = nextIssue != null && !nextIssue.sourceUnavailable && !currentlyOpening,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (nextIssue?.sourceUnavailable == true) {
+                    Text("The source lists this issue as unavailable. Choose another listed issue to read.",
+                        color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                }
                 if (currentlyOpening) {
                     Text("Finding the exact issue in your installed sources…",
                         color = InkShelf2Colors.Muted, fontSize = 12.sp)
@@ -877,7 +890,7 @@ private fun InkShelf2GuideDetails(
                     color = InkShelf2Colors.Text,
                     fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Text(selected.size.toString() + (if (hasMore) "+ listed issues" else " listed issues") +
-                    " · Tap any issue to read",
+                    " · Tap an available issue to read",
                     color = InkShelf2Colors.Muted, fontSize = 12.sp)
             }
         }
@@ -911,7 +924,7 @@ private fun InkShelf2GuideDetails(
                             if (checked) InkShelf2Colors.AccentLight.copy(alpha = 0.45f)
                             else InkShelf2Colors.Border,
                             RoundedCornerShape(13.dp))
-                        .clickable(enabled = !currentlyOpening) { onReadIssue(issue) }
+                        .clickable(enabled = !currentlyOpening && !issue.sourceUnavailable) { onReadIssue(issue) }
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -932,8 +945,8 @@ private fun InkShelf2GuideDetails(
                             if (checked) " · READ" else " · " + issue.role.ifBlank { "ISSUE" },
                             color = InkShelf2Colors.Muted, fontSize = 10.sp)
                     }
-                    Text(if (openingIssueId == issue.id) "OPENING"
-                        else "READ", color = InkShelf2Colors.AccentLight,
+                    Text(if (issue.sourceUnavailable) "UNAVAILABLE"
+                        else if (openingIssueId == issue.id) "OPENING" else "READ", color = InkShelf2Colors.AccentLight,
                         fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 }
             }

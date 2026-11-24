@@ -16,6 +16,16 @@ internal object InkShelf2GuideAutoMatch {
     private val punctuation = Regex("""[^\p{L}\p{N}]+""")
     private val publicationYear = Regex("""\(((?:19|20)\d{2})(?:[-–—].*?)?\)\s*$""")
 
+    // A saved source URL may include a slash in a title (Iron Man/Doom).
+    fun isSafeSeriesPath(path: String): Boolean =
+        Regex("""^/\d{2,9}-[a-z0-9-]+(?:/[a-z0-9-]+)*\.html$""").matches(path)
+
+    fun matchesSpecialLabel(chapterName: String, label: String): Boolean =
+        label.isNotBlank() && Regex(
+            "(?<![\\p{L}\\p{N}])" + Regex.escape(label.trim()) + "(?![\\p{L}\\p{N}])",
+            RegexOption.IGNORE_CASE,
+        ).containsMatchIn(chapterName)
+
     fun seriesName(title: String): String = title.trim()
         .replace(trailingYear, "")
         .replace(volume, "")

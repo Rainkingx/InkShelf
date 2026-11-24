@@ -148,7 +148,7 @@ internal object InkShelf2BundledEventOrders {
         val order = when (slug) {
             "house-of-m" -> houseOfM
             "civil-war-2006" -> civilWar.map { it.issue }
-            else -> return null
+            else -> return InkShelf2SavedEventOrders.get(slug, page)
         }
         return InkShelf2GuidePage(
             issues = if (page == 1) order else emptyList(),

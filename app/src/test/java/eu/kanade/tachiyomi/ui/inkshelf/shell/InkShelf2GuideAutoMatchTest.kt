@@ -73,4 +73,28 @@ class InkShelf2GuideAutoMatchTest {
         assertFalse(InkShelf2GuideAutoMatch.queries(issue("Exiles", 2001))
             .contains("Exiles (2020)"))
     }
+    @Test
+    fun savedSeriesPathsAllowRealSlashTitlesButNotTraversalOrExternalUrls() {
+        org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.isSafeSeriesPath("/3202-king-in-black-iron-man/doom.html"))
+        org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.isSafeSeriesPath("/11663-civil-war-2006.html"))
+        listOf("https://example.com/12-book.html", "/12-book/../other.html",
+            "/12-book.html?token=secret", "/12-book//doom.html", "//example.com/12-book.html").forEach {
+            org.junit.Assert.assertFalse(it, InkShelf2GuideAutoMatch.isSafeSeriesPath(it))
+        }
+    }
+
+    @Test
+    fun annualOneCannotMatchAnnualTenOrOneHundred() {
+        org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.matchesSpecialLabel("Teen Titans _Annual 1", "Annual 1"))
+        org.junit.Assert.assertFalse(InkShelf2GuideAutoMatch.matchesSpecialLabel("Teen Titans _Annual 10", "Annual 1"))
+        org.junit.Assert.assertFalse(InkShelf2GuideAutoMatch.matchesSpecialLabel("Teen Titans _Annual 100", "Annual 1"))
+        org.junit.Assert.assertFalse(InkShelf2GuideAutoMatch.matchesSpecialLabel("Issue #1", "Annual 1"))
+    }
+
+    @Test
+    fun existingNamedSpecialsContinueToMatch() {
+        org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.matchesSpecialLabel("The Pulse: House of M Special", "House of M Special"))
+        org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.matchesSpecialLabel("FCBD 2024: Absolute Power", "Absolute Power"))
+        org.junit.Assert.assertFalse(InkShelf2GuideAutoMatch.matchesSpecialLabel("FCBD 2024: Absolute Powerless", "Absolute Power"))
+    }
 }
