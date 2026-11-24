@@ -86,6 +86,19 @@ internal object InkShelf2GuideAutoReader {
             } catch (_: Exception) {
                 emptyList()
             }
+            val sourcePath = issue.batcaveSeriesPath
+            // An actual source URL is stronger evidence than a stripped title:
+            // edition titles differ across extensions (e.g. year omitted).
+            if (sourcePath != null && safeSeriesPath.matches(sourcePath)) {
+                val byPath = found.filter { candidate ->
+                    val path = candidate.manga.url.substringBefore('?')
+                        .substringAfter("batcave.biz")
+                    "/" + path.trimStart('/') == sourcePath
+                }.distinctBy { it.manga.url }
+                if (byPath.size == 1) {
+                    verify(byPath.single().manga)?.let { return@withContext it }
+                }
+            }
             val exactEditions = found.filter {
                 InkShelf2GuideEdition.classify(issue, it.manga.title) ==
                     InkShelf2GuideEdition.Match.MATCHING

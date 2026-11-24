@@ -51,12 +51,13 @@ internal object InkShelf2BatCaveGuides {
     )
     // These slugs were inspected on BatCave's published event pages.
     private val knownEvents = listOf(
+        guide("house-of-m", "House of M", "Marvel"),
         guide("blackest-night", "Blackest Night", "DC"),
         guide("civil-war-2006", "Marvel Civil War", "Marvel"),
         guide("civil-war-ii", "Civil War II", "Marvel"),
-        guide("house-of-m", "House of M", "Marvel"),
         guide("secret-wars-2015", "Secret Wars (2015)", "Marvel"),
     )
+    fun featured(): List<InkShelf2Guide> = knownEvents
 
     private suspend fun html(context: Context, url: String, maxSize: Int = 900_000): String? =
         withContext(Dispatchers.IO) {
@@ -117,6 +118,10 @@ internal object InkShelf2BatCaveGuides {
     suspend fun issues(context: Context, slug: String, page: Int): InkShelf2GuidePage {
         if (!validSlug.matches(slug) || page !in 1..30)
             return InkShelf2GuidePage(emptyList(), false)
+        // The original event pages can reject app requests with HTTP 401 even
+        // while the installed comic extension remains fully functional.
+        // Trust the curated offline order for the House of M pilot.
+        InkShelf2BundledEventOrders.get(slug, page)?.let { return it }
         val url = if (page == 1) "$BASE/event/$slug/"
             else "$BASE/event/$slug/list/$page/"
         val raw = html(context, url) ?: return InkShelf2GuidePage(emptyList(), false)
@@ -128,6 +133,7 @@ internal object InkShelf2BatCaveGuides {
 
     suspend fun synopsis(context: Context, slug: String): String? {
         if (!validSlug.matches(slug)) return null
+        if (slug == "house-of-m") return "In House of M (2005), the Scarlet Witch reshapes reality into a world where mutants hold power. Follow the eight-issue main story or explore the crossover's tie-ins."
         val raw = html(context, "$BASE/event/$slug/") ?: return null
         val doc = Jsoup.parse(raw, BASE)
         val description = doc.selectFirst("meta[property=og:description],meta[name=description]")

@@ -74,7 +74,11 @@ internal fun InkShelf2GuidesScreen(
 ) {
     val context = LocalContext.current
     var guides by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
-    var batcaveGuides by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
+    // Display known guides immediately, even if BatCave's event website is
+    // temporarily blocked. Background discovery adds the wider catalogue.
+    var batcaveGuides by remember {
+        mutableStateOf(InkShelf2BatCaveGuides.featured())
+    }
     var batcaveLoading by remember { mutableStateOf(true) }
     var loading by remember { mutableStateOf(true) }
     var chosen by remember { mutableStateOf<InkShelf2Guide?>(null) }
