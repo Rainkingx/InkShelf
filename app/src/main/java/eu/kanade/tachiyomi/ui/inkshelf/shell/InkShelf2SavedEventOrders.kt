@@ -689,7 +689,7 @@ internal object InkShelf2SavedEventOrders {
             62|Thor (2018-)|15|/6179-thor-2018.html|31973|
             63|War Of The Realms Omega (2019)|1|/6512-war-of-the-realms-omega-2019.html|33785|
         """),
-    )
+    ) + InkShelf2AdditionalEventOrders.events
 
     fun get(slug: String, page: Int): InkShelf2GuidePage? {
         val event = events.firstOrNull { it.slug == slug } ?: return null

@@ -220,6 +220,19 @@ internal object InkShelf2GuidesData {
         "secret-invasion" to ("Secret Invasion" to 2008),
         "secret-wars-2015" to ("Secret Wars" to 2015),
         "war-of-the-realms" to ("War of the Realms" to 2019),
+        "batman-zero-year" to ("Batman: Zero Year" to 2013),
+        "blood-hunt" to ("Blood Hunt" to 2024),
+        "civil-war-ii" to ("Civil War II" to 2016),
+        "dc-k-o" to ("DC K.O." to 2025),
+        "death-of-the-family" to ("Death of the Family" to 2012),
+        "fear-itself" to ("Fear Itself" to 2011),
+        "flashpoint" to ("Flashpoint" to 2011),
+        "house-of-m" to ("House of M" to 2005),
+        "night-of-the-owls" to ("Night of the Owls" to 2012),
+        "original-sin" to ("Original Sin" to 2014),
+        "spider-verse" to ("Spider-Verse" to 2014),
+        "world-war-hulk" to ("World War Hulk" to 2007),
+        "x-men-original-sin" to ("X-Men: Original Sin" to 2008),
     )
 
     fun publicationYear(guide: InkShelf2Guide): Int? =
@@ -235,9 +248,10 @@ internal object InkShelf2GuidesData {
         val current = guides.map { it.id.toString() }.toSet()
         val now = System.currentTimeMillis()
         val edit = prefs.edit()
-        if (seen != null) {
-            (current - seen).forEach { edit.putLong("catalogue_added_" + it, now) }
-        }
+        val baseline = if (seen == null) guides.filter { guide ->
+            InkShelf2AdditionalEventOrders.events.none { it.slug == guide.batcaveSlug }
+        }.map { it.id.toString() }.toSet() else seen
+        (current - baseline).forEach { edit.putLong("catalogue_added_" + it, now) }
         edit.putStringSet(key, seen.orEmpty() + current).apply()
         val duration = 14L * 24 * 60 * 60 * 1000
         return guides.filter { guide ->

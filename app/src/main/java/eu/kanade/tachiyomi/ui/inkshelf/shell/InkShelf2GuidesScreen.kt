@@ -102,6 +102,8 @@ internal fun InkShelf2GuidesScreen(
     val catalogue = installed.map { guide -> guide.copy(imageUrl = eventCovers[guide.id]) }
     val newlyAdded = remember(context, installed) { InkShelf2GuidesData.newlyAddedGuideIds(context, installed) }
     var timeline by rememberSaveable { mutableStateOf(InkShelf2GuidesData.timelineEnabled(context)) }
+    var shelf by rememberSaveable { mutableStateOf<String?>(null) }
+    var shown by rememberSaveable { mutableStateOf(8) }
     var chosen by remember(initialGuideId) { mutableStateOf(installed.firstOrNull { it.id == initialGuideId }) }
     var relatedBackStack by remember(initialGuideId) { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
     fun closeGuide() {
@@ -146,9 +148,14 @@ internal fun InkShelf2GuidesScreen(
             }
         }
     }
-    BackHandler(enabled = chosen != null) {
-        guideRevision++
-        closeGuide()
+    BackHandler(enabled = chosen != null || shelf != null) {
+        if (chosen != null) {
+            guideRevision++
+            closeGuide()
+        } else {
+            shelf = null
+            shown = 8
+        }
     }
     val selected = chosen?.let { selectedGuide ->
         catalogue.firstOrNull { it.id == selectedGuide.id } ?: selectedGuide
@@ -205,6 +212,20 @@ internal fun InkShelf2GuidesScreen(
             }
     }
     val browsing = finding.isNotBlank() || activeFilter != "All"
+    val modern = catalogue.filter { (InkShelf2GuidesData.publicationYear(it) ?: 0) >= 2015 }
+    val classics = catalogue.filter { (InkShelf2GuidesData.publicationYear(it) ?: 0) < 2015 }
+    val newestFirst = compareByDescending<InkShelf2Guide> { InkShelf2GuidesData.publicationYear(it) ?: 0 }.thenBy { it.name }
+    val shelves = listOf(
+        "Continue Reading" to inProgress,
+        "Recently Added" to catalogue.filter { it.id in newlyAdded }.sortedWith(newestFirst),
+        "Marvel" to modern.filter { it.publisher == "Marvel" }.sortedWith(newestFirst),
+        "DC" to modern.filter { it.publisher == "DC" }.sortedWith(newestFirst),
+        "Classic Events" to classics.sortedWith(newestFirst),
+    ).filter { it.second.isNotEmpty() }
+    val shelfItems = shelves.firstOrNull { it.first == shelf }?.second.orEmpty()
+    val gridItems = if (shelf != null) shelfItems else matching
+    val showShelves = !browsing && !timeline && shelf == null
+    LaunchedEffect(finding, activeFilter, shelf, timeline) { shown = 8 }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
@@ -216,11 +237,19 @@ internal fun InkShelf2GuidesScreen(
     ) {
         item(key = "guides-page-heading") {
             InkShelf2PageHeading(
-                "Reading Guides",
+                shelf ?: "Reading Guides",
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
             )
         }
-        if (!browsing && catalogue.isNotEmpty()) {
+        if (shelf != null) {
+            item(key = "shelf-back") {
+                TextButton(onClick = { shelf = null; shown = 8 }, modifier = Modifier.padding(horizontal = 12.dp)) {
+                    Icon(Icons.Outlined.ArrowBack, contentDescription = null)
+                    Text("  All reading guides", color = InkShelf2Colors.AccentLight)
+                }
+            }
+        }
+        if (!browsing && shelf == null && catalogue.isNotEmpty()) {
             item(key = "guides-hero") {
                 InkShelf2FeaturedGuidesHero(
                     featured = catalogue.map { InkShelf2FeaturedGuide(it.name, it) },
@@ -229,7 +258,7 @@ internal fun InkShelf2GuidesScreen(
                 )
             }
         }
-        item(key = "guides-search-and-filters") {
+        if (shelf == null) item(key = "guides-search-and-filters") {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -276,31 +305,17 @@ internal fun InkShelf2GuidesScreen(
                 }
             }
         }
-        if (!browsing && inProgress.isNotEmpty()) {
-            item(key = "guide-continue") {
-                InkShelf2SectionHeading("Continue Reading", onClick = null)
-                Spacer(Modifier.height(10.dp))
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(inProgress, key = { it.id }) { guide ->
-                        InkShelf2EventCoverCard(guide, width = 105.dp, progress = progress[guide.id], onOpen = { openGuide(guide) })
-                    }
-                }
-            }
-        }
-        item(key = "verified-guides-heading") {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        if (shelf == null) {
+            item(key = "verified-guides-heading") {
+                Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
-                        InkShelf2PageHeading(if (timeline) "Event Timeline" else "All Events (${matching.size})")
+                        InkShelf2PageHeading(if (timeline) "Event Timeline" else if (browsing) "Results (${matching.size})" else "Browse Events")
                     }
                     IconButton(onClick = {
                         timeline = false
                         InkShelf2GuidesData.setTimelineEnabled(context, false)
                     }) {
-                        Icon(Icons.Outlined.GridView, "Grid view",
+                        Icon(Icons.Outlined.GridView, "Shelf view",
                             tint = if (!timeline) InkShelf2Colors.AccentLight else InkShelf2Colors.Muted)
                     }
                     IconButton(onClick = {
@@ -311,45 +326,59 @@ internal fun InkShelf2GuidesScreen(
                             tint = if (timeline) InkShelf2Colors.AccentLight else InkShelf2Colors.Muted)
                     }
                 }
-                if (timeline) {
-                    Text("Publication order · ${matching.size} installed events",
-                        color = InkShelf2Colors.Muted, fontSize = 12.sp)
+            }
+        }
+        if (showShelves) {
+            shelves.forEach { (name, guides) ->
+                item(key = "guide-shelf-" + name) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) { InkShelf2PageHeading(name) }
+                        TextButton(onClick = { shelf = name; shown = 8 }) {
+                            Text("See All", color = InkShelf2Colors.AccentLight)
+                        }
+                    }
+                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(guides.take(8), key = { it.id }) { guide ->
+                            InkShelf2EventCoverCard(guide, width = 105.dp, progress = progress[guide.id],
+                                onOpen = { openGuide(guide) }, isNew = guide.id in newlyAdded)
+                        }
+                    }
                 }
             }
-        }
-        if (matching.isEmpty()) {
-            item(key = "guide-no-results") {
-                Text(
-                    "No installed guides match this search.",
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
-                    color = InkShelf2Colors.Muted,
-                    fontSize = 13.sp,
-                )
-            }
-        }
-        if (timeline) {
+        } else if (timeline && shelf == null) {
             items(InkShelf2EventTimeline.ordered(matching), key = { "event-timeline-" + it.id }) { guide ->
-                InkShelf2EventTimelineRow(
-                    guide = guide,
-                    progress = progress[guide.id],
-                    isNew = guide.id in newlyAdded,
-                    onOpen = { openGuide(guide) },
-                )
+                InkShelf2EventTimelineRow(guide, progress[guide.id], guide.id in newlyAdded) { openGuide(guide) }
             }
         } else {
-            items(matching.chunked(3), key = { row -> "event-row-" + row.first().id }) { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(9.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
+            if (gridItems.isEmpty()) {
+                item(key = "guide-no-results") {
+                    Text("No guides match this selection.", modifier = Modifier.padding(16.dp),
+                        color = InkShelf2Colors.Muted, fontSize = 13.sp)
+                }
+            }
+            items(gridItems.take(shown).chunked(2), key = { row -> "event-row-" + row.first().id }) { row ->
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
                     row.forEach { guide ->
                         Box(Modifier.weight(1f)) {
                             InkShelf2EventCoverCard(guide, width = null, progress = progress[guide.id],
                                 onOpen = { openGuide(guide) }, isNew = guide.id in newlyAdded)
                         }
                     }
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            if (gridItems.size > shown) {
+                item(key = "guide-show-more") {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Showing ${shown.coerceAtMost(gridItems.size)} of ${gridItems.size}", color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                        TextButton(onClick = { shown += 8 }) {
+                            Text("Show More", color = InkShelf2Colors.AccentLight)
+                        }
+                    }
                 }
             }
         }
@@ -441,7 +470,7 @@ private fun InkShelf2GuideDetails(
     var description by remember(guide.id) { mutableStateOf<String?>(null) }
     var manualRevision by remember(guide.id) { mutableStateOf(0) }
     var optionsOpen by remember(guide.id) { mutableStateOf(false) }
-    var relatedExpanded by remember(guide.id) { mutableStateOf(false) }
+    var relatedExpanded by remember(guide.id) { mutableStateOf(true) }
     var confirmReset by remember(guide.id) { mutableStateOf(false) }
     var resetting by remember(guide.id) { mutableStateOf(false) }
     var hideRead by remember(guide.id) { mutableStateOf(InkShelf2GuidesData.displayOption(context, guide.id, "hide_read")) }
@@ -733,7 +762,7 @@ private fun InkShelf2GuideDetails(
                         onClick = { relatedExpanded = !relatedExpanded },
                         modifier = Modifier.padding(horizontal = 8.dp),
                     ) {
-                        Text(if (relatedExpanded) "Hide other ${guide.publisher} events" else "Explore other ${guide.publisher} events",
+                        Text(if (relatedExpanded) "Related Events · Hide" else "Related Events · Show",
                             color = InkShelf2Colors.AccentLight, fontSize = 13.sp)
                     }
                     if (relatedExpanded) {
@@ -825,7 +854,7 @@ private fun InkShelf2GuideDetails(
                             fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text("STEP " + issue.position +
-                            " · " + (if (issue.isEssential) "ESSENTIAL" else "TIE-IN") +
+                            " · " + (if (issue.isEssential) "ESSENTIAL" else if (all.none { it.isEssential }) "ISSUE" else "TIE-IN") +
                             (if (checked) " · READ" else if (issue.id in progress.partialIds) " · IN PROGRESS" else ""),
                             color = InkShelf2Colors.Muted, fontSize = 10.sp)
                     }

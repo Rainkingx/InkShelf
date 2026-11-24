@@ -17,11 +17,24 @@ class InkShelf2EventTimelineTest {
     }
 
     @Test
+    fun additionalOrdersKeepAllPositionsAndShortPaths() {
+        val added = InkShelf2AdditionalEventOrders.events
+        assertEquals(13, added.size)
+        assertEquals(727, added.sumOf { it.completeCount })
+        assertEquals(7, added.sumOf { event -> event.entries.count { it.issue.sourceUnavailable } })
+        added.forEach { event ->
+            val order = InkShelf2BundledEventOrders.get(event.slug, 1)!!.issues
+            assertEquals((1..event.completeCount).toList(), order.map { it.position })
+            assertEquals(event.essentialPositions, order.filter { it.isEssential }.map { it.position }.toSet())
+        }
+    }
+
+    @Test
     fun relatedEventsKeepPublisherAndExcludeCurrent() {
         val current = events.first { it.batcaveSlug == "civil-war-2006" }
         val related = InkShelf2EventTimeline.related(current, events)
         assertTrue(related.isNotEmpty())
         assertTrue(related.all { it.publisher == current.publisher && it.id != current.id })
-        assertEquals("secret-invasion", related.first().batcaveSlug)
+        assertTrue(related.mapNotNull { it.batcaveSlug }.contains("house-of-m"))
     }
 }

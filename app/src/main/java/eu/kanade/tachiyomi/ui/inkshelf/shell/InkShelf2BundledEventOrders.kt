@@ -146,7 +146,8 @@ internal object InkShelf2BundledEventOrders {
 
     fun get(slug: String, page: Int): InkShelf2GuidePage? {
         val order = when (slug) {
-            "house-of-m" -> houseOfM
+            "house-of-m" -> return InkShelf2SavedEventOrders.get(slug, page)
+                ?: InkShelf2GuidePage(if (page == 1) houseOfM else emptyList(), false)
             "civil-war-2006" -> civilWar.map { it.issue }
             else -> return InkShelf2SavedEventOrders.get(slug, page)
         }

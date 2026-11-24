@@ -4,7 +4,8 @@
     "All seven events have every declared reading-order position; unavailable source entries retain their positions without invented links.",
     "The Casting and Secret Invasion Prologue are #1 in their short paths and Full in their source rows.",
     "Annuals and the named FCBD entry remain distinct from regular issue numbers.",
-    "No signed image URLs or account-specific page data retained."
+    "No signed image URLs or account-specific page data retained.",
+    "13 additional complete indexes from user-supplied saved pages; validated positions and short paths; four do not publish a short path, so Essential shows Complete. Metadata only; no HTML or artwork URLs stored."
   ],
   "events": [
     {
@@ -120,6 +121,180 @@
           "page": 1,
           "source": "https://batcave.biz/event/war-of-the-realms/",
           "sha256": "a2c53c25947cc59f6d2395c447adc1d54f0289082d99210691a82678bc900447"
+        }
+      ]
+    },
+    {
+      "slug": "batman-zero-year",
+      "declaredComplete": 25,
+      "essential": 0,
+      "unavailablePositions": [
+        8
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/batman-zero-year/"
+        }
+      ]
+    },
+    {
+      "slug": "blood-hunt",
+      "declaredComplete": 54,
+      "essential": 6,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/blood-hunt/"
+        }
+      ]
+    },
+    {
+      "slug": "civil-war-ii",
+      "declaredComplete": 152,
+      "essential": 15,
+      "unavailablePositions": [
+        10
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/civil-war-ii/"
+        },
+        {
+          "page": 2,
+          "source": "https://batcave.biz/event/civil-war-ii/list/2/"
+        }
+      ]
+    },
+    {
+      "slug": "dc-k-o",
+      "declaredComplete": 40,
+      "essential": 6,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/dc-k-o/"
+        }
+      ]
+    },
+    {
+      "slug": "death-of-the-family",
+      "declaredComplete": 30,
+      "essential": 5,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/death-of-the-family/"
+        }
+      ]
+    },
+    {
+      "slug": "fear-itself",
+      "declaredComplete": 124,
+      "essential": 10,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/fear-itself/"
+        },
+        {
+          "page": 2,
+          "source": "https://batcave.biz/event/fear-itself/list/2/"
+        }
+      ]
+    },
+    {
+      "slug": "flashpoint",
+      "declaredComplete": 66,
+      "essential": 10,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/flashpoint/"
+        }
+      ]
+    },
+    {
+      "slug": "house-of-m",
+      "declaredComplete": 64,
+      "essential": 8,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/house-of-m/"
+        }
+      ]
+    },
+    {
+      "slug": "night-of-the-owls",
+      "declaredComplete": 15,
+      "essential": 0,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/night-of-the-owls/"
+        }
+      ]
+    },
+    {
+      "slug": "original-sin",
+      "declaredComplete": 67,
+      "essential": 11,
+      "unavailablePositions": [
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/original-sin/"
+        }
+      ]
+    },
+    {
+      "slug": "spider-verse",
+      "declaredComplete": 32,
+      "essential": 0,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/spider-verse/"
+        }
+      ]
+    },
+    {
+      "slug": "world-war-hulk",
+      "declaredComplete": 52,
+      "essential": 7,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/world-war-hulk/"
+        }
+      ]
+    },
+    {
+      "slug": "x-men-original-sin",
+      "declaredComplete": 6,
+      "essential": 0,
+      "unavailablePositions": [],
+      "pages": [
+        {
+          "page": 1,
+          "source": "https://batcave.biz/event/x-men-original-sin/"
         }
       ]
     }
