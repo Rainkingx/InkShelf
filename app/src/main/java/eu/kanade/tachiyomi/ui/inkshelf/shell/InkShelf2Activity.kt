@@ -1104,8 +1104,9 @@ class InkShelf2Activity : AppCompatActivity() {
                                             openChapter(reading.manga, reading.chapter)
                                         } else {
                                             guideReadError =
-                                                "This exact issue could not be verified in your enabled " +
-                                                "comic sources. Check BatCave is enabled, or try again later."
+                                                "Could not match " + requestedIssue.displayName +
+                                                " to a readable issue in the installed extensions. " +
+                                                "The guide order is unchanged."
                                         }
                                     } catch (cancel: CancellationException) {
                                         throw cancel
