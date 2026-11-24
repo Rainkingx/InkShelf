@@ -164,7 +164,7 @@ internal object InkShelf2GuidesData {
     suspend fun coverUrl(context: Context, guide: InkShelf2Guide): String? =
         withContext(Dispatchers.IO) {
             guide.batcaveSlug?.let { slug ->
-                return@withContext InkShelf2BatCaveGuides.coverUrl(context, slug)
+                return@withContext verifiedEventCover(context, slug)
             }
             guide.imageUrl?.let { imageUrl(it) }?.let { return@withContext it }
             if (guide.id <= 0) return@withContext null
@@ -207,6 +207,67 @@ internal object InkShelf2GuidesData {
                 }
             }
         }
+
+    // Only exact main-series issue #1 matches are used for artwork. This
+    // mapping has no influence on the saved guide order or reader identifiers.
+    private val verifiedEventArt = mapOf(
+        "civil-war-2006" to ("Civil War" to 2006),
+        "absolute-power" to ("Absolute Power" to 2024),
+        "dark-nights-metal" to ("Dark Nights: Metal" to 2017),
+        "infinite-crisis" to ("Infinite Crisis" to 2005),
+        "king-in-black" to ("King in Black" to 2020),
+        "secret-invasion" to ("Secret Invasion" to 2008),
+        "secret-wars-2015" to ("Secret Wars" to 2015),
+        "war-of-the-realms" to ("War of the Realms" to 2019),
+    )
+
+    private fun artTitle(value: String): String = value.lowercase(java.util.Locale.ROOT)
+        .replace(Regex("""[^\p{L}\p{N}]+"""), " ").trim()
+
+    private suspend fun verifiedEventCover(context: Context, slug: String): String? {
+        val (title, year) = verifiedEventArt[slug] ?: return null
+        return coverMutex.withLock {
+            val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val key = "verified_event_cover_v1_" + slug
+            val cached = prefs.getString(key, null)
+            val age = System.currentTimeMillis() - prefs.getLong(key + "_time", 0L)
+            val ttl = if (cached.isNullOrBlank()) COVER_MISS_CACHE_MS else COVER_CACHE_MS
+            if (cached != null && age in 0L until ttl) return@withLock imageUrl(cached)
+            val secret = token(context) ?: return@withLock imageUrl(cached)
+            try {
+                // At most one serialized, rate-limited issue search per event.
+                delay(2_650)
+                val result = JSONObject(get(
+                    "https://metron.cloud/api/issue/?series_name=" + Uri.encode(title) +
+                        "&series_year_began=" + year + "&number=1",
+                    secret,
+                ))
+                val rows = result.optJSONArray("results") ?: JSONArray()
+                val matches = (0 until rows.length()).mapNotNull { index ->
+                    val issue = rows.optJSONObject(index) ?: return@mapNotNull null
+                    val series = issue.optJSONObject("series") ?: return@mapNotNull null
+                    if (artTitle(series.optString("name")) != artTitle(title) ||
+                        series.optInt("year_began") != year ||
+                        issue.optString("number").trim() != "1") return@mapNotNull null
+                    val id = series.optInt("id", 0).takeIf { it > 0 } ?: return@mapNotNull null
+                    val url = imageUrl(issue.optString("image")) ?: return@mapNotNull null
+                    id to url
+                }.distinct()
+                val more = !result.isNull("next") && result.optString("next").isNotBlank()
+                val found = if (!more && matches.size == 1) matches.single().second else null
+                val retained = found ?: imageUrl(cached)
+                prefs.edit().putString(key, retained ?: "")
+                    .putLong(key + "_time", System.currentTimeMillis()).apply()
+                retained
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                prefs.edit().putString(key, cached ?: "")
+                    .putLong(key + "_time", System.currentTimeMillis()).apply()
+                imageUrl(cached)
+            }
+        }
+    }
 
     /**
      * Search Metron by name, not just the small initial Marvel/DC carousel

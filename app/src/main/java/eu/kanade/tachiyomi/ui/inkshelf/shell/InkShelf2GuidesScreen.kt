@@ -55,14 +55,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Reading Guides: the approved ink-purple mock-up translated into a REAL
- * Metron-backed guide catalogue. Cards appear only for actual published lists.
- * Issue order comes from the list creator; the app never invents crossovers.
- */
+/** Only locally verified reading orders are visible; Metron supplies artwork. */
 @Composable
 internal fun InkShelf2GuidesScreen(
     padding: PaddingValues,
@@ -73,105 +68,16 @@ internal fun InkShelf2GuidesScreen(
     readingError: String? = null,
 ) {
     val context = LocalContext.current
-    var guides by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
-    // Display known guides immediately, even if BatCave's event website is
-    // temporarily blocked. Background discovery adds the wider catalogue.
-    var batcaveGuides by remember {
-        mutableStateOf(InkShelf2BatCaveGuides.featured())
-    }
-    var batcaveLoading by remember { mutableStateOf(true) }
-    var loading by remember { mutableStateOf(true) }
+    val catalogue = remember { InkShelf2BatCaveGuides.verified() }
     var chosen by remember { mutableStateOf<InkShelf2Guide?>(null) }
     var started by remember { mutableStateOf(InkShelf2GuidesData.startedGuides(context)) }
     var guideSearch by rememberSaveable { mutableStateOf("") }
     var guideFilter by rememberSaveable { mutableStateOf("All") }
-    var remoteResults by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
-    var searching by remember { mutableStateOf(false) }
-    var featured by remember { mutableStateOf<List<InkShelf2FeaturedGuide>>(emptyList()) }
-    var focused by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
+    val filters = listOf("All", "Marvel", "DC", "Started")
+    val activeFilter = guideFilter.takeIf { it in filters } ?: "All"
+    val verifiedStarted = started.intersect(catalogue.map { it.id }.toSet())
     val connected = InkShelf2GuidesData.configured(context)
-    // Local hits appear immediately; server search extends beyond the first
-    // page of events. Cancellation prevents stale results replacing new ones.
-    LaunchedEffect(guideSearch, guideFilter) {
-        remoteResults = emptyList()
-        val query = guideSearch.trim()
-        if (query.length < 2 || !connected || guideFilter == "Started") {
-            searching = false
-        } else {
-            searching = true
-            try {
-                delay(450)
-                remoteResults = InkShelf2GuidesData.search(
-                    context, query,
-                    when (guideFilter) {
-                        "Marvel" -> "marvel"
-                        "DC" -> "dc"
-                        else -> null
-                    },
-                )
-            } catch (cancel: CancellationException) {
-                throw cancel
-            } catch (_: Exception) {
-                remoteResults = emptyList()
-            } finally {
-                searching = false
-            }
-        }
-    }
     BackHandler(enabled = chosen != null) { chosen = null }
-    LaunchedEffect(Unit) {
-        try {
-            batcaveGuides = InkShelf2BatCaveGuides.catalogue(context)
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            // Metron remains independent if the event website is blocked.
-        } finally {
-            batcaveLoading = false
-        }
-    }
-    LaunchedEffect(Unit) {
-        try {
-            guides = InkShelf2GuidesData.lists(context)
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            // Guides must never interfere with the existing comic engine.
-        } finally {
-            loading = false
-        }
-    }
-
-    // Query a small, editorially selected set of modern events in the
-    // background. Never infer event age from an issue series' start year.
-    LaunchedEffect(loading, guides, connected) {
-        if (!loading && connected) {
-            try {
-                InkShelf2GuideFocus.load(context, guides) { focused = it }
-            } catch (cancel: CancellationException) {
-                throw cancel
-            } catch (_: Exception) {
-                focused = InkShelf2GuideFocus.choose(guides)
-            }
-        }
-    }
-
-    // Curated real crossover guides can sit beyond Metron's first catalogue
-    // page. Cache results and preserve the generic hero as a safe fallback.
-    LaunchedEffect(loading, guides, connected) {
-        if (!loading && connected) {
-            try {
-                InkShelf2FeaturedGuides.load(context, guides) { resolved ->
-                    featured = resolved
-                }
-            } catch (cancel: CancellationException) {
-                throw cancel
-            } catch (_: Exception) {
-                // The regular guide shelves continue to work if discovery fails.
-            }
-        }
-    }
-
     val selected = chosen
     if (selected != null) {
         InkShelf2GuideDetails(
@@ -184,72 +90,23 @@ internal fun InkShelf2GuidesScreen(
         )
         return
     }
-
-    // Prefer the verified Civil War index without merging sequel events
-    // or migrating progress by position from a different reading order.
-    val savedGuides = batcaveGuides.filter { guide ->
-        InkShelf2SavedEventOrders.events.any { it.slug == guide.batcaveSlug }
-    }
-    val civilWar = batcaveGuides.firstOrNull { it.batcaveSlug == "civil-war-2006" }
-    fun primaryGuide(item: InkShelf2Guide): InkShelf2Guide {
-        val name = item.name.trim().lowercase(java.util.Locale.ROOT)
-            .replace(Regex("""[^a-z0-9]+"""), " ").trim()
-        return if (civilWar != null && item.batcaveSlug == null &&
-            name in setOf("civil war", "civil war 2006", "marvel civil war",
-                "marvel civil war 2006", "civil war reading order",
-                "marvel civil war reading order")
-        ) civilWar else if (item.batcaveSlug == null) {
-            val event = InkShelf2GuideFocus.identify(item)
-            savedGuides.firstOrNull { event != null && InkShelf2GuideFocus.identify(it) == event } ?: item
-        } else item
-    }
-    val catalogue = (batcaveGuides + guides + focused + featured.map { it.guide } + remoteResults)
-        .map(::primaryGuide)
-        .distinctBy { it.id }
-    val curated = InkShelf2GuideFocus.choose(catalogue)
-    val modern = InkShelf2GuideFocus.choose(catalogue, InkShelf2GuideFocus.Era.MODERN)
-    val classics = InkShelf2GuideFocus.choose(catalogue, InkShelf2GuideFocus.Era.CLASSIC)
-    val popular = modern.sortedWith(
-        compareByDescending<InkShelf2Guide> { it.rating }.thenBy { it.name },
-    ).take(10)
-    val marvel = modern.filter { it.publisher.equals("marvel", true) }.take(12)
-    val dc = modern.filter { it.publisher.equals("dc", true) }.take(12)
-    val continuation = catalogue.firstOrNull { it.id in started }
-    val finding = guideSearch.trim()
-    val matching = catalogue
-        .filter { guide ->
-            (finding.isBlank() || listOf(
-                guide.name, guide.publisher, guide.author, guide.attribution,
-            ).any { it.contains(finding, ignoreCase = true) }) &&
-                when (guideFilter) {
-                    "Marvel" -> (finding.isNotBlank() || guide.batcaveSlug != null ||
-                        InkShelf2GuideFocus.identify(guide)?.era == InkShelf2GuideFocus.Era.MODERN) &&
-                        guide.publisher.equals("marvel", ignoreCase = true)
-                    "DC" -> (finding.isNotBlank() || guide.batcaveSlug != null ||
-                        InkShelf2GuideFocus.identify(guide)?.era == InkShelf2GuideFocus.Era.MODERN) &&
-                        guide.publisher.equals("dc", ignoreCase = true)
-                    "Classics" -> InkShelf2GuideFocus.identify(guide)?.era ==
-                        InkShelf2GuideFocus.Era.CLASSIC
-                    "Started" -> guide.id in started
-                    "Archive" -> InkShelf2GuideFocus.identify(guide) == null
-                    "Popular" -> finding.isNotBlank() || guide.batcaveSlug != null ||
-                        guide.id in curated.map { it.id }
-                    else -> finding.isNotBlank() || guide.batcaveSlug != null ||
-                        guide.id in curated.map { it.id }
-                }
-        }
-        .sortedWith(
-            compareByDescending<InkShelf2Guide> {
-                if (guideFilter == "Popular") it.rating else 0.0
-            }.thenBy { it.name },
-        )
-    val browsingResults = finding.isNotBlank() || guideFilter != "All"
     val openGuide: (InkShelf2Guide) -> Unit = { item ->
-        val primary = primaryGuide(item)
-        InkShelf2GuidesData.start(context, primary.id)
+        InkShelf2GuidesData.start(context, item.id)
         started = InkShelf2GuidesData.startedGuides(context)
-        chosen = primary
+        chosen = item
     }
+    val continuation = catalogue.firstOrNull { it.id in verifiedStarted }
+    val finding = guideSearch.trim()
+    val matching = catalogue.filter { guide ->
+        (finding.isBlank() || guide.name.contains(finding, ignoreCase = true) ||
+            guide.publisher.contains(finding, ignoreCase = true)) &&
+            when (activeFilter) {
+                "Marvel", "DC" -> guide.publisher.equals(activeFilter, true)
+                "Started" -> guide.id in verifiedStarted
+                else -> true
+            }
+    }
+    val browsing = finding.isNotBlank() || activeFilter != "All"
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
@@ -265,24 +122,12 @@ internal fun InkShelf2GuidesScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
             )
         }
-        item(key = "guides-hero") {
-            val availableHeroes = (savedGuides.map { InkShelf2FeaturedGuide(it.name, it) } +
-                featured.map { it.copy(guide = primaryGuide(it.guide)) }).distinctBy { it.guide.id }
-            if (availableHeroes.isNotEmpty()) {
+        if (!browsing && catalogue.isNotEmpty()) {
+            item(key = "guides-hero") {
                 InkShelf2FeaturedGuidesHero(
-                    featured = availableHeroes,
-                    started = started,
+                    featured = catalogue.map { InkShelf2FeaturedGuide(it.name, it) },
+                    started = verifiedStarted,
                     onOpenGuide = openGuide,
-                )
-            } else {
-                InkShelf2GuidesHero(
-                    guideCount = catalogue.size,
-                    startedCount = started.size,
-                    onExplore = {
-                        val first = continuation ?: batcaveGuides.firstOrNull()
-                            ?: popular.firstOrNull() ?: classics.firstOrNull()
-                        if (first != null) openGuide(first) else onMetronSettings()
-                    },
                 )
             }
         }
@@ -295,7 +140,7 @@ internal fun InkShelf2GuidesScreen(
                     InkShelf2SearchField(
                         value = guideSearch,
                         onValueChange = { guideSearch = it },
-                        placeholderText = "Search reading guides…",
+                        placeholderText = "Search verified guides…",
                         modifier = Modifier.weight(1f),
                     )
                     if (guideSearch.isNotBlank()) {
@@ -305,20 +150,18 @@ internal fun InkShelf2GuidesScreen(
                     }
                 }
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(listOf("All", "Marvel", "DC", "Classics", "Started", "Archive")) { option ->
-                        val active = guideFilter == option
+                    items(filters) { option ->
+                        val active = activeFilter == option
                         val shape = RoundedCornerShape(22.dp)
                         Box(
                             modifier = Modifier
                                 .background(
-                                    if (active) InkShelf2Colors.Accent
-                                    else InkShelf2Colors.SurfaceRaised,
+                                    if (active) InkShelf2Colors.Accent else InkShelf2Colors.SurfaceRaised,
                                     shape,
                                 )
                                 .border(
                                     1.dp,
-                                    if (active) InkShelf2Colors.AccentLight
-                                    else InkShelf2Colors.Border,
+                                    if (active) InkShelf2Colors.AccentLight else InkShelf2Colors.Border,
                                     shape,
                                 )
                                 .clickable { guideFilter = option }
@@ -335,65 +178,8 @@ internal fun InkShelf2GuidesScreen(
                 }
             }
         }
-        if (!connected && batcaveGuides.isEmpty() && !batcaveLoading) {
-            item {
-                InkShelf2GuideNotice(
-                    "BatCave event pages are unavailable. Connect Metron for another guide catalogue.",
-                    onClick = onMetronSettings,
-                    action = "Connect Metron",
-                )
-            }
-        } else if (guides.isEmpty() && connected && batcaveGuides.isEmpty()) {
-            item {
-                InkShelf2GuideNotice(
-                    if (loading) "Loading genuine Marvel and DC reading orders…"
-                    else "No reading orders available from Metron right now. Check your connection or token.",
-                    onClick = onMetronSettings,
-                    action = "Metron settings",
-                )
-            }
-        }
-        if (browsingResults) {
-            item(key = "guide-filter-summary") {
-                Text(
-                    if (searching || batcaveLoading) "Searching guides…"
-                    else "Reading Guides (" + matching.size + ")",
-                    modifier = Modifier.padding(horizontal = 17.dp),
-                    color = InkShelf2Colors.Text,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            if (matching.isEmpty() && !searching) {
-                item(key = "guide-no-results") {
-                    Text(
-                        if (finding.length == 1)
-                            "Type another letter to search Metron. No local matches yet."
-                        else "No guides found. Try a different title or open Archive.",
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-                        color = InkShelf2Colors.Muted,
-                        fontSize = 13.sp,
-                    )
-                }
-            }
-            items(matching, key = { "guide-result-" + it.id }) { guide ->
-                InkShelf2GuideFeatureCard(
-                    guide = guide,
-                    readCount = InkShelf2GuidesData.readIds(context, guide.id).size,
-                    started = guide.id in started,
-                    onClick = { openGuide(guide) },
-                )
-            }
-        } else {
-        if (batcaveGuides.isNotEmpty()) {
-            item(key = "batcave-events-shelf") {
-                InkShelf2SectionHeading("BatCave Event Reading Orders", onClick = null)
-                Spacer(Modifier.height(10.dp))
-                InkShelf2GuideShelf(batcaveGuides.take(12), openGuide, started)
-            }
-        }
-        if (continuation != null) {
-            item {
+        if (!browsing && continuation != null) {
+            item(key = "guide-continue") {
                 InkShelf2SectionHeading("Continue Your Guide", onClick = null)
                 Spacer(Modifier.height(10.dp))
                 InkShelf2GuideFeatureCard(
@@ -403,58 +189,33 @@ internal fun InkShelf2GuidesScreen(
                 )
             }
         }
-        if (popular.isNotEmpty()) {
-            item {
-                InkShelf2SectionHeading("Popular Modern Events", onClick = null)
-                Spacer(Modifier.height(10.dp))
-                InkShelf2GuideShelf(
-                    guides = popular,
-                    onOpen = openGuide,
-                    started = started,
-                )
-            }
+        item(key = "verified-guides-heading") {
+            InkShelf2SectionHeading("Verified Event Guides (" + matching.size + ")", onClick = null)
         }
-        if (marvel.isNotEmpty()) {
-            item {
-                InkShelf2SectionHeading("Modern Marvel Events", onClick = null)
-                Spacer(Modifier.height(10.dp))
-                InkShelf2GuideShelf(marvel, openGuide, started)
-            }
-        }
-        if (dc.isNotEmpty()) {
-            item {
-                InkShelf2SectionHeading("Modern DC Events", onClick = null)
-                Spacer(Modifier.height(10.dp))
-                InkShelf2GuideShelf(dc, openGuide, started)
-            }
-        }
-        if (classics.isNotEmpty()) {
-            item {
-                InkShelf2SectionHeading("Landmark Classics (1985–1999)", onClick = null)
-                Spacer(Modifier.height(10.dp))
-                InkShelf2GuideShelf(classics, openGuide, started)
-            }
-        }
-        if (modern.isEmpty() && batcaveGuides.isEmpty() && !loading && !batcaveLoading) {
-            item {
+        if (matching.isEmpty()) {
+            item(key = "guide-no-results") {
                 Text(
-                    "No featured modern Metron lists are available yet. Search for an event by name " +
-                        "or use Archive to see other community guides.",
-                    modifier = Modifier.padding(horizontal = 17.dp),
-                    color = InkShelf2Colors.Muted, fontSize = 12.sp,
-                )
-            }
-        }
-        }
-        if (guides.isNotEmpty()) {
-            item {
-                Text(
-                    "Featured events are selected by their event date, not the year a long-running " +
-                        "comic series began. Earlier community lists remain in Archive. " +
-                        "Issue order is supplied by Metron contributors.",
-                    modifier = Modifier.padding(horizontal = 17.dp, vertical = 8.dp),
+                    "No installed guides match this search.",
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
                     color = InkShelf2Colors.Muted,
-                    fontSize = 11.sp,
+                    fontSize = 13.sp,
+                )
+            }
+        }
+        items(matching, key = { "verified-guide-" + it.id }) { guide ->
+            InkShelf2GuideFeatureCard(
+                guide = guide,
+                readCount = InkShelf2GuidesData.readIds(context, guide.id).size,
+                started = guide.id in verifiedStarted,
+                onClick = { openGuide(guide) },
+            )
+        }
+        if (!connected) {
+            item(key = "guide-artwork-settings") {
+                InkShelf2GuideNotice(
+                    "Your installed reading orders work offline. Connect Metron for event artwork.",
+                    onClick = onMetronSettings,
+                    action = "Connect Metron",
                 )
             }
         }

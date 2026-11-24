@@ -265,6 +265,7 @@ private fun InkShelf2FeaturedGuideSlide(
                 )
                 Text(
                     item.label + (InkShelf2GuideFocus.identify(item.guide)
+                        ?.takeUnless { item.label.contains(it.year.toString()) }
                         ?.let { " (" + it.year + ")" } ?: ""),
                     color = Color.White,
                     fontSize = 27.sp,

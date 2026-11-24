@@ -58,6 +58,12 @@ internal object InkShelf2BatCaveGuides {
     ) + InkShelf2SavedEventOrders.events.map { guide(it.slug, it.title, it.publisher) }
     fun featured(): List<InkShelf2Guide> = knownEvents
 
+    /** Only complete locally verified indexes; do not promote live or community lists. */
+    fun verified(): List<InkShelf2Guide> = knownEvents.filter { guide ->
+        guide.batcaveSlug == "civil-war-2006" ||
+            InkShelf2SavedEventOrders.events.any { it.slug == guide.batcaveSlug }
+    }.distinctBy { it.batcaveSlug }
+
     private suspend fun html(context: Context, url: String, maxSize: Int = 900_000): String? =
         withContext(Dispatchers.IO) {
             if (!url.startsWith("$BASE/event/") && url != "$BASE/event") return@withContext null
