@@ -437,7 +437,7 @@ internal class InkShelf2SourcesEngine {
      * Resolve the original J2K manga row, fetch issues from its installed
      * extension when needed, and preserve all existing read/download flags.
      */
-    suspend fun ensureIssues(comic: Manga): Pair<Manga, List<Chapter>> =
+    suspend fun ensureIssues(comic: Manga, refreshCached: Boolean = false): Pair<Manga, List<Chapter>> =
         withContext(Dispatchers.IO) {
             issueLoadMutex.withLock {
                 val saved = database.getManga(comic.url, comic.source).executeAsBlocking()
@@ -445,10 +445,20 @@ internal class InkShelf2SourcesEngine {
                     it.id = database.insertManga(it).executeAsBlocking().insertedId()
                 }
                 val cached = database.getChapters(local).executeAsBlocking()
-                if (cached.isNotEmpty()) return@withLock local to cached
+                if (cached.isNotEmpty() && !refreshCached) return@withLock local to cached
 
                 val source = sources.get(local.source)
                     ?: throw IllegalStateException("Comic source is not installed.")
+                // Guide retry only: a partial/stale cache must not prevent a
+                // missing issue being found. Never clear existing chapters on
+                // an empty or failed response; use the normal J2K synchronizer.
+                if (cached.isNotEmpty() && refreshCached) {
+                    val fetched = withTimeoutOrNull(20_000L) { source.getChapterList(local.copy()) }
+                    if (!fetched.isNullOrEmpty()) {
+                        syncChaptersWithSource(database, fetched, local, source)
+                    }
+                    return@withLock local to database.getChapters(local).executeAsBlocking()
+                }
                 // Exactly the same data-fetching path used by the Details
                 // screen and the original InkShelf 1 presenter.
                 refreshFromOriginalSource(local, source)

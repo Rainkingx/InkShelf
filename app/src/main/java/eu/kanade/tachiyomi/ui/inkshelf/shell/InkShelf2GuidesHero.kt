@@ -187,14 +187,16 @@ private fun InkShelf2FeaturedGuideSlide(
     onOpen: () -> Unit,
 ) {
     val context = LocalContext.current
-    var cover by remember(item.guide.id) { mutableStateOf(item.guide.imageUrl) }
+    var cover by remember(item.guide.id, item.guide.imageUrl) { mutableStateOf(item.guide.imageUrl) }
     LaunchedEffect(item.guide.id, item.guide.imageUrl) {
-        cover = try {
-            InkShelf2GuidesData.coverUrl(context, item.guide)
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            item.guide.imageUrl
+        if (item.guide.batcaveSlug == null && item.guide.imageUrl == null) {
+            cover = try {
+                InkShelf2GuidesData.coverUrl(context, item.guide)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                item.guide.imageUrl
+            }
         }
     }
     val shape = RoundedCornerShape(20.dp)

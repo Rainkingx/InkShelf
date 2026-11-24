@@ -222,16 +222,18 @@ internal object InkShelf2GuidesData {
     )
 
     private fun artTitle(value: String): String = value.lowercase(java.util.Locale.ROOT)
-        .replace(Regex("""[^\p{L}\p{N}]+"""), " ").trim()
+        .replace(Regex("""\s*\((?:19|20)\d{2}(?:[-–—][^)]*)?\)\s*$"""), "")
+        .replace(Regex("""[^\p{L}\p{N}]+"""), " ").trim().removePrefix("the ")
 
     private suspend fun verifiedEventCover(context: Context, slug: String): String? {
         val (title, year) = verifiedEventArt[slug] ?: return null
         return coverMutex.withLock {
             val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val key = "verified_event_cover_v1_" + slug
+            val key = "verified_event_cover_v2_" + slug
             val cached = prefs.getString(key, null)
+                ?: prefs.getString("verified_event_cover_v1_" + slug, null)?.takeIf { it.isNotBlank() }
             val age = System.currentTimeMillis() - prefs.getLong(key + "_time", 0L)
-            val ttl = if (cached.isNullOrBlank()) COVER_MISS_CACHE_MS else COVER_CACHE_MS
+            val ttl = if (cached.isNullOrBlank()) 10L * 60 * 1000 else COVER_CACHE_MS
             if (cached != null && age in 0L until ttl) return@withLock imageUrl(cached)
             val secret = token(context) ?: return@withLock imageUrl(cached)
             try {
@@ -246,10 +248,14 @@ internal object InkShelf2GuidesData {
                 val matches = (0 until rows.length()).mapNotNull { index ->
                     val issue = rows.optJSONObject(index) ?: return@mapNotNull null
                     val series = issue.optJSONObject("series") ?: return@mapNotNull null
+                    // The issue-list response may omit year_began. The exact
+                    // server-side series_year_began filter still applies; reject
+                    // a conflicting year whenever the API supplies one.
+                    val suppliedYear = series.optInt("year_began", 0)
                     if (artTitle(series.optString("name")) != artTitle(title) ||
-                        series.optInt("year_began") != year ||
+                        (suppliedYear > 0 && suppliedYear != year) ||
                         issue.optString("number").trim() != "1") return@mapNotNull null
-                    val id = series.optInt("id", 0).takeIf { it > 0 } ?: return@mapNotNull null
+                    val id = issue.optInt("id", 0).takeIf { it > 0 } ?: return@mapNotNull null
                     val url = imageUrl(issue.optString("image")) ?: return@mapNotNull null
                     id to url
                 }.distinct()
@@ -262,8 +268,7 @@ internal object InkShelf2GuidesData {
             } catch (cancel: CancellationException) {
                 throw cancel
             } catch (_: Exception) {
-                prefs.edit().putString(key, cached ?: "")
-                    .putLong(key + "_time", System.currentTimeMillis()).apply()
+                // Network errors and rate limits are not authoritative misses.
                 imageUrl(cached)
             }
         }

@@ -68,7 +68,9 @@ internal fun InkShelf2GuidesScreen(
     readingError: String? = null,
 ) {
     val context = LocalContext.current
-    val catalogue = remember { InkShelf2BatCaveGuides.verified() }
+    val installed = remember { InkShelf2BatCaveGuides.verified() }
+    var eventCovers by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    val catalogue = installed.map { guide -> guide.copy(imageUrl = eventCovers[guide.id]) }
     var chosen by remember { mutableStateOf<InkShelf2Guide?>(null) }
     var started by remember { mutableStateOf(InkShelf2GuidesData.startedGuides(context)) }
     var guideSearch by rememberSaveable { mutableStateOf("") }
@@ -77,8 +79,20 @@ internal fun InkShelf2GuidesScreen(
     val activeFilter = guideFilter.takeIf { it in filters } ?: "All"
     val verifiedStarted = started.intersect(catalogue.map { it.id }.toSet())
     val connected = InkShelf2GuidesData.configured(context)
+    // Keep artwork loading independent of lazy cards and hero rotation. A
+    // single sequential coroutine completes all installed event covers.
+    LaunchedEffect(connected, installed) {
+        if (connected) {
+            for (guide in installed) {
+                val url = InkShelf2GuidesData.coverUrl(context, guide)
+                if (url != null) eventCovers = eventCovers + (guide.id to url)
+            }
+        }
+    }
     BackHandler(enabled = chosen != null) { chosen = null }
-    val selected = chosen
+    val selected = chosen?.let { selectedGuide ->
+        catalogue.firstOrNull { it.id == selectedGuide.id } ?: selectedGuide
+    }
     if (selected != null) {
         InkShelf2GuideDetails(
             guide = selected,
@@ -396,12 +410,15 @@ private fun InkShelf2GuideArt(guide: InkShelf2Guide, height: Int) {
     val context = LocalContext.current
     var cover by remember(guide.id, guide.imageUrl) { mutableStateOf(guide.imageUrl) }
     LaunchedEffect(guide.id, guide.imageUrl) {
-        cover = try {
-            InkShelf2GuidesData.coverUrl(context, guide)
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            guide.imageUrl
+        // Installed event art is owned by the parent screen, not a lazy row.
+        if (guide.batcaveSlug == null && guide.imageUrl == null) {
+            cover = try {
+                InkShelf2GuidesData.coverUrl(context, guide)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                guide.imageUrl
+            }
         }
     }
     val first = if (guide.id % 2 == 0) Color(0xFF332060) else Color(0xFF583077)

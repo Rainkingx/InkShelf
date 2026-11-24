@@ -50,14 +50,22 @@ internal object InkShelf2GuideAutoReader {
             it.name.contains("batcave", ignoreCase = true)
         }
         val store = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val cacheKey = key(issue)
+        val cacheKey = issue.batcaveSeriesPath?.takeIf(InkShelf2GuideAutoMatch::isSafeSeriesPath)
+            ?.let { "saved-path:" + it } ?: key(issue)
+        val tried = mutableSetOf<Pair<Long, String>>()
 
         suspend fun verify(comic: Manga): Resolved? = try {
-            withTimeoutOrNull(35_000L) {
-                val (actual, chapters) = engine.ensureIssues(comic)
-                val chapter = InkShelf2GuideChapterFinder.find(issue, chapters)?.chapter
-                if (chapter?.id != null) Resolved(actual, chapter) else null
-            }
+            if (!tried.add(comic.source to canonicalPath(comic.url))) null else
+                withTimeoutOrNull(45_000L) {
+                    val (actual, chapters) = engine.ensureIssues(comic)
+                    val chapter = InkShelf2GuideChapterFinder.find(issue, chapters)?.chapter
+                    if (chapter?.id != null) Resolved(actual, chapter)
+                    else if (chapters.isNotEmpty()) {
+                        val (refreshed, freshChapters) = engine.ensureIssues(actual, refreshCached = true)
+                        val retry = InkShelf2GuideChapterFinder.find(issue, freshChapters)?.chapter
+                        if (retry?.id != null) Resolved(refreshed, retry) else null
+                    } else null
+                }
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: Exception) {
@@ -91,18 +99,9 @@ internal object InkShelf2GuideAutoReader {
         val expectedPath = issue.batcaveSeriesPath
         if (preferred != null && expectedPath != null && InkShelf2GuideAutoMatch.isSafeSeriesPath(expectedPath)) {
             val remote = Manga.create(expectedPath, issue.series, preferred.id)
-            val listed = try {
-                withTimeoutOrNull(13_000L) {
-                    preferred.getChapterList(remote).isNotEmpty()
-                } ?: false
-            } catch (cancel: CancellationException) {
-                throw cancel
-            } catch (_: Exception) {
-                false
-            }
-            if (listed) {
-                verify(remote)?.let { return@withContext remember(it) }
-            }
+            // The normal engine resolves and checks the chapter list; do not
+            // request the same series twice before attempting verification.
+            verify(remote)?.let { return@withContext remember(it) }
         }
 
         // The catalogue's naming differs from guide terminology:
