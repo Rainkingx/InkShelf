@@ -49,6 +49,18 @@ class InkShelf2GuideChapterFinderTest {
     }
 
     @Test
+    fun decimalIssueIsDistinctFromRegularIssueAndOtherDecimalIssues() {
+        val wanted = issue.copy(number = "7.1")
+        val exact = chapter("Issue #7.1", 8f)
+        val regular = chapter("Issue #7", 7f)
+        val other = chapter("Issue #7.2", 9f)
+        assertEquals(exact, InkShelf2GuideChapterFinder.find(wanted, listOf(regular, other, exact))?.chapter)
+        assertNull(InkShelf2GuideChapterFinder.find(wanted, listOf(regular, other)))
+        assertNull(InkShelf2GuideChapterFinder.find(issue.copy(number = "7"), listOf(chapter("#7.1", 7f))))
+        assertEquals(regular, InkShelf2GuideChapterFinder.find(issue.copy(number = "7"), listOf(regular, exact))?.chapter)
+    }
+
+    @Test
     fun articleAliasIsSpecificToWarOfTheRealms() {
         assertEquals(3, InkShelf2GuideAutoMatch.rank(issue, "The War of the Realms (2019)"))
         org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.queries(issue).contains("The War of the Realms"))

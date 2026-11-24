@@ -114,6 +114,13 @@ class InkShelf2BundledEventOrdersTest {
             "infinite-crisis" to (98 to 7), "king-in-black" to (65 to 5),
             "war-of-the-realms" to (63 to 6), "secret-invasion" to (126 to 13),
             "secret-wars-2015" to (230 to 10),
+            "batman-zero-year" to (25 to 0), "blood-hunt" to (54 to 6),
+            "civil-war-ii" to (152 to 15), "dc-k-o" to (40 to 6),
+            "death-of-the-family" to (30 to 5), "fear-itself" to (124 to 10),
+            "flashpoint" to (66 to 10), "house-of-m" to (64 to 8),
+            "night-of-the-owls" to (15 to 0), "original-sin" to (67 to 11),
+            "spider-verse" to (32 to 0), "world-war-hulk" to (52 to 7),
+            "x-men-original-sin" to (6 to 0),
         )
         assertEquals(expected.keys, InkShelf2SavedEventOrders.events.map { it.slug }.toSet())
         expected.forEach { (slug, counts) ->

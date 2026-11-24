@@ -77,6 +77,7 @@ class InkShelf2GuideAutoMatchTest {
     fun savedSeriesPathsAllowRealSlashTitlesButNotTraversalOrExternalUrls() {
         org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.isSafeSeriesPath("/3202-king-in-black-iron-man/doom.html"))
         org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.isSafeSeriesPath("/11663-civil-war-2006.html"))
+        org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.isSafeSeriesPath("/4167-patsy-walker,-aka-hellcat!.html"))
         listOf("https://example.com/12-book.html", "/12-book/../other.html",
             "/12-book.html?token=secret", "/12-book//doom.html", "//example.com/12-book.html").forEach {
             org.junit.Assert.assertFalse(it, InkShelf2GuideAutoMatch.isSafeSeriesPath(it))

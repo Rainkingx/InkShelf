@@ -515,25 +515,25 @@ internal object InkShelf2AdditionalEventOrders {
             2|Excalibur (2004)|14|/14576-excalibur-2004.html|97540|
             3|House of M (2005)|1|/18298-house-of-m-2005.html|126197|
             4|House of M (2005)|2|/18298-house-of-m-2005.html|126198|
-            5|Civil War: House Of M|1|/11678-civil-war-house-of-m.html|77467|
-            6|Civil War: House Of M|2|/11678-civil-war-house-of-m.html|77468|
-            7|Civil War: House Of M|3|/11678-civil-war-house-of-m.html|77469|
-            8|Civil War: House Of M|4|/11678-civil-war-house-of-m.html|77470|
-            9|Civil War: House Of M|5|/11678-civil-war-house-of-m.html|77471|
-            10|House of M: Masters of Evil|1|/18303-house-of-m-masters-of-evil.html|126229|
-            11|House of M: Masters of Evil|2|/18303-house-of-m-masters-of-evil.html|126230|
-            12|House of M: Masters of Evil|3|/18303-house-of-m-masters-of-evil.html|126231|
-            13|House of M: Masters of Evil|4|/18303-house-of-m-masters-of-evil.html|126232|
-            14|House of M: Avengers|1|/18302-house-of-m-avengers.html|126224|
-            15|House of M: Avengers|2|/18302-house-of-m-avengers.html|126225|
-            16|House of M: Avengers|3|/18302-house-of-m-avengers.html|126226|
-            17|House of M: Avengers|4|/18302-house-of-m-avengers.html|126227|
-            18|House of M: Avengers|5|/18302-house-of-m-avengers.html|126228|
+            5|Civil War: House Of M (2008)|1|/11678-civil-war-house-of-m.html|77467|
+            6|Civil War: House Of M (2008)|2|/11678-civil-war-house-of-m.html|77468|
+            7|Civil War: House Of M (2008)|3|/11678-civil-war-house-of-m.html|77469|
+            8|Civil War: House Of M (2008)|4|/11678-civil-war-house-of-m.html|77470|
+            9|Civil War: House Of M (2008)|5|/11678-civil-war-house-of-m.html|77471|
+            10|House of M: Masters of Evil (2009)|1|/18303-house-of-m-masters-of-evil.html|126229|
+            11|House of M: Masters of Evil (2009)|2|/18303-house-of-m-masters-of-evil.html|126230|
+            12|House of M: Masters of Evil (2009)|3|/18303-house-of-m-masters-of-evil.html|126231|
+            13|House of M: Masters of Evil (2009)|4|/18303-house-of-m-masters-of-evil.html|126232|
+            14|House of M: Avengers (2008)|1|/18302-house-of-m-avengers.html|126224|
+            15|House of M: Avengers (2008)|2|/18302-house-of-m-avengers.html|126225|
+            16|House of M: Avengers (2008)|3|/18302-house-of-m-avengers.html|126226|
+            17|House of M: Avengers (2008)|4|/18302-house-of-m-avengers.html|126227|
+            18|House of M: Avengers (2008)|5|/18302-house-of-m-avengers.html|126228|
             19|The Incredible Hulk (2000-2008)|83|/28273-the-incredible-hulk-2000-2008.html|197026|
-            20|The Pulse (2004-2006)|Full|/28952-the-pulse-2004-2006.html|201684|The Pulse: House of M Special
-            21|Fantastic Four: House of M|1|/14819-fantastic-four-house-of-m.html|99967|
-            22|Fantastic Four: House of M|2|/14819-fantastic-four-house-of-m.html|99968|
-            23|Fantastic Four: House of M|3|/14819-fantastic-four-house-of-m.html|99969|
+            20|The Pulse (2004-2006)|Full|/28952-the-pulse-2004-2006.html|201684|House of M Special
+            21|Fantastic Four: House of M (2005)|1|/14819-fantastic-four-house-of-m.html|99967|
+            22|Fantastic Four: House of M (2005)|2|/14819-fantastic-four-house-of-m.html|99968|
+            23|Fantastic Four: House of M (2005)|3|/14819-fantastic-four-house-of-m.html|99969|
             24|Spider-Man: House of M (2005)|1|/25992-spider-man-house-of-m-2005.html|178936|
             25|Spider-Man: House of M (2005)|2|/25992-spider-man-house-of-m-2005.html|178937|
             26|Spider-Man: House of M (2005)|3|/25992-spider-man-house-of-m-2005.html|178938|
@@ -542,13 +542,13 @@ internal object InkShelf2AdditionalEventOrders {
             29|The Incredible Hulk (2000-2008)|84|/28273-the-incredible-hulk-2000-2008.html|197027|
             30|The Incredible Hulk (2000-2008)|85|/28273-the-incredible-hulk-2000-2008.html|197028|
             31|The Incredible Hulk (2000-2008)|86|/28273-the-incredible-hulk-2000-2008.html|197029|
-            32|Iron Man: House of M|1|/17397-iron-man-house-of-m.html|117495|
-            33|Iron Man: House of M|2|/17397-iron-man-house-of-m.html|117496|
-            34|Iron Man: House of M|3|/17397-iron-man-house-of-m.html|117497|
-            35|Mutopia X|1|/22231-mutopia-x.html|153016|
-            36|Mutopia X|2|/22231-mutopia-x.html|153017|
-            37|Mutopia X|3|/22231-mutopia-x.html|153018|
-            38|New Thunderbolts|11|/22573-new-thunderbolts.html|155458|
+            32|Iron Man: House of M (2005)|1|/17397-iron-man-house-of-m.html|117495|
+            33|Iron Man: House of M (2005)|2|/17397-iron-man-house-of-m.html|117496|
+            34|Iron Man: House of M (2005)|3|/17397-iron-man-house-of-m.html|117497|
+            35|Mutopia X (2005)|1|/22231-mutopia-x.html|153016|
+            36|Mutopia X (2005)|2|/22231-mutopia-x.html|153017|
+            37|Mutopia X (2005)|3|/22231-mutopia-x.html|153018|
+            38|New Thunderbolts (2005)|11|/22573-new-thunderbolts.html|155458|
             39|Uncanny X-Men (1963)|462|/6967-uncanny-x-men-1963.html|39478|
             40|Uncanny X-Men (1963)|463|/6967-uncanny-x-men-1963.html|39479|
             41|Uncanny X-Men (1963)|464|/6967-uncanny-x-men-1963.html|39480|
@@ -569,12 +569,12 @@ internal object InkShelf2AdditionalEventOrders {
             56|Exiles (2001)|69|/14609-exiles-2001.html|97841|
             57|Exiles (2001)|70|/14609-exiles-2001.html|97842|
             58|Exiles (2001)|71|/14609-exiles-2001.html|97843|
-            59|Cable and Deadpool|17|/10951-cable-and-deadpool.html|72141|
+            59|Cable and Deadpool (2004)|17|/10951-cable-and-deadpool.html|72141|
             60|House of M (2005)|6|/18298-house-of-m-2005.html|126202|
             61|House of M (2005)|7|/18298-house-of-m-2005.html|126203|
-            62|Mutopia X|4|/22231-mutopia-x.html|153019|
+            62|Mutopia X (2005)|4|/22231-mutopia-x.html|153019|
             63|House of M (2005)|8|/18298-house-of-m-2005.html|126204|
-            64|Giant-Size Ms. Marvel|Full|/15922-giant-size-ms-marvel.html|107921|
+            64|Giant-Size Ms. Marvel (2006)|Full|/15922-giant-size-ms-marvel.html|107921|One-shot
         """),
         InkShelf2SavedEventOrders.Event("night-of-the-owls", "Night of the Owls", "DC", 15, setOf(), """
             1|Batman (2011-2016)|7|/13578-batman-2011.html|90095|
@@ -590,7 +590,7 @@ internal object InkShelf2AdditionalEventOrders {
             11|Detective Comics (2011)|9|/13397-detective-comics-2011.html|89067|
             12|Batman: The Dark Knight [II] (2011)|9|/9204-batman-the-dark-knight-ii-2011.html|59567|
             13|Birds of Prey (2011)|9|/9987-birds-of-prey-2011.html|65561|
-            14|Batman (2011-2016)|1|/13578-batman-2011.html|90084|Annual 1
+            14|Batman (2011-2016)|Full|/13578-batman-2011.html|90084|Annual 1
             15|Catwoman (2011)|9|/11328-catwoman-2011.html|234356|
         """),
         InkShelf2SavedEventOrders.Event("original-sin", "Original Sin", "Marvel", 67, setOf(1, 2, 4, 6, 35, 42, 43, 44, 46, 47, 48), """
@@ -641,7 +641,7 @@ internal object InkShelf2AdditionalEventOrders {
             45|Original Sins (2014)|5|/23041-original-sins-2014.html|158479|
             46|Original Sin (2014)|7|/23039-original-sin-2014.html|158471|
             47|Original Sin (2014)|8|/23039-original-sin-2014.html|158472|
-            48|Original Sin (2014)|1|/23039-original-sin-2014.html|158446|Annual 1
+            48|Original Sin (2014)|Full|/23039-original-sin-2014.html|158446|Annual 1
             49|All-New Invaders|6|/7707-all-new-invaders.html|45311|
             50|All-New Invaders|7|/7707-all-new-invaders.html|45312|
             51|Avengers (2013)|29|/8577-avengers-2013.html|243195|

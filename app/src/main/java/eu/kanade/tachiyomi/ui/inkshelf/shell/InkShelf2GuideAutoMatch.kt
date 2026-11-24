@@ -18,7 +18,7 @@ internal object InkShelf2GuideAutoMatch {
 
     // A saved source URL may include a slash in a title (Iron Man/Doom).
     fun isSafeSeriesPath(path: String): Boolean =
-        Regex("""^/\d{2,9}-[a-z0-9-]+(?:/[a-z0-9-]+)*\.html$""").matches(path)
+        Regex("""^/\d{2,9}-[a-z0-9,!-]+(?:/[a-z0-9,!-]+)*\.html$""").matches(path)
 
     fun matchesSpecialLabel(chapterName: String, label: String): Boolean =
         label.isNotBlank() && Regex(

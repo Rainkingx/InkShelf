@@ -44,6 +44,15 @@ internal object InkShelf2GuideChapterFinder {
         printedIssue.find(chapter.name)?.groupValues?.getOrNull(1)?.toIntOrNull()
             ?: plainPrintedIssue.matchEntire(chapter.name)?.groupValues?.getOrNull(1)?.toIntOrNull()
 
+    private val printedDecimalIssue = Regex(
+        """(?:^|[\s:(])(?:issue\s*#?|chapter\s*#?|ch\.?\s*#?|#)\s*0*(\d{1,3}\.\d+)(?![\d.])""",
+        RegexOption.IGNORE_CASE,
+    )
+    private val plainDecimalIssue = Regex("""^\s*0*(\d{1,3}\.\d+)\s*$""")
+    private fun printedDecimal(chapter: Chapter): String? =
+        printedDecimalIssue.find(chapter.name)?.groupValues?.getOrNull(1)
+            ?: plainDecimalIssue.matchEntire(chapter.name)?.groupValues?.getOrNull(1)
+
     private fun isGrouped(chapter: Chapter): Boolean =
         numberedRange.containsMatchIn(chapter.name) ||
             InkShelfComicIssueGaps.coveredNumbers(chapter).size > 1
@@ -79,10 +88,15 @@ internal object InkShelf2GuideChapterFinder {
             val standalone = chapters.filterNot { nonRegular.containsMatchIn(it.name) }
             return if (standalone.size == 1) Found(standalone.single(), grouped = false) else null
         }
-        val number = issue.number.trim().removePrefix("#").toIntOrNull()
+        val requested = issue.number.trim().removePrefix("#")
+        if (requested.matches(Regex("""\d{1,3}\.\d+"""))) {
+            val matches = chapters.filter { isRegular(it) && printedDecimal(it) == requested && !isGrouped(it) }
+            return matches.singleOrNull()?.let { Found(it, grouped = false) }
+        }
+        val number = requested.toIntOrNull()
             ?.takeIf { it in 0..999 } ?: return null
 
-        val regular = chapters.filter(::isRegular)
+        val regular = chapters.filter { isRegular(it) && printedDecimal(it) == null }
         val printed = regular.filter { printedNumber(it) == number && !isGrouped(it) }
         if (printed.size == 1) return Found(printed.single(), grouped = false)
         if (printed.size > 1) return null
