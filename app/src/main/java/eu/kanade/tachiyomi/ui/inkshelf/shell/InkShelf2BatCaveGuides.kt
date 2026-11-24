@@ -107,7 +107,7 @@ internal object InkShelf2BatCaveGuides {
                 ?.groupValues?.get(1) ?: return@mapNotNull null
             if (slug in excluded) return@mapNotNull null
             val text = link.text().trim().replace(Regex("""\s+"""), " ")
-            val match = Regex("""\b(Marvel|DC)\s+\d+\s+issues\b""").find(text)
+            val match = Regex("""(Marvel|DC)\s*\d+\s*issues\b""").find(text)
                 ?: return@mapNotNull null
             val title = text.substring(0, match.range.first).trim()
             if (title.length !in 3..100) return@mapNotNull null
