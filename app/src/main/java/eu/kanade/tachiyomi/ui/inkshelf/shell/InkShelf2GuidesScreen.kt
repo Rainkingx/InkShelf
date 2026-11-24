@@ -648,7 +648,7 @@ private fun InkShelf2GuideDetails(
                                 contentDescription = when (state?.status) {
                                     InkShelf2GuideDownloads.Status.OFFLINE -> "Offline ready"
                                     InkShelf2GuideDownloads.Status.QUEUED -> "Queued"
-                                    InkShelf2GuideDownloads.Status.DOWNLOADING -> "Downloading ${state.percent}%"
+                                    InkShelf2GuideDownloads.Status.DOWNLOADING -> "Downloading ${state?.percent ?: 0}%"
                                     InkShelf2GuideDownloads.Status.FAILED -> "Retry download"
                                     InkShelf2GuideDownloads.Status.AVAILABLE -> "Download issue"
                                     else -> "Open issue first to link it"

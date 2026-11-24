@@ -33,13 +33,13 @@ internal object InkShelf2GuideDownloads {
         progress.issues.mapValues { (_, issue) ->
             val targets = issue.targets
             val downloadable = targets.filter { eligible(it, sources, enabledSourceIds) }
-            val queued = targets.mapNotNull { jobs[it.chapter.id] }
+            val queued = targets.mapNotNull { it.chapter.id?.let(jobs::get) }
             val running = queued.firstOrNull { it.status == Download.State.DOWNLOADING }
             when {
                 targets.any { manager.isChapterDownloaded(it.chapter, it.manga) } -> State(Status.OFFLINE)
                 running != null -> State(Status.DOWNLOADING, running.progress.coerceIn(0, 100))
                 queued.any { it.status != Download.State.ERROR && it.status != Download.State.NOT_DOWNLOADED } -> State(Status.QUEUED)
-                downloadable.any { jobs[it.chapter.id]?.status == Download.State.ERROR } -> State(Status.FAILED)
+                downloadable.any { it.chapter.id?.let(jobs::get)?.status == Download.State.ERROR } -> State(Status.FAILED)
                 downloadable.isNotEmpty() -> State(Status.AVAILABLE)
                 else -> State(Status.UNMATCHED)
             }

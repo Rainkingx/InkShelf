@@ -39,7 +39,8 @@ internal object InkShelf2GuideProgress {
                 }.toMap()
             }
             val matchedIds = bindings.values.flatMap { it.values }.map { it.first }.distinct()
-            val knownManga = library.mapNotNull { manga -> manga.id?.let { it to manga } }.toMap().toMutableMap()
+            val knownManga = mutableMapOf<Long, Manga>()
+            library.forEach { manga -> manga.id?.let { knownManga[it] = manga } }
             for (id in matchedIds) {
                 if (id !in knownManga) {
                     db.getManga(id).executeAsBlocking()?.let { knownManga[id] = it }
@@ -78,7 +79,7 @@ internal object InkShelf2GuideProgress {
                         partial = valid.any { !it.read && it.last_page_read > 0 },
                         coverUrl = valid.firstNotNullOfOrNull { InkShelfIssueMetadata.from(it).coverUrl },
                         targets = valid.mapNotNull { chapter ->
-                            val manga = knownManga[chapter.manga_id] ?: return@mapNotNull null
+                            val manga = chapter.manga_id?.let(knownManga::get) ?: return@mapNotNull null
                             Target(manga, chapter)
                         },
                     )
