@@ -39,12 +39,19 @@ internal data class InkShelf2GuideIssue(
     val seriesId: Int? = null,
     val batcaveSeriesPath: String? = null,
     val batcaveIssuePath: String? = null,
+    // Optional named issue in a longer source series (e.g. Pulse: House of M Special).
+    val issueLabel: String? = null,
 ) {
     val isEssential: Boolean get() =
         role.equals("Core Issue", true) || role.equals("Prologue", true) ||
             role.equals("Epilogue", true) || role.isBlank()
-    val displayName: String get() = series + (yearBegan?.let { " ($it)" } ?: "") +
-        (if (number.isBlank()) "" else if (number == "Full") " · One-shot" else " #" + number)
+    val displayName: String get() = series +
+        (yearBegan?.let { year ->
+            if (series.contains("($year)")) "" else " ($year)"
+        } ?: "") +
+        (issueLabel?.let { " · " + it }
+            ?: if (number.isBlank()) "" else if (number == "Full") " · One-shot"
+            else " #" + number)
 }
 
 internal data class InkShelf2GuidePage(
