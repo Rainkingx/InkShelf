@@ -52,7 +52,7 @@ class InkShelf2BundledEventOrdersTest {
     @Test
     fun allVerifiedTieInPathsPointToSpecificSourcePages() {
         assertTrue(order.issues.filter { it.batcaveSeriesPath != null }.all {
-            it.batcaveSeriesPath!!.matches(Regex("""/\\d{2,9}-[a-z0-9-]+\\.html"""))
+            it.batcaveSeriesPath!!.matches(Regex("""/\d{2,9}-[a-z0-9-]+\.html"""))
         })
         val webTitles = listOf("Excalibur", "The Incredible Hulk", "Uncanny X-Men",
             "New X-Men", "Wolverine", "Spider-Man: House of M")
