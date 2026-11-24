@@ -154,6 +154,9 @@ internal object InkShelf2GuidesData {
      */
     suspend fun coverUrl(context: Context, guide: InkShelf2Guide): String? =
         withContext(Dispatchers.IO) {
+            guide.batcaveSlug?.let { slug ->
+                return@withContext InkShelf2BatCaveGuides.coverUrl(context, slug)
+            }
             guide.imageUrl?.let { imageUrl(it) }?.let { return@withContext it }
             if (guide.id <= 0) return@withContext null
             coverMutex.withLock {
