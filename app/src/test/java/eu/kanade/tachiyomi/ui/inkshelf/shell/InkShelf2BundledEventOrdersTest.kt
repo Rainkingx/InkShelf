@@ -16,7 +16,7 @@ class InkShelf2BundledEventOrdersTest {
         assertFalse(order.more)
         assertEquals((1..64).toList(), order.issues.map { it.position })
         assertEquals("Excalibur (2004) #13", order.issues.first().displayName)
-        assertEquals("Giant-Size Ms. Marvel (2005) · One-shot", order.issues.last().displayName)
+        assertEquals("Giant-Size Ms. Marvel (2006) · One-shot", order.issues.last().displayName)
     }
 
     @Test
