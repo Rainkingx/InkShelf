@@ -8,6 +8,21 @@ class InkShelf2EventTimelineTest {
     private val events = InkShelf2BatCaveGuides.verified()
 
     @Test
+    fun arcArtworkUsesActualComicSeries() {
+        val targets = mapOf(
+            "batman-zero-year" to Triple("Batman", 2011, "21"),
+            "death-of-the-family" to Triple("Batman", 2011, "13"),
+            "night-of-the-owls" to Triple("Batman", 2011, "8"),
+            "spider-verse" to Triple("The Amazing Spider-Man", 2014, "9"),
+            "x-men-original-sin" to Triple("Wolverine: Origins", 2006, "28"),
+        )
+        targets.forEach { (slug, expected) ->
+            val target = InkShelf2GuidesData.eventCoverTarget(slug)!!
+            assertEquals(expected, Triple(target.title, target.year, target.number))
+        }
+    }
+
+    @Test
     fun verifiedCatalogueUsesPublicationOrder() {
         val sorted = InkShelf2EventTimeline.ordered(events.reversed())
         assertEquals(events.map { it.id }.toSet(), sorted.map { it.id }.toSet())

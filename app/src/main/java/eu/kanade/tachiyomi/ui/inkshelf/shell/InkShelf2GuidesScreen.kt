@@ -818,19 +818,9 @@ private fun InkShelf2GuideDetails(
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(if (loading) "Loading event issues…"
-                        else "The reading order could not be loaded from the provider.",
+                    Text(if (guide.type == "CUSTOM") "Open a comic's details, long-press an issue and select Add to Event."
+                        else if (loading) "Loading event issues…" else "No installed reading order.",
                         color = InkShelf2Colors.Muted, fontSize = 13.sp)
-                    if (!loading) {
-                        TextButton(onClick = {
-                            all = emptyList()
-                            nextPage = 1
-                            hasMore = true
-                            scope.launch { loadPage() }
-                        }) {
-                            Text("Retry loading", color = InkShelf2Colors.AccentLight)
-                        }
-                    }
                 }
             }
         } else if (visibleIssues.isEmpty()) {

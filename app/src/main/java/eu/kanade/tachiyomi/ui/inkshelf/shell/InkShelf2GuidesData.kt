@@ -241,6 +241,24 @@ internal object InkShelf2GuidesData {
         "x-men-original-sin" to ("X-Men: Original Sin" to 2008),
     )
 
+    private val eventCoverPositions = mapOf(
+        "spider-verse" to 14, "batman-zero-year" to 2,
+        "death-of-the-family" to 4, "night-of-the-owls" to 2,
+        "x-men-original-sin" to 1,
+    )
+    internal data class EventCoverTarget(val title: String, val year: Int, val number: String)
+
+    fun eventCoverTarget(slug: String): EventCoverTarget? {
+        val position = eventCoverPositions[slug]
+        if (position != null) {
+            val issue = InkShelf2BundledEventOrders.get(slug, 1)?.issues
+                ?.firstOrNull { it.position == position && !it.sourceUnavailable } ?: return null
+            return EventCoverTarget(issue.series, issue.yearBegan ?: return null, issue.number)
+        }
+        val (title, year) = verifiedEventArt[slug] ?: return null
+        return EventCoverTarget(title, year, "1")
+    }
+
     fun publicationYear(guide: InkShelf2Guide): Int? =
         guide.batcaveSlug?.let { verifiedEventArt[it]?.second }
 
@@ -280,14 +298,18 @@ internal object InkShelf2GuidesData {
         .replace(Regex("""[^\p{L}\p{N}]+"""), " ").trim().removePrefix("the ")
 
     private suspend fun verifiedEventCover(context: Context, slug: String): String? {
-        val (title, year) = verifiedEventArt[slug] ?: return null
+        val (title, year, number) = eventCoverTarget(slug) ?: return null
         return coverMutex.withLock {
             val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val key = if (slug == "king-in-black") "verified_event_cover_v3_" + slug
-                else "verified_event_cover_v2_" + slug
-            val cached = prefs.getString(key, null)
-                ?: prefs.getString("verified_event_cover_v2_" + slug, null)?.takeIf { it.isNotBlank() }
-                ?: prefs.getString("verified_event_cover_v1_" + slug, null)?.takeIf { it.isNotBlank() }
+            val remapped = slug in eventCoverPositions
+            val key = when {
+                remapped -> "verified_event_cover_v4_" + slug
+                slug == "king-in-black" -> "verified_event_cover_v3_" + slug
+                else -> "verified_event_cover_v2_" + slug
+            }
+            val cached = prefs.getString(key, null) ?: if (remapped) null else
+                prefs.getString("verified_event_cover_v2_" + slug, null)?.takeIf { it.isNotBlank() }
+                    ?: prefs.getString("verified_event_cover_v1_" + slug, null)?.takeIf { it.isNotBlank() }
             val age = System.currentTimeMillis() - prefs.getLong(key + "_time", 0L)
             val ttl = if (cached.isNullOrBlank()) 10L * 60 * 1000 else COVER_CACHE_MS
             if (cached != null && age in 0L until ttl) return@withLock imageUrl(cached)
@@ -301,7 +323,7 @@ internal object InkShelf2GuidesData {
                     delay(2_650)
                     val result = JSONObject(get(
                         "https://metron.cloud/api/issue/?series_name=" + Uri.encode(title) +
-                            "&series_year_began=" + lookupYear + "&number=1",
+                            "&series_year_began=" + lookupYear + "&number=" + Uri.encode(number),
                         secret,
                     ))
                     val rows = result.optJSONArray("results") ?: JSONArray()
@@ -311,7 +333,7 @@ internal object InkShelf2GuidesData {
                         val suppliedYear = series.optInt("year_began", 0)
                         if (artTitle(series.optString("name")) != artTitle(title) ||
                             (suppliedYear > 0 && suppliedYear != lookupYear) ||
-                            issue.optString("number").trim() != "1") return@mapNotNull null
+                            issue.optString("number").trim() != number) return@mapNotNull null
                         val id = issue.optInt("id", 0).takeIf { it > 0 } ?: return@mapNotNull null
                         val url = imageUrl(issue.optString("image")) ?: return@mapNotNull null
                         id to url
@@ -516,8 +538,9 @@ internal object InkShelf2GuidesData {
         InkShelf2PersonalEvents.cover(context, guide.id)?.let { return it }
         val slug = guide.batcaveSlug ?: return guide.imageUrl
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return listOf("verified_event_cover_v3_", "verified_event_cover_v2_", "verified_event_cover_v1_")
-            .firstNotNullOfOrNull { prefix -> imageUrl(prefs.getString(prefix + slug, null)) }
+        val prefixes = if (slug in eventCoverPositions) listOf("verified_event_cover_v4_")
+            else listOf("verified_event_cover_v3_", "verified_event_cover_v2_", "verified_event_cover_v1_")
+        return prefixes.firstNotNullOfOrNull { prefix -> imageUrl(prefs.getString(prefix + slug, null)) }
     }
 
     fun readIds(context: Context, guideId: Int): Set<String> =
