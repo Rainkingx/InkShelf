@@ -4,8 +4,8 @@ Blood Hunt is the pilot hero in Reading Guides. Opening a guide uses bundled met
 
 ## User flow
 
-1. Tap Blood Hunt. Choose **Open permitted website** only if importing is permitted. This is an ordinary visible Android WebView with its default user agent. Complete any website verification normally.
-2. Once the event list is visible, tap **Extract visible page — I have permission**. Each pagination page requires its own explicit open and extract action. Nothing navigates or extracts automatically.
+1. Tap Blood Hunt to open an ordinary visible Android WebView with its default user agent. Import only if permitted. Complete any website verification normally.
+2. Once the event list is visible, tap **Extract visible page — I have permission**. Each pagination page requires its own explicit open and extract action. The initial page opens from the hero tap; later pages and extraction require explicit action.
 3. Compare the Complete and Essential counts with the source. Saving requires all discovered pagination pages, unique contiguous reading positions, the declared total (when present), and every short-path entry to match.
 4. Save opens the existing native guide UI. Later visits use compact metadata without opening the website.
 

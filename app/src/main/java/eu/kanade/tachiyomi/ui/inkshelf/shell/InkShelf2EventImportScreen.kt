@@ -42,7 +42,7 @@ internal fun InkShelf2EventImportScreen(
     val slug = requireNotNull(guide.batcaveSlug)
     val session = remember(slug) { InkShelf2EventImportSession(slug) }
     var webView by remember { mutableStateOf<WebView?>(null) }
-    var opened by remember { mutableStateOf(false) }
+    var opened by remember { mutableStateOf(true) }
     var ready by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -220,7 +220,7 @@ internal fun InkShelf2EventImportScreen(
                     catch (error: Exception) { message = error.message ?: "Could not save metadata." }
                     finally { busy = false }
                 }
-            }) { Text("Confirm counts and save native guide") }
+            }) { Text("Confirm counts and save guide") }
         }
     }
 }
