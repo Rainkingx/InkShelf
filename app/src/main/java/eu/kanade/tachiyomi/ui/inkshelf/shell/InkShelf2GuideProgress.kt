@@ -76,7 +76,7 @@ internal object InkShelf2GuideProgress {
                     val valid = candidates.distinctBy { it.id }
                     if (valid.isEmpty()) null else issue.id to IssueState(
                         read = valid.any { it.read },
-                        partial = valid.any { !it.read && it.last_page_read > 0 },
+                        partial = valid.any { !it.read && (it.last_page_read > 0 || it.pages_left > 0) },
                         coverUrl = valid.firstNotNullOfOrNull { InkShelfIssueMetadata.from(it).coverUrl },
                         targets = valid.mapNotNull { chapter ->
                             val manga = chapter.manga_id?.let(knownManga::get) ?: return@mapNotNull null
@@ -86,6 +86,25 @@ internal object InkShelf2GuideProgress {
                 }.toMap())
             }
         }
+
+    /** Prefer the previously read source to preserve its saved page. */
+    fun resumeTarget(
+        context: Context,
+        guideId: Int,
+        issueId: Int,
+        state: EventState,
+        enabledSourceIds: Set<Long>,
+    ): Target? {
+        val linked = InkShelf2GuidesData.matchedChapter(context, guideId, issueId)
+        val candidates = state.issues[issueId]?.targets.orEmpty()
+            .filter { it.manga.source in enabledSourceIds }
+        val exact = candidates.firstOrNull { it.manga.id == linked?.first && it.chapter.id == linked?.second }
+        fun partial(target: Target) = !target.chapter.read &&
+            (target.chapter.last_page_read > 0 || target.chapter.pages_left > 0)
+        return exact?.takeIf(::partial)
+            ?: candidates.filter(::partial).maxByOrNull { it.chapter.last_page_read }
+            ?: exact
+    }
 
     fun effectiveRead(context: Context, guideId: Int, state: EventState): Set<String> =
         (InkShelf2GuidesData.readIds(context, guideId) + state.readIds) -

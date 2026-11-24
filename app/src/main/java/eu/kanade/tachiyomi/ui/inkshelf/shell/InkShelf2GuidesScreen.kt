@@ -100,8 +100,11 @@ internal fun InkShelf2GuidesScreen(
         if (initialGuideId != null) onCloseInitialGuide() else chosen = null
     }
     var started by remember { mutableStateOf(InkShelf2GuidesData.startedGuides(context)) }
+    var guideRevision by remember { mutableStateOf(0) }
+    var progressReady by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf<Map<Int, InkShelf2GuideProgress.EventState>>(emptyMap()) }
-    LaunchedEffect(refreshEpoch, installed) {
+    LaunchedEffect(refreshEpoch, installed, guideRevision) {
+        progressReady = false
         try {
             progress = InkShelf2GuideProgress.load(context, installed)
         } catch (cancel: CancellationException) {
@@ -110,6 +113,7 @@ internal fun InkShelf2GuidesScreen(
             // A local database refresh failure does not stop the guide from opening.
         }
         started = InkShelf2GuidesData.startedGuides(context)
+        progressReady = true
     }
     var guideSearch by rememberSaveable { mutableStateOf("") }
     var guideFilter by rememberSaveable { mutableStateOf("All") }
@@ -131,7 +135,10 @@ internal fun InkShelf2GuidesScreen(
             }
         }
     }
-    BackHandler(enabled = chosen != null) { closeGuide() }
+    BackHandler(enabled = chosen != null) {
+        guideRevision++
+        closeGuide()
+    }
     val selected = chosen?.let { selectedGuide ->
         catalogue.firstOrNull { it.id == selectedGuide.id } ?: selectedGuide
     }
@@ -139,7 +146,12 @@ internal fun InkShelf2GuidesScreen(
         InkShelf2GuideDetails(
             guide = selected,
             padding = padding,
-            onBack = { closeGuide(); started = InkShelf2GuidesData.startedGuides(context) },
+            onBack = {
+                guideRevision++
+                closeGuide()
+                started = InkShelf2GuidesData.startedGuides(context)
+            },
+            progressReady = progressReady,
             saved = selected.id in savedGuideIds,
             onSave = { onSaveGuide(selected.id, selected.id !in savedGuideIds) },
             enabledSourceIds = enabledSourceIds,
@@ -159,9 +171,9 @@ internal fun InkShelf2GuidesScreen(
             val issues = guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
             val read = InkShelf2GuideProgress.effectiveRead(context, guide.id, progress[guide.id] ?: InkShelf2GuideProgress.EventState())
             val path = InkShelf2GuideReadingSelection.issuesForMode(issues, InkShelf2GuidesData.essentialMode(context, guide.id))
-            path.isNotEmpty() && path.any { it.id.toString() !in read }
+            InkShelf2GuideReadingSelection.hasUnread(path, read)
         }
-    }
+    }.sortedByDescending { InkShelf2GuidesData.lastOpenedAt(context, it.id) }
     val finding = guideSearch.trim()
     val matching = catalogue.filter { guide ->
         (finding.isBlank() || guide.name.contains(finding, ignoreCase = true) ||
@@ -192,7 +204,7 @@ internal fun InkShelf2GuidesScreen(
             item(key = "guides-hero") {
                 InkShelf2FeaturedGuidesHero(
                     featured = catalogue.map { InkShelf2FeaturedGuide(it.name, it) },
-                    started = verifiedStarted,
+                    started = inProgress.map { it.id }.toSet(),
                     onOpenGuide = openGuide,
                 )
             }
@@ -348,6 +360,7 @@ private fun InkShelf2GuideDetails(
     onBack: () -> Unit,
     onReadIssue: (InkShelf2GuideIssue) -> Unit,
     progress: InkShelf2GuideProgress.EventState,
+    progressReady: Boolean,
     refreshEpoch: Int,
     openingIssueId: Int?,
     readingError: String?,
@@ -418,10 +431,11 @@ private fun InkShelf2GuideDetails(
             .keys
     }
     val lastOpened = InkShelf2GuidesData.lastOpenedIssue(context, guide.id)
-    val nextIssue = selected.firstOrNull { it.id == lastOpened && it.id.toString() !in readIds && !it.sourceUnavailable }
-        ?: selected.firstOrNull { it.id in progress.partialIds && it.id.toString() !in readIds && !it.sourceUnavailable }
-        ?: InkShelf2GuideReadingSelection.next(selected, readIds)
+    val nextIssue = InkShelf2GuideReadingSelection.next(selected, readIds, lastOpened, progress.partialIds)
     val completed = selected.count { it.id.toString() in readIds }
+    val finished = InkShelf2GuideReadingSelection.finished(selected, readIds)
+    val unavailableCount = selected.count { it.sourceUnavailable && it.id.toString() !in readIds }
+    val hasProgress = completed > 0 || selected.any { it.id in progress.partialIds || it.id == lastOpened }
     val essentialMissing = essential && all.isNotEmpty() && all.none { it.isEssential }
     val currentlyOpening = openingIssueId != null
     val downloadManager: DownloadManager = remember { Injekt.get() }
@@ -518,16 +532,16 @@ private fun InkShelf2GuideDetails(
                     InkShelf2DetailQuickAction(
                         label = when {
                             currentlyOpening -> "Opening Issue"
-                            nextIssue == null -> "Loading Issues"
-                            nextIssue.sourceUnavailable -> "Unavailable"
-                            completed == selected.size -> "Read Again"
-                            completed > 0 || lastOpened != null || selected.any { it.id in progress.partialIds } -> "Continue Reading"
+                            !progressReady || all.isEmpty() -> "Loading Progress"
+                            nextIssue == null -> "Unavailable"
+                            finished -> "Read Again"
+                            hasProgress -> "Continue Reading"
                             else -> "Start Reading"
                         },
                         icon = Icons.Filled.PlayArrow,
                         highlight = true,
                         onClick = { if (nextIssue != null && !nextIssue.sourceUnavailable) onReadIssue(nextIssue) },
-                        enabled = nextIssue != null && !nextIssue.sourceUnavailable && !currentlyOpening,
+                        enabled = progressReady && nextIssue != null && !currentlyOpening,
                         modifier = Modifier.weight(1f),
                     )
                     InkShelf2DetailQuickAction(
@@ -550,9 +564,16 @@ private fun InkShelf2GuideDetails(
                         color = InkShelf2Colors.AccentLight, fontSize = 11.sp,
                     )
                 }
-                if (nextIssue?.sourceUnavailable == true) {
-                    Text("The source lists this issue as unavailable. Choose another listed issue to read.",
-                        color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                if (progressReady && nextIssue != null) {
+                    Text(
+                        (if (finished) "Read again: " else if (nextIssue.id in progress.partialIds) "Resume: " else "Next: ") +
+                            nextIssue.displayName,
+                        color = InkShelf2Colors.Text, fontSize = 12.sp, lineHeight = 17.sp,
+                    )
+                }
+                if (unavailableCount > 0) {
+                    Text("$unavailableCount listed issue(s) unavailable. They are skipped, not marked as read.",
+                        color = InkShelf2Colors.Muted, fontSize = 11.sp)
                 }
                 if (currentlyOpening) {
                     Text("Finding the exact issue in your installed sources…",

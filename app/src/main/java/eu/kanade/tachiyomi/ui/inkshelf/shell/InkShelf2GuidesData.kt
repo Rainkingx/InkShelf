@@ -511,9 +511,16 @@ internal object InkShelf2GuidesData {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val opened = prefs.getStringSet("started_reader_v2", emptySet())?.toSet().orEmpty()
         val edit = prefs.edit().putStringSet("started_reader_v2", opened + guideId.toString())
-        if (issueId != null) edit.putInt("last_opened_" + guideId, issueId)
+        if (issueId != null) {
+            edit.putInt("last_opened_" + guideId, issueId)
+                .putLong("last_opened_at_" + guideId, System.currentTimeMillis())
+        }
         edit.apply()
     }
+
+    fun lastOpenedAt(context: Context, guideId: Int): Long =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong("last_opened_at_" + guideId, 0L)
 
     fun lastOpenedIssue(context: Context, guideId: Int): Int? =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

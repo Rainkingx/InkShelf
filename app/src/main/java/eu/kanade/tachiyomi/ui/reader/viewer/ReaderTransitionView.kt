@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.widget.LinearLayout
 import androidx.annotation.ColorInt
+import androidx.appcompat.widget.AppCompatButton
 import androidx.core.text.bold
 import androidx.core.text.buildSpannedString
 import androidx.core.text.inSpans
@@ -33,16 +34,25 @@ class ReaderTransitionView
         private val binding: ReaderTransitionViewBinding =
             ReaderTransitionViewBinding.inflate(LayoutInflater.from(context), this, true)
         private val preferences: PreferencesHelper by injectLazy()
+        private val eventNextButton = AppCompatButton(context).apply {
+            text = "Next event issue"
+            isVisible = false
+        }
 
         init {
             layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+            orientation = VERTICAL
+            addView(eventNextButton, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         }
 
         fun bind(
             transition: ChapterTransition,
             downloadManager: DownloadManager,
             manga: Manga?,
+            onNextEventIssue: (() -> Unit)? = null,
         ) {
+            eventNextButton.isVisible = transition is ChapterTransition.Next && transition.to == null && onNextEventIssue != null
+            eventNextButton.setOnClickListener { onNextEventIssue?.invoke() }
             manga ?: return
             when (transition) {
                 is ChapterTransition.Prev -> bindPrevChapterTransition(transition, downloadManager, manga)
@@ -50,6 +60,9 @@ class ReaderTransitionView
             }
 
             missingChapterWarning(transition)
+            if (eventNextButton.isVisible) {
+                binding.upperText.text = "Continue in event reading order"
+            }
         }
 
         /**

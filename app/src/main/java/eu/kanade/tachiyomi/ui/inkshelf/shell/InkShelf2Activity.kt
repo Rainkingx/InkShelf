@@ -14,6 +14,8 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -294,6 +296,104 @@ class InkShelf2Activity : AppCompatActivity() {
                     it.id.toString() !in hiddenSources && it.id !in pausedIds
             }
             val enabledSourceIds = enabledSources.map { it.id }.toSet()
+            // A result is emitted only by the event end-of-issue button.
+            var eventAdvance by rememberSaveable { mutableStateOf<String?>(null) }
+            val eventReader = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                val data = result.data
+                if (result.resultCode == RESULT_OK && data != null && data.hasExtra(ReaderActivity.EVENT_GUIDE_ID)) {
+                    eventAdvance = "${data.getIntExtra(ReaderActivity.EVENT_GUIDE_ID, 0)}:" +
+                        "${data.getIntExtra(ReaderActivity.EVENT_ISSUE_ID, 0)}:" +
+                        data.getBooleanExtra(ReaderActivity.EVENT_ESSENTIAL, true).toString()
+                }
+                refreshEpoch += 1
+            }
+            fun openGuideIssue(guideId: Int, requestedIssue: InkShelf2GuideIssue, essentialMode: Boolean) {
+            if (guideOpeningId == null) {
+                guideOpeningId = requestedIssue.id
+                guideReadError = null
+                lifecycleScope.launch {
+                    try {
+                        var matchDiagnostic = ""
+                        val local = try {
+                            val guide = InkShelf2BatCaveGuides.verified().firstOrNull { it.id == guideId }
+                            if (guide == null) null else InkShelf2GuideProgress.load(applicationContext, listOf(guide))[guideId]
+                        } catch (cancel: CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) { null }
+                        val savedTarget = local?.let {
+                            InkShelf2GuideProgress.resumeTarget(applicationContext, guideId, requestedIssue.id, it, enabledSourceIds)
+                        }
+                        val offlineTarget = local?.let {
+                            try {
+                                InkShelf2GuideDownloads.offlineTarget(it, requestedIssue.id, downloadManager)
+                            } catch (cancel: CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) { null }
+                        }
+                        val resume = savedTarget?.takeIf { !it.chapter.read && (it.chapter.last_page_read > 0 || it.chapter.pages_left > 0) }
+                            ?: offlineTarget ?: savedTarget
+                        val reading = resume?.let { InkShelf2GuideAutoReader.Resolved(it.manga, it.chapter) }
+                            ?: InkShelf2GuideAutoReader.resolve(
+                            applicationContext,
+                            sourcesEngine, enabledSources, requestedIssue,
+                            onDiagnostic = { matchDiagnostic = it },
+                        )
+                        if (reading != null) {
+                            InkShelf2GuidesData.start(
+                                applicationContext, guideId, requestedIssue.id,
+                            )
+                            val mangaId = reading.manga.id
+                            val chapterId = reading.chapter.id
+                            if (mangaId != null && chapterId != null) {
+                                InkShelf2GuidesData.rememberChapter(
+                                    applicationContext, guideId, requestedIssue.id, mangaId, chapterId,
+                                )
+                            }
+                            eventReader.launch(ReaderActivity.newIntent(this@InkShelf2Activity, reading.manga, reading.chapter).apply {
+                                putExtra(ReaderActivity.EVENT_GUIDE_ID, guideId)
+                                putExtra(ReaderActivity.EVENT_ISSUE_ID, requestedIssue.id)
+                                putExtra(ReaderActivity.EVENT_ESSENTIAL, essentialMode)
+                            })
+                        } else {
+                            guideReadError =
+                                "Could not match " + requestedIssue.displayName +
+                                " to a readable issue in the installed extensions. " +
+                                "The guide order is unchanged." +
+                                if (matchDiagnostic.isBlank()) "" else "\n" + matchDiagnostic
+                        }
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        guideReadError =
+                            "Could not open this issue from your sources. Try again later."
+                    } finally {
+                        guideOpeningId = null
+                    }
+                }
+            }
+            }
+            LaunchedEffect(eventAdvance) {
+                val advance = eventAdvance ?: return@LaunchedEffect
+                eventAdvance = null
+                val fields = advance.split(':')
+                val guideId = fields.getOrNull(0)?.toIntOrNull() ?: return@LaunchedEffect
+                val issueId = fields.getOrNull(1)?.toIntOrNull() ?: return@LaunchedEffect
+                val essential = fields.getOrNull(2) == "true"
+                val guide = InkShelf2BatCaveGuides.verified().firstOrNull { it.id == guideId } ?: return@LaunchedEffect
+                val all = guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
+                val order = InkShelf2GuideReadingSelection.issuesForMode(all, essential)
+                val state = try {
+                    InkShelf2GuideProgress.load(applicationContext, listOf(guide))[guideId] ?: InkShelf2GuideProgress.EventState()
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) { InkShelf2GuideProgress.EventState() }
+                val read = InkShelf2GuideProgress.effectiveRead(applicationContext, guideId, state)
+                val next = InkShelf2GuideReadingSelection.after(order, issueId, read)
+                InkShelf2GuidesData.setEssentialMode(applicationContext, guideId, essential)
+                if (next != null) openGuideIssue(guideId, next, essential)
+                else Toast.makeText(this@InkShelf2Activity, "End of selected reading order", Toast.LENGTH_SHORT).show()
+            }
+
             // MangaImpl.equals compares only URL and source, so an updated
             // database row may be 'equal' despite having new synopsis/cover
             // metadata. Use identity changes to refresh the Compose details.
@@ -1129,55 +1229,7 @@ class InkShelf2Activity : AppCompatActivity() {
                             }
                         },
                         onReadIssue = { guideId, requestedIssue ->
-                            if (guideOpeningId == null) {
-                                guideOpeningId = requestedIssue.id
-                                guideReadError = null
-                                lifecycleScope.launch {
-                                    try {
-                                        var matchDiagnostic = ""
-                                        val offlineTarget = try {
-                                            val guide = InkShelf2BatCaveGuides.verified().firstOrNull { it.id == guideId }
-                                            val local = if (guide == null) null else
-                                                InkShelf2GuideProgress.load(applicationContext, listOf(guide))[guideId]
-                                            if (local == null) null else InkShelf2GuideDownloads.offlineTarget(local, requestedIssue.id, downloadManager)
-                                        } catch (cancel: CancellationException) {
-                                            throw cancel
-                                        } catch (_: Exception) { null }
-                                        val reading = offlineTarget?.let { InkShelf2GuideAutoReader.Resolved(it.manga, it.chapter) }
-                                            ?: InkShelf2GuideAutoReader.resolve(
-                                            applicationContext,
-                                            sourcesEngine, enabledSources, requestedIssue,
-                                            onDiagnostic = { matchDiagnostic = it },
-                                        )
-                                        if (reading != null) {
-                                            openChapter(reading.manga, reading.chapter)
-                                            InkShelf2GuidesData.start(
-                                                applicationContext, guideId, requestedIssue.id,
-                                            )
-                                            val mangaId = reading.manga.id
-                                            val chapterId = reading.chapter.id
-                                            if (mangaId != null && chapterId != null) {
-                                                InkShelf2GuidesData.rememberChapter(
-                                                    applicationContext, guideId, requestedIssue.id, mangaId, chapterId,
-                                                )
-                                            }
-                                        } else {
-                                            guideReadError =
-                                                "Could not match " + requestedIssue.displayName +
-                                                " to a readable issue in the installed extensions. " +
-                                                "The guide order is unchanged." +
-                                                if (matchDiagnostic.isBlank()) "" else "\n" + matchDiagnostic
-                                        }
-                                    } catch (cancel: CancellationException) {
-                                        throw cancel
-                                    } catch (_: Exception) {
-                                        guideReadError =
-                                            "Could not open this issue from your sources. Try again later."
-                                    } finally {
-                                        guideOpeningId = null
-                                    }
-                                }
-                            }
+                            openGuideIssue(guideId, requestedIssue, InkShelf2GuidesData.essentialMode(applicationContext, guideId))
                         },
                         // Guide details now resolve issues automatically. There
                         // is no user-facing collection/source search stage.

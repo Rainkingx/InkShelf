@@ -259,6 +259,9 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
 
         const val TRANSITION_NAME = "${BuildConfig.APPLICATION_ID}.TRANSITION_NAME"
         const val VISIBLE_CHAPTERS = "${BuildConfig.APPLICATION_ID}.VISIBLE_CHAPTERS"
+        const val EVENT_GUIDE_ID = "inkshelf_event_guide_id"
+        const val EVENT_ISSUE_ID = "inkshelf_event_issue_id"
+        const val EVENT_ESSENTIAL = "inkshelf_event_essential"
 
         fun newIntent(
             context: Context,
@@ -381,7 +384,7 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
                     return
                 }
                 lifecycleScope.launchNonCancellable {
-                    val initResult = viewModel.init(manga, chapter)
+                    val initResult = viewModel.init(manga, chapter, isEventReading)
                     if (!initResult.getOrDefault(false)) {
                         val exception = initResult.exceptionOrNull() ?: IllegalStateException("Unknown err")
                         withUIContext {
@@ -1423,6 +1426,20 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
             binding.viewerContainer.requestLayout()
             reapplyVerticalSeekbarLayoutIfSizeChanged()
         }
+    }
+
+    val isEventReading: Boolean
+        get() = intent.hasExtra(EVENT_GUIDE_ID)
+
+    /** Explicit end-of-issue action returns to the event coordinator, not the series. */
+    fun nextEventIssue() {
+        if (!isEventReading || isFinishing) return
+        setResult(RESULT_OK, Intent().apply {
+            putExtra(EVENT_GUIDE_ID, intent.getIntExtra(EVENT_GUIDE_ID, 0))
+            putExtra(EVENT_ISSUE_ID, intent.getIntExtra(EVENT_ISSUE_ID, 0))
+            putExtra(EVENT_ESSENTIAL, intent.getBooleanExtra(EVENT_ESSENTIAL, true))
+        })
+        finish()
     }
 
     private fun loadAdjacentChapter(rightButton: Boolean) {

@@ -62,7 +62,10 @@ class PagerTransitionHolder(
         addView(transitionView)
         addView(pagesContainer)
 
-        transitionView.bind(transition, viewer.downloadManager, viewer.activity.viewModel.manga)
+        transitionView.bind(
+            transition, viewer.downloadManager, viewer.activity.viewModel.manga,
+            onNextEventIssue = if (viewer.activity.isEventReading) ({ viewer.activity.nextEventIssue() }) else null,
+        )
 
         transition.to?.let { observeStatus(it) }
 

@@ -135,6 +135,8 @@ class ReaderViewModel(
      * Chapter list for the active manga. It's retrieved lazily and should be accessed for the first
      * time in a background thread to avoid blocking the UI.
      */
+    private var eventOnly = false
+
     private val chapterList by lazy {
         val manga = manga!!
         val dbChapters = db.getChapters(manga).executeAsBlocking()
@@ -144,7 +146,8 @@ class ReaderViewModel(
                 ?: error("Requested chapter of id $chapterId not found in chapter list")
 
         val chaptersForReader =
-            chapterFilter.filterChaptersForReader(dbChapters, manga, selectedChapter)
+            if (eventOnly) listOf(selectedChapter)
+            else chapterFilter.filterChaptersForReader(dbChapters, manga, selectedChapter)
         val chapterSort = ChapterSort(manga, chapterFilter, preferences)
         chaptersForReader.sortedWith(chapterSort.sortComparator(true)).map(::ReaderChapter)
     }
@@ -215,8 +218,10 @@ class ReaderViewModel(
     suspend fun init(
         mangaId: Long,
         initialChapterId: Long,
+        eventOnly: Boolean = false,
     ): Result<Boolean> {
         if (!needsInit()) return Result.success(true)
+        this.eventOnly = eventOnly
         return withIOContext {
             try {
                 val manga = db.getManga(mangaId).executeAsBlocking()
@@ -259,6 +264,7 @@ class ReaderViewModel(
             withContext(Dispatchers.IO) {
                 val chapterSort = ChapterSort(manga, chapterFilter, preferences)
                 val dbChapters = db.getChapters(manga).executeAsBlocking()
+                    .let { chapters -> if (eventOnly) chapters.filter { it.id == chapterId } else chapters }
                 chapterSort
                     .getChaptersSorted(
                         dbChapters,
