@@ -163,6 +163,9 @@ class InkShelf2Activity : AppCompatActivity() {
             var guideIssuePicker by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
             var guideOpeningId by remember { mutableStateOf<Int?>(null) }
             var guideReadError by remember { mutableStateOf<String?>(null) }
+            var savedGuideIds by remember { mutableStateOf(InkShelf2GuidesData.savedGuideIds(applicationContext)) }
+            var libraryGuideId by rememberSaveable { mutableStateOf<Int?>(null) }
+            var downloadingGuideId by remember { mutableStateOf<Int?>(null) }
             var guideCollectionPicker by remember {
                 mutableStateOf<InkShelf2GuideCollections.Collection?>(null)
             }
@@ -207,6 +210,7 @@ class InkShelf2Activity : AppCompatActivity() {
             fun openTab(destination: InkShelf2Tab) {
                 val visibleDestination = destination
                 if (tab == InkShelf2Tab.GUIDES) {
+                    libraryGuideId = null
                     guideIssuePicker = null
                     guideCollectionPicker = null
                 }
@@ -1091,6 +1095,39 @@ class InkShelf2Activity : AppCompatActivity() {
                         openingIssueId = guideOpeningId,
                         readingError = guideReadError,
                         refreshEpoch = refreshEpoch,
+                        initialGuideId = libraryGuideId,
+                        onCloseInitialGuide = { openTab(InkShelf2Tab.LIBRARY) },
+                        savedGuideIds = savedGuideIds,
+                        onSaveGuide = { guideId, save ->
+                            savedGuideIds = InkShelf2GuidesData.setSaved(applicationContext, guideId, save)
+                        },
+                        enabledSourceIds = enabledSourceIds,
+                        downloadingGuideId = downloadingGuideId,
+                        onDownloadIssues = { guideId, issues ->
+                            if (downloadingGuideId == null) {
+                                downloadingGuideId = guideId
+                                lifecycleScope.launch {
+                                    try {
+                                        val result = queueMatchedEventIssues(guideId, issues, enabledSourceIds)
+                                        if (result > 0) {
+                                            savedGuideIds = InkShelf2GuidesData.setSaved(applicationContext, guideId, true)
+                                            refreshEpoch += 1
+                                        }
+                                        Toast.makeText(
+                                            this@InkShelf2Activity,
+                                            if (result > 0) "$result issue(s) queued or retried" else "No new matched issues available to queue",
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        Toast.makeText(this@InkShelf2Activity, "Could not queue event issues", Toast.LENGTH_LONG).show()
+                                    } finally {
+                                        downloadingGuideId = null
+                                    }
+                                }
+                            }
+                        },
                         onReadIssue = { guideId, requestedIssue ->
                             if (guideOpeningId == null) {
                                 guideOpeningId = requestedIssue.id
@@ -1098,7 +1135,16 @@ class InkShelf2Activity : AppCompatActivity() {
                                 lifecycleScope.launch {
                                     try {
                                         var matchDiagnostic = ""
-                                        val reading = InkShelf2GuideAutoReader.resolve(
+                                        val offlineTarget = try {
+                                            val guide = InkShelf2BatCaveGuides.verified().firstOrNull { it.id == guideId }
+                                            val local = if (guide == null) null else
+                                                InkShelf2GuideProgress.load(applicationContext, listOf(guide))[guideId]
+                                            if (local == null) null else InkShelf2GuideDownloads.offlineTarget(local, requestedIssue.id, downloadManager)
+                                        } catch (cancel: CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) { null }
+                                        val reading = offlineTarget?.let { InkShelf2GuideAutoReader.Resolved(it.manga, it.chapter) }
+                                            ?: InkShelf2GuideAutoReader.resolve(
                                             applicationContext,
                                             sourcesEngine, enabledSources, requestedIssue,
                                             onDiagnostic = { matchDiagnostic = it },
@@ -1139,6 +1185,13 @@ class InkShelf2Activity : AppCompatActivity() {
                     )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
+                        savedGuides = InkShelf2BatCaveGuides.verified().filter { it.id in savedGuideIds }
+                            .map { it.copy(imageUrl = InkShelf2GuidesData.cachedEventCover(applicationContext, it)) },
+                        onOpenGuide = { guideId ->
+                            openTab(InkShelf2Tab.GUIDES)
+                            libraryGuideId = guideId
+                            guideReadError = null
+                        },
                         readingHistory = home?.history.orEmpty(),
                         padding = padding,
                         onRead = { openReader(it) },
@@ -1291,6 +1344,49 @@ class InkShelf2Activity : AppCompatActivity() {
 
     private fun openChapter(manga: Manga, chapter: Chapter) {
         startActivity(ReaderActivity.newIntent(this, manga, chapter))
+    }
+
+    /** No remote matching sweep, synthetic manga, or automatic duplicate favourites. */
+    private suspend fun queueMatchedEventIssues(
+        guideId: Int,
+        issues: List<InkShelf2GuideIssue>,
+        enabledSourceIds: Set<Long>,
+    ): Int {
+        val guide = InkShelf2BatCaveGuides.verified().firstOrNull { it.id == guideId } ?: return 0
+        val progress = InkShelf2GuideProgress.load(applicationContext, listOf(guide))[guideId] ?: return 0
+        downloadManager.awaitDownloadCacheReady()
+        val chosen = withContext(Dispatchers.IO) {
+            issues.filterNot { it.sourceUnavailable }.mapNotNull { issue ->
+                val targets = progress.issues[issue.id]?.targets.orEmpty()
+                if (targets.any { downloadManager.isChapterDownloaded(it.chapter, it.manga) }) return@mapNotNull null
+                if (targets.any {
+                    downloadManager.getChapterDownloadOrNull(it.chapter)?.status?.let { status ->
+                        status != Download.State.ERROR && status != Download.State.NOT_DOWNLOADED
+                    } == true
+                }) return@mapNotNull null
+                targets.firstOrNull {
+                    InkShelf2GuideDownloads.eligible(it, sourceManager, enabledSourceIds)
+                }?.let { issue.id to it }
+            }.distinctBy { it.second.chapter.id }
+        }
+        var queued = 0
+        chosen.groupBy { it.second.manga.id }.values.forEach { entries ->
+            val manga = entries.first().second.manga
+            val chapters = entries.map { it.second.chapter }
+            val retries = chapters.filter { downloadManager.getChapterDownloadOrNull(it)?.status == Download.State.ERROR }
+            retries.forEach { downloadManager.startDownloadNow(it) }
+            val new = chapters.filter { downloadManager.getChapterDownloadOrNull(it) == null }
+            if (new.isNotEmpty()) downloadManager.downloadChapters(manga, new)
+            queued += retries.size + new.size
+            entries.forEach { (issueId, target) ->
+                val mangaId = target.manga.id
+                val chapterId = target.chapter.id
+                if (mangaId != null && chapterId != null && InkShelf2GuidesData.matchedChapter(applicationContext, guideId, issueId) == null) {
+                    InkShelf2GuidesData.rememberChapter(applicationContext, guideId, issueId, mangaId, chapterId)
+                }
+            }
+        }
+        return queued
     }
 
     /** Queue through InkShelf 1's existing source-backed offline download manager. */

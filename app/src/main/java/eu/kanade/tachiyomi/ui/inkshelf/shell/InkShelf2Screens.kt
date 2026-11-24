@@ -542,7 +542,7 @@ private fun ComicInkLine(value: String, ink: Color, fontSize: androidx.compose.u
  * the comic artwork. No full-width pill buttons or nested navigation changes.
  */
 @Composable
-private fun InkShelf2DetailQuickAction(
+internal fun InkShelf2DetailQuickAction(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,

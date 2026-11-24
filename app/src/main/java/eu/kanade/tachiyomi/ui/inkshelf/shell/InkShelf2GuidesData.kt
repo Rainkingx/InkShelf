@@ -430,6 +430,25 @@ internal object InkShelf2GuidesData {
             }
         }
 
+    fun savedGuideIds(context: Context): Set<Int> =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getStringSet("saved_events_v1", emptySet())?.mapNotNull(String::toIntOrNull)?.toSet().orEmpty()
+
+    fun setSaved(context: Context, guideId: Int, saved: Boolean): Set<Int> {
+        val old = savedGuideIds(context)
+        val updated = if (saved) old + guideId else old - guideId
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putStringSet("saved_events_v1", updated.map(Int::toString).toSet()).apply()
+        return updated
+    }
+
+    fun cachedEventCover(context: Context, guide: InkShelf2Guide): String? {
+        val slug = guide.batcaveSlug ?: return guide.imageUrl
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return listOf("verified_event_cover_v3_", "verified_event_cover_v2_", "verified_event_cover_v1_")
+            .firstNotNullOfOrNull { prefix -> imageUrl(prefs.getString(prefix + slug, null)) }
+    }
+
     fun readIds(context: Context, guideId: Int): Set<String> =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getStringSet("read_" + guideId, emptySet())?.toSet().orEmpty()

@@ -12,7 +12,13 @@ import uy.kohesive.injekt.api.get
 
 /** Read-only bridge: actual J2K chapters remain the sole source of reader progress. */
 internal object InkShelf2GuideProgress {
-    data class IssueState(val read: Boolean, val partial: Boolean, val coverUrl: String?)
+    data class Target(val manga: Manga, val chapter: Chapter)
+    data class IssueState(
+        val read: Boolean,
+        val partial: Boolean,
+        val coverUrl: String?,
+        val targets: List<Target> = emptyList(),
+    )
     data class EventState(val issues: Map<Int, IssueState> = emptyMap()) {
         val readIds: Set<String> get() = issues.filterValues { it.read }.keys.map(Int::toString).toSet()
         val partialIds: Set<Int> get() = issues.filterValues { it.partial && !it.read }.keys
@@ -32,7 +38,13 @@ internal object InkShelf2GuideProgress {
                     InkShelf2GuidesData.matchedChapter(context, guideId, issue.id)?.let { issue.id to it }
                 }.toMap()
             }
-            val matchedIds = bindings.values.flatMap { it.values }.map { it.first }
+            val matchedIds = bindings.values.flatMap { it.values }.map { it.first }.distinct()
+            val knownManga = library.mapNotNull { manga -> manga.id?.let { it to manga } }.toMap().toMutableMap()
+            for (id in matchedIds) {
+                if (id !in knownManga) {
+                    db.getManga(id).executeAsBlocking()?.let { knownManga[id] = it }
+                }
+            }
             // Only query chapters for relevant existing library editions and exact previous reader matches.
             val ids = (orders.values.flatten().flatMap { issue ->
                 byTitle[InkShelf2GuideAutoMatch.key(issue.series)].orEmpty()
@@ -65,6 +77,10 @@ internal object InkShelf2GuideProgress {
                         read = valid.any { it.read },
                         partial = valid.any { !it.read && it.last_page_read > 0 },
                         coverUrl = valid.firstNotNullOfOrNull { InkShelfIssueMetadata.from(it).coverUrl },
+                        targets = valid.mapNotNull { chapter ->
+                            val manga = knownManga[chapter.manga_id] ?: return@mapNotNull null
+                            Target(manga, chapter)
+                        },
                     )
                 }.toMap())
             }

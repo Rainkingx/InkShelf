@@ -25,10 +25,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.CheckCircleOutline
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.BookmarkAdd
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Timeline
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -58,6 +63,11 @@ import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import eu.kanade.tachiyomi.data.download.DownloadManager
+import eu.kanade.tachiyomi.source.SourceManager
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 /** Only locally verified reading orders are visible; Metron supplies artwork. */
 @Composable
@@ -69,12 +79,26 @@ internal fun InkShelf2GuidesScreen(
     onMetronSettings: () -> Unit,
     openingIssueId: Int? = null,
     readingError: String? = null,
+    initialGuideId: Int? = null,
+    onCloseInitialGuide: () -> Unit = {},
+    savedGuideIds: Set<Int> = emptySet(),
+    onSaveGuide: (Int, Boolean) -> Unit = { _, _ -> },
+    enabledSourceIds: Set<Long> = emptySet(),
+    onDownloadIssues: (Int, List<InkShelf2GuideIssue>) -> Unit = { _, _ -> },
+    downloadingGuideId: Int? = null,
 ) {
     val context = LocalContext.current
     val installed = remember { InkShelf2BatCaveGuides.verified() }
-    var eventCovers by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    var eventCovers by remember {
+        mutableStateOf(installed.mapNotNull { guide ->
+            InkShelf2GuidesData.cachedEventCover(context, guide)?.let { guide.id to it }
+        }.toMap())
+    }
     val catalogue = installed.map { guide -> guide.copy(imageUrl = eventCovers[guide.id]) }
-    var chosen by remember { mutableStateOf<InkShelf2Guide?>(null) }
+    var chosen by remember(initialGuideId) { mutableStateOf(installed.firstOrNull { it.id == initialGuideId }) }
+    fun closeGuide() {
+        if (initialGuideId != null) onCloseInitialGuide() else chosen = null
+    }
     var started by remember { mutableStateOf(InkShelf2GuidesData.startedGuides(context)) }
     var progress by remember { mutableStateOf<Map<Int, InkShelf2GuideProgress.EventState>>(emptyMap()) }
     LaunchedEffect(refreshEpoch, installed) {
@@ -107,7 +131,7 @@ internal fun InkShelf2GuidesScreen(
             }
         }
     }
-    BackHandler(enabled = chosen != null) { chosen = null }
+    BackHandler(enabled = chosen != null) { closeGuide() }
     val selected = chosen?.let { selectedGuide ->
         catalogue.firstOrNull { it.id == selectedGuide.id } ?: selectedGuide
     }
@@ -115,7 +139,12 @@ internal fun InkShelf2GuidesScreen(
         InkShelf2GuideDetails(
             guide = selected,
             padding = padding,
-            onBack = { chosen = null; started = InkShelf2GuidesData.startedGuides(context) },
+            onBack = { closeGuide(); started = InkShelf2GuidesData.startedGuides(context) },
+            saved = selected.id in savedGuideIds,
+            onSave = { onSaveGuide(selected.id, selected.id !in savedGuideIds) },
+            enabledSourceIds = enabledSourceIds,
+            onDownload = { issues -> onDownloadIssues(selected.id, issues) },
+            preparingDownloads = downloadingGuideId != null,
             onReadIssue = { issue -> onReadIssue(selected.id, issue) },
             progress = progress[selected.id] ?: InkShelf2GuideProgress.EventState(),
             refreshEpoch = refreshEpoch,
@@ -322,6 +351,11 @@ private fun InkShelf2GuideDetails(
     refreshEpoch: Int,
     openingIssueId: Int?,
     readingError: String?,
+    saved: Boolean,
+    onSave: () -> Unit,
+    enabledSourceIds: Set<Long>,
+    onDownload: (List<InkShelf2GuideIssue>) -> Unit,
+    preparingDownloads: Boolean,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -390,6 +424,52 @@ private fun InkShelf2GuideDetails(
     val completed = selected.count { it.id.toString() in readIds }
     val essentialMissing = essential && all.isNotEmpty() && all.none { it.isEssential }
     val currentlyOpening = openingIssueId != null
+    val downloadManager: DownloadManager = remember { Injekt.get() }
+    val sourceManager: SourceManager = remember { Injekt.get() }
+    var offline by remember(guide.id) {
+        mutableStateOf<Map<Int, InkShelf2GuideDownloads.State>>(emptyMap())
+    }
+    LaunchedEffect(guide.id, progress, enabledSourceIds, refreshEpoch) {
+        while (true) {
+            try {
+                offline = InkShelf2GuideDownloads.snapshot(progress, downloadManager, sourceManager, enabledSourceIds)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                // A temporarily unavailable local download cache must not block the event.
+            }
+            delay(2_500)
+        }
+    }
+    var downloadChoices by remember(guide.id) { mutableStateOf(false) }
+    val essentialIssues = InkShelf2GuideReadingSelection.issuesForMode(all, true)
+    val unreadIssues = selected.filter { it.id.toString() !in readIds }
+    fun eligibleIssues(issues: List<InkShelf2GuideIssue>) =
+        issues.filter { !it.sourceUnavailable && offline[it.id]?.canQueue == true }
+    if (downloadChoices) {
+        AlertDialog(
+            onDismissRequest = { downloadChoices = false },
+            title = { Text("Download Event Issues") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text("Only already matched, downloadable issues are queued. Open an unmatched issue first to link it to an available source. Existing offline or queued issues are skipped.")
+                    listOf(
+                        "Essential" to essentialIssues,
+                        "Complete" to all,
+                        "Unread in selected order" to unreadIssues,
+                    ).forEach { (label, issues) ->
+                        val eligible = eligibleIssues(issues)
+                        TextButton(
+                            enabled = eligible.isNotEmpty() && !preparingDownloads,
+                            onClick = { downloadChoices = false; onDownload(eligible) },
+                        ) { Text("$label (${eligible.size} of ${issues.size})") }
+                    }
+                    Text("Your existing download and cleanup settings still apply.", color = InkShelf2Colors.Muted, fontSize = 11.sp)
+                }
+            },
+            confirmButton = { TextButton(onClick = { downloadChoices = false }) { Text("Close") } },
+        )
+    }
 
     InkShelf2DetailPage(
         imageModel = guide.imageUrl,
@@ -434,19 +514,42 @@ private fun InkShelf2GuideDetails(
                         color = InkShelf2Colors.Muted, fontSize = 11.sp,
                     )
                 }
-                InkShelf2ActionButton(
-                    label = when {
-                        currentlyOpening -> "OPENING ISSUE…"
-                        nextIssue == null -> "LOADING READING ORDER…"
-                        nextIssue.sourceUnavailable -> "ISSUE UNAVAILABLE"
-                        completed == selected.size -> "READ AGAIN"
-                        completed > 0 || lastOpened != null || selected.any { it.id in progress.partialIds } -> "CONTINUE READING"
-                        else -> "START READING"
-                    },
-                    onClick = { if (nextIssue != null && !nextIssue.sourceUnavailable) onReadIssue(nextIssue) },
-                    enabled = nextIssue != null && !nextIssue.sourceUnavailable && !currentlyOpening,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InkShelf2DetailQuickAction(
+                        label = when {
+                            currentlyOpening -> "Opening Issue"
+                            nextIssue == null -> "Loading Issues"
+                            nextIssue.sourceUnavailable -> "Unavailable"
+                            completed == selected.size -> "Read Again"
+                            completed > 0 || lastOpened != null || selected.any { it.id in progress.partialIds } -> "Continue Reading"
+                            else -> "Start Reading"
+                        },
+                        icon = Icons.Filled.PlayArrow,
+                        highlight = true,
+                        onClick = { if (nextIssue != null && !nextIssue.sourceUnavailable) onReadIssue(nextIssue) },
+                        enabled = nextIssue != null && !nextIssue.sourceUnavailable && !currentlyOpening,
+                        modifier = Modifier.weight(1f),
+                    )
+                    InkShelf2DetailQuickAction(
+                        label = if (preparingDownloads) "Preparing…" else "Download Issues",
+                        icon = Icons.Outlined.FileDownload,
+                        onClick = { downloadChoices = true },
+                        enabled = all.isNotEmpty() && !preparingDownloads,
+                        modifier = Modifier.weight(1f),
+                    )
+                    InkShelf2DetailQuickAction(
+                        label = if (saved) "In Library" else "Add to Library",
+                        icon = if (saved) Icons.Outlined.CheckCircleOutline else Icons.Outlined.BookmarkAdd,
+                        onClick = onSave,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (selected.any { offline[it.id]?.status == InkShelf2GuideDownloads.Status.OFFLINE }) {
+                    Text(
+                        "${selected.count { offline[it.id]?.status == InkShelf2GuideDownloads.Status.OFFLINE }} of ${selected.size} issues offline",
+                        color = InkShelf2Colors.AccentLight, fontSize = 11.sp,
+                    )
+                }
                 if (nextIssue?.sourceUnavailable == true) {
                     Text("The source lists this issue as unavailable. Choose another listed issue to read.",
                         color = InkShelf2Colors.Muted, fontSize = 12.sp)
@@ -527,9 +630,34 @@ private fun InkShelf2GuideDetails(
                             if (checked) " · READ" else if (issue.id in progress.partialIds) " · IN PROGRESS" else " · " + issue.role.ifBlank { "ISSUE" },
                             color = InkShelf2Colors.Muted, fontSize = 10.sp)
                     }
-                    Text(if (issue.sourceUnavailable) "UNAVAILABLE"
-                        else if (openingIssueId == issue.id) "OPENING" else "READ", color = InkShelf2Colors.AccentLight,
-                        fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    val state = offline[issue.id]
+                    if (issue.sourceUnavailable) {
+                        Text("UNAVAILABLE", color = InkShelf2Colors.Muted, fontSize = 10.sp)
+                    } else {
+                        IconButton(
+                            onClick = { onDownload(listOf(issue)) },
+                            enabled = state?.canQueue == true && !preparingDownloads,
+                            modifier = Modifier.size(36.dp),
+                        ) {
+                            Icon(
+                                when (state?.status) {
+                                    InkShelf2GuideDownloads.Status.OFFLINE -> Icons.Outlined.CheckCircleOutline
+                                    InkShelf2GuideDownloads.Status.QUEUED, InkShelf2GuideDownloads.Status.DOWNLOADING -> Icons.Outlined.HourglassEmpty
+                                    else -> Icons.Outlined.FileDownload
+                                },
+                                contentDescription = when (state?.status) {
+                                    InkShelf2GuideDownloads.Status.OFFLINE -> "Offline ready"
+                                    InkShelf2GuideDownloads.Status.QUEUED -> "Queued"
+                                    InkShelf2GuideDownloads.Status.DOWNLOADING -> "Downloading ${state.percent}%"
+                                    InkShelf2GuideDownloads.Status.FAILED -> "Retry download"
+                                    InkShelf2GuideDownloads.Status.AVAILABLE -> "Download issue"
+                                    else -> "Open issue first to link it"
+                                },
+                                tint = if (state?.status == InkShelf2GuideDownloads.Status.OFFLINE || state?.canQueue == true)
+                                    InkShelf2Colors.AccentLight else InkShelf2Colors.Muted,
+                            )
+                        }
+                    }
                 }
             }
         }

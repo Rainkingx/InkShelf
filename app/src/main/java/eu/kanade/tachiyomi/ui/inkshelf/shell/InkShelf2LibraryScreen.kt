@@ -82,6 +82,8 @@ internal fun InkShelf2LibraryScreen(
     onRead: (Manga) -> Unit,
     onOpen: (Manga) -> Unit,
     onComicAction: (Manga, Boolean, Boolean) -> Unit,
+    savedGuides: List<InkShelf2Guide> = emptyList(),
+    onOpenGuide: (Int) -> Unit = {},
 ) {
     var grid by rememberSaveable { mutableStateOf(true) }
     var selected by rememberSaveable { mutableStateOf(ShelfFilter.ALL.name) }
@@ -228,7 +230,14 @@ internal fun InkShelf2LibraryScreen(
                         )
                     }
                 }
-                item { InkShelf2EmptyShelf(message) }
+                if (active == ShelfFilter.ALL && savedGuides.isNotEmpty()) {
+                    item(key = "library-events") {
+                        InkShelf2SavedEventsShelf(savedGuides, onOpenGuide)
+                    }
+                }
+                if (active != ShelfFilter.ALL || savedGuides.isEmpty()) {
+                    item { InkShelf2EmptyShelf(message) }
+                }
             }
         } else if (grid) {
             LazyVerticalGrid(
@@ -249,6 +258,11 @@ internal fun InkShelf2LibraryScreen(
                             onRead = onRead,
                             onSeeAll = { selected = ShelfFilter.READING.name },
                         )
+                    }
+                }
+                if (active == ShelfFilter.ALL && savedGuides.isNotEmpty()) {
+                    item(key = "library-events", span = { GridItemSpan(maxLineSpan) }) {
+                        InkShelf2SavedEventsShelf(savedGuides, onOpenGuide)
                     }
                 }
                 gridItems(
@@ -275,6 +289,11 @@ internal fun InkShelf2LibraryScreen(
                             onRead = onRead,
                             onSeeAll = { selected = ShelfFilter.READING.name },
                         )
+                    }
+                }
+                if (active == ShelfFilter.ALL && savedGuides.isNotEmpty()) {
+                    item(key = "library-events") {
+                        InkShelf2SavedEventsShelf(savedGuides, onOpenGuide)
                     }
                 }
                 items(visible, key = { it.manga.id ?: it.manga.url }) { item ->
@@ -580,6 +599,30 @@ private fun ShelfListRow(item: InkShelf2LibraryItem, onClick: () -> Unit, onLong
                     modifier = Modifier.fillMaxWidth()
                         .height(4.dp)
                         .clip(RoundedCornerShape(10.dp)),
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun InkShelf2SavedEventsShelf(guides: List<InkShelf2Guide>, onOpen: (Int) -> Unit) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        InkShelf2SectionHeading("Saved Events (${guides.size})", onClick = null)
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(guides, key = { it.id }) { guide ->
+                InkShelf2CoverCard(
+                    imageModel = guide.imageUrl,
+                    title = guide.name,
+                    onClick = { onOpen(guide.id) },
+                    badgeText = "EVENT",
+                    width = 105.dp,
+                    libraryShape = true,
                 )
             }
         }
