@@ -102,6 +102,56 @@ internal object InkShelf2BatCaveGuides {
         (front + rest + knownEvents).distinctBy { it.batcaveSlug }.take(300)
     }
 
+    /**
+     * One fresh public catalogue request. No cached data, reader requests,
+     * authentication workarounds or automatic retries. Diagnose the existing
+     * catalogue parser separately from its offline fallback.
+     */
+    suspend fun catalogueDiagnostic(): String = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder().url("$BASE/event/").get()
+                .header("User-Agent", "InkShelf/2.0 (event catalogue diagnostic)")
+                .header("Accept", "text/html,application/xhtml+xml")
+                .build()
+            client.newCall(request).execute().use { reply ->
+                val status = "HTTP ${reply.code}"
+                if (!reply.isSuccessful) {
+                    return@use "$status · Catalogue request unsuccessful"
+                }
+                val type = reply.header("Content-Type").orEmpty()
+                if (!type.contains("html", ignoreCase = true)) {
+                    return@use "$status · Unexpected content type: ${type.take(80)}"
+                }
+                val raw = reply.peekBody(900_001L).string()
+                if (raw.length > 900_000) return@use "$status · Catalogue exceeds test limit"
+                val guides = parseCatalogue(raw)
+                val doc = Jsoup.parse(raw, BASE)
+                val pagination = Regex("""^/event/page/(\d{1,3})/?$""")
+                val pages = doc.select("a[href]").mapNotNull {
+                    pagination.matchEntire(localPath(it.attr("href")))
+                        ?.groupValues?.get(1)?.toIntOrNull()
+                }.distinct().sorted()
+                val candidates = doc.select("a[href]").mapNotNull {
+                    cataloguePath.matchEntire(localPath(it.attr("href")))
+                        ?.groupValues?.get(1)?.takeUnless { slug -> slug in excluded }
+                }.distinct().size
+                val sample = guides.take(3).joinToString(", ") { it.name }
+                listOf(
+                    "$status · ${guides.size} events parsed",
+                    "${guides.count { it.publisher == "Marvel" }} Marvel · ${guides.count { it.publisher == "DC" }} DC",
+                    "$candidates candidate event links",
+                    "Pagination: " + pages.joinToString(", ").ifBlank { "none detected" },
+                    "Page title: " + doc.title().take(100).ifBlank { "(none)" },
+                    "Examples: " + sample.ifBlank { "(none)" },
+                ).joinToString("\n")
+            }
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (error: Exception) {
+            "Catalogue test failed: ${error.javaClass.simpleName} · ${error.message.orEmpty().take(120)}"
+        }
+    }
+
     internal fun parseCatalogue(raw: String): List<InkShelf2Guide> =
         Jsoup.parse(raw, BASE).select("a[href]").mapNotNull { link ->
             val slug = cataloguePath.matchEntire(localPath(link.attr("href")))
