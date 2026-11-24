@@ -222,6 +222,39 @@ internal object InkShelf2GuidesData {
         "war-of-the-realms" to ("War of the Realms" to 2019),
     )
 
+    fun publicationYear(guide: InkShelf2Guide): Int? =
+        guide.batcaveSlug?.let { verifiedEventArt[it]?.second }
+
+    /** The existing catalogue is a baseline, not falsely advertised as new.
+     * Later additions receive a local badge for fourteen days.
+     */
+    fun newlyAddedGuideIds(context: Context, guides: List<InkShelf2Guide>): Set<Int> {
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val key = "catalogue_seen_v1"
+        val seen = prefs.getStringSet(key, null)?.toSet()
+        val current = guides.map { it.id.toString() }.toSet()
+        val now = System.currentTimeMillis()
+        val edit = prefs.edit()
+        if (seen != null) {
+            (current - seen).forEach { edit.putLong("catalogue_added_" + it, now) }
+        }
+        edit.putStringSet(key, seen.orEmpty() + current).apply()
+        val duration = 14L * 24 * 60 * 60 * 1000
+        return guides.filter { guide ->
+            val added = prefs.getLong("catalogue_added_" + guide.id, 0L)
+            added > 0L && now - added in 0L until duration
+        }.map { it.id }.toSet()
+    }
+
+    fun timelineEnabled(context: Context): Boolean =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean("catalogue_timeline_v1", false)
+
+    fun setTimelineEnabled(context: Context, enabled: Boolean) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean("catalogue_timeline_v1", enabled).apply()
+    }
+
     private fun artTitle(value: String): String = value.lowercase(java.util.Locale.ROOT)
         .replace(Regex("""\s*\((?:19|20)\d{2}(?:[-–—][^)]*)?\)\s*$"""), "")
         .replace(Regex("""[^\p{L}\p{N}]+"""), " ").trim().removePrefix("the ")

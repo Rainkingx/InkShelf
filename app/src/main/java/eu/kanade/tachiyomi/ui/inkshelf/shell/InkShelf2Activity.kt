@@ -338,18 +338,26 @@ class InkShelf2Activity : AppCompatActivity() {
                                 sourcesEngine, enabledSources, requestedIssue,
                                 onDiagnostic = { matchDiagnostic = it },
                             )
-                            if (reading != null) {
+                            val localFallback = if (reading == null && !requestedIssue.sourceUnavailable) {
+                                local?.issues?.get(requestedIssue.id)?.targets.orEmpty()
+                                    .filter { it.manga.source in enabledSourceIds && it.chapter.id != null }
+                                    .distinctBy { it.chapter.id }.singleOrNull()
+                            } else null
+                            val resolvedReading = reading ?: localFallback?.let {
+                                InkShelf2GuideAutoReader.Resolved(it.manga, it.chapter)
+                            }
+                            if (resolvedReading != null) {
                                 InkShelf2GuidesData.start(
                                     applicationContext, guideId, requestedIssue.id,
                                 )
-                                val mangaId = reading.manga.id
-                                val chapterId = reading.chapter.id
+                                val mangaId = resolvedReading.manga.id
+                                val chapterId = resolvedReading.chapter.id
                                 if (mangaId != null && chapterId != null) {
                                     InkShelf2GuidesData.rememberChapter(
                                         applicationContext, guideId, requestedIssue.id, mangaId, chapterId,
                                     )
                                 }
-                                eventReader.launch(ReaderActivity.newIntent(this@InkShelf2Activity, reading.manga, reading.chapter).apply {
+                                eventReader.launch(ReaderActivity.newIntent(this@InkShelf2Activity, resolvedReading.manga, resolvedReading.chapter).apply {
                                     putExtra(ReaderActivity.EVENT_GUIDE_ID, guideId)
                                     putExtra(ReaderActivity.EVENT_ISSUE_ID, requestedIssue.id)
                                     putExtra(ReaderActivity.EVENT_ESSENTIAL, essentialMode)

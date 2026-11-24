@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -99,9 +100,15 @@ internal fun InkShelf2GuidesScreen(
         }.toMap())
     }
     val catalogue = installed.map { guide -> guide.copy(imageUrl = eventCovers[guide.id]) }
+    val newlyAdded = remember(context, installed) { InkShelf2GuidesData.newlyAddedGuideIds(context, installed) }
+    var timeline by rememberSaveable { mutableStateOf(InkShelf2GuidesData.timelineEnabled(context)) }
     var chosen by remember(initialGuideId) { mutableStateOf(installed.firstOrNull { it.id == initialGuideId }) }
+    var relatedBackStack by remember(initialGuideId) { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
     fun closeGuide() {
-        if (initialGuideId != null) onCloseInitialGuide() else chosen = null
+        if (relatedBackStack.isNotEmpty()) {
+            chosen = relatedBackStack.last()
+            relatedBackStack = relatedBackStack.dropLast(1)
+        } else if (initialGuideId != null) onCloseInitialGuide() else chosen = null
     }
     var started by remember { mutableStateOf(InkShelf2GuidesData.startedGuides(context)) }
     var guideRevision by remember { mutableStateOf(0) }
@@ -121,7 +128,7 @@ internal fun InkShelf2GuidesScreen(
     }
     var guideSearch by rememberSaveable { mutableStateOf("") }
     var guideFilter by rememberSaveable { mutableStateOf("All") }
-    val filters = listOf("All", "Marvel", "DC", "Started")
+    val filters = listOf("All", "Marvel", "DC", "Started") + if (newlyAdded.isNotEmpty()) listOf("New") else emptyList()
     val activeFilter = guideFilter.takeIf { it in filters } ?: "All"
     val verifiedStarted = (started + progress.filterValues { it.readIds.isNotEmpty() || it.partialIds.isNotEmpty() }.keys)
         .intersect(catalogue.map { it.id }.toSet())
@@ -167,6 +174,13 @@ internal fun InkShelf2GuidesScreen(
             refreshEpoch = refreshEpoch,
             openingIssueId = openingIssueId,
             readingError = readingError,
+            relatedEvents = InkShelf2EventTimeline.related(selected, catalogue),
+            onRelatedEvent = { related ->
+                relatedBackStack = (relatedBackStack + selected).takeLast(16)
+                guideRevision++
+                chosen = related
+            },
+            newEventIds = newlyAdded,
         )
         return
     }
@@ -186,6 +200,7 @@ internal fun InkShelf2GuidesScreen(
             when (activeFilter) {
                 "Marvel", "DC" -> guide.publisher.equals(activeFilter, true)
                 "Started" -> guide.id in verifiedStarted
+                "New" -> guide.id in newlyAdded
                 else -> true
             }
     }
@@ -276,7 +291,31 @@ internal fun InkShelf2GuidesScreen(
             }
         }
         item(key = "verified-guides-heading") {
-            InkShelf2SectionHeading("All Events (" + matching.size + ")", onClick = null)
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) {
+                        InkShelf2PageHeading(if (timeline) "Event Timeline" else "All Events (${matching.size})")
+                    }
+                    IconButton(onClick = {
+                        timeline = false
+                        InkShelf2GuidesData.setTimelineEnabled(context, false)
+                    }) {
+                        Icon(Icons.Outlined.GridView, "Grid view",
+                            tint = if (!timeline) InkShelf2Colors.AccentLight else InkShelf2Colors.Muted)
+                    }
+                    IconButton(onClick = {
+                        timeline = true
+                        InkShelf2GuidesData.setTimelineEnabled(context, true)
+                    }) {
+                        Icon(Icons.Outlined.Timeline, "Timeline view",
+                            tint = if (timeline) InkShelf2Colors.AccentLight else InkShelf2Colors.Muted)
+                    }
+                }
+                if (timeline) {
+                    Text("Publication order · ${matching.size} installed events",
+                        color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                }
+            }
         }
         if (matching.isEmpty()) {
             item(key = "guide-no-results") {
@@ -288,18 +327,30 @@ internal fun InkShelf2GuidesScreen(
                 )
             }
         }
-        items(matching.chunked(3), key = { row -> "event-row-" + row.first().id }) { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(9.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                row.forEach { guide ->
-                    Box(Modifier.weight(1f)) {
-                        InkShelf2EventCoverCard(guide, width = null, progress = progress[guide.id], onOpen = { openGuide(guide) })
+        if (timeline) {
+            items(InkShelf2EventTimeline.ordered(matching), key = { "event-timeline-" + it.id }) { guide ->
+                InkShelf2EventTimelineRow(
+                    guide = guide,
+                    progress = progress[guide.id],
+                    isNew = guide.id in newlyAdded,
+                    onOpen = { openGuide(guide) },
+                )
+            }
+        } else {
+            items(matching.chunked(3), key = { row -> "event-row-" + row.first().id }) { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    row.forEach { guide ->
+                        Box(Modifier.weight(1f)) {
+                            InkShelf2EventCoverCard(guide, width = null, progress = progress[guide.id],
+                                onOpen = { openGuide(guide) }, isNew = guide.id in newlyAdded)
+                        }
                     }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
-                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
         if (!connected) {
@@ -333,6 +384,7 @@ private fun InkShelf2EventCoverCard(
     width: androidx.compose.ui.unit.Dp?,
     progress: InkShelf2GuideProgress.EventState?,
     onOpen: () -> Unit,
+    isNew: Boolean = false,
 ) {
     val context = LocalContext.current
     val all = remember(guide.batcaveSlug) {
@@ -347,7 +399,7 @@ private fun InkShelf2EventCoverCard(
         title = guide.name,
         onClick = onOpen,
         percent = percentage,
-        badgeText = if (all.isEmpty()) null else all.size.toString(),
+        badgeText = if (isNew) "NEW" else if (all.isEmpty()) null else all.size.toString(),
         width = width,
         libraryShape = true,
     )
@@ -375,6 +427,9 @@ private fun InkShelf2GuideDetails(
     enabledSourceIds: Set<Long>,
     onDownload: (List<InkShelf2GuideIssue>) -> Unit,
     preparingDownloads: Boolean,
+    relatedEvents: List<InkShelf2Guide>,
+    onRelatedEvent: (InkShelf2Guide) -> Unit,
+    newEventIds: Set<Int>,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -386,6 +441,7 @@ private fun InkShelf2GuideDetails(
     var description by remember(guide.id) { mutableStateOf<String?>(null) }
     var manualRevision by remember(guide.id) { mutableStateOf(0) }
     var optionsOpen by remember(guide.id) { mutableStateOf(false) }
+    var relatedExpanded by remember(guide.id) { mutableStateOf(false) }
     var confirmReset by remember(guide.id) { mutableStateOf(false) }
     var resetting by remember(guide.id) { mutableStateOf(false) }
     var hideRead by remember(guide.id) { mutableStateOf(InkShelf2GuidesData.displayOption(context, guide.id, "hide_read")) }
@@ -542,7 +598,8 @@ private fun InkShelf2GuideDetails(
     InkShelf2DetailPage(
         imageModel = guide.imageUrl,
         title = guide.name,
-        subtitle = guide.publisher.uppercase() + " · EVENT",
+        subtitle = guide.publisher.uppercase() + " · EVENT" +
+            (InkShelf2GuidesData.publicationYear(guide)?.let { " · $it" } ?: ""),
         attribution = if (all.isEmpty()) "Loading reading order…" else
             all.size.toString() + " issues · " + completed + " of " + selected.size + " read",
         padding = PaddingValues(
@@ -666,6 +723,34 @@ private fun InkShelf2GuideDetails(
                 if (!readingError.isNullOrBlank()) {
                     Text(readingError, color = InkShelf2Colors.AccentLight,
                         fontSize = 12.sp, lineHeight = 18.sp)
+                }
+            }
+        }
+        if (relatedEvents.isNotEmpty()) {
+            item(key = "related-events") {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    TextButton(
+                        onClick = { relatedExpanded = !relatedExpanded },
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    ) {
+                        Text(if (relatedExpanded) "Hide other ${guide.publisher} events" else "Explore other ${guide.publisher} events",
+                            color = InkShelf2Colors.AccentLight, fontSize = 13.sp)
+                    }
+                    if (relatedExpanded) {
+                        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            items(relatedEvents, key = { it.id }) { related ->
+                                InkShelf2CoverCard(
+                                    imageModel = if (spoilerSafe) null else related.imageUrl,
+                                    title = related.name,
+                                    onClick = { onRelatedEvent(related) },
+                                    badgeText = if (related.id in newEventIds) "NEW" else InkShelf2GuidesData.publicationYear(related)?.toString(),
+                                    width = 105.dp,
+                                    libraryShape = true,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -834,4 +919,57 @@ private fun InkShelf2GuideIssueArtwork(
         read = read,
         modifier = Modifier.size(52.dp, 76.dp),
     )
+}
+
+
+@Composable
+private fun InkShelf2EventTimelineRow(
+    guide: InkShelf2Guide,
+    progress: InkShelf2GuideProgress.EventState?,
+    isNew: Boolean,
+    onOpen: () -> Unit,
+) {
+    val context = LocalContext.current
+    val order = remember(guide.batcaveSlug) {
+        guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
+    }
+    val read = InkShelf2GuideProgress.effectiveRead(context, guide.id,
+        progress ?: InkShelf2GuideProgress.EventState())
+    val path = InkShelf2GuideReadingSelection.issuesForMode(order, InkShelf2GuidesData.essentialMode(context, guide.id))
+    val completed = path.count { it.id.toString() in read }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.width(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(InkShelf2GuidesData.publicationYear(guide)?.toString() ?: "—",
+                color = InkShelf2Colors.AccentLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Spacer(Modifier.height(5.dp))
+            Box(Modifier.size(2.dp, 65.dp).background(InkShelf2Colors.AccentLight.copy(alpha = 0.35f)))
+        }
+        Row(
+            modifier = Modifier.weight(1f)
+                .background(InkShelf2Colors.SurfaceRaised, RoundedCornerShape(12.dp))
+                .border(1.dp, InkShelf2Colors.Border, RoundedCornerShape(12.dp))
+                .clickable(onClick = onOpen).padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            InkShelf2IssueArtworkFrame(
+                imageUrl = guide.imageUrl, title = guide.name,
+                fallbackLabel = "EVENT", read = false, modifier = Modifier.size(58.dp, 83.dp),
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(guide.name, color = InkShelf2Colors.Text, fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(guide.publisher + " · " + order.size + " issues" + if (isNew) " · NEW" else "",
+                    color = InkShelf2Colors.Muted, fontSize = 11.sp)
+                if (completed > 0 && path.isNotEmpty()) {
+                    Text("$completed of ${path.size} read", color = InkShelf2Colors.AccentLight, fontSize = 11.sp)
+                }
+            }
+            Icon(Icons.Outlined.ChevronRight, "Open event", tint = InkShelf2Colors.Muted)
+        }
+    }
 }
