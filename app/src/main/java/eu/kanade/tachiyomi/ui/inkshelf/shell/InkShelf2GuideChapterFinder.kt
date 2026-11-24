@@ -21,6 +21,18 @@ internal object InkShelf2GuideChapterFinder {
         RegexOption.IGNORE_CASE,
     )
 
+    // Alternate printings are not the original issue, even if they repeat
+    // the same printed number. Allow spaces around an apostrophe because
+    // BatCave returns labels such as "#1 Director 's Cut".
+    private val alternateEdition = Regex(
+        """\b(?:director\s*['’]?\s*s\s+cut|directors?\s+cut|facsimile|reprint|second\s+printing|third\s+printing|[2-9](?:nd|rd|th)\s+printing|special\s+edition|deluxe\s+edition|variant(?:\s+cover)?)\b""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    private fun isRegular(chapter: Chapter): Boolean =
+        !nonRegular.containsMatchIn(chapter.name) &&
+            !alternateEdition.containsMatchIn(chapter.name)
+
     // A regular chapter can have an internal sequence number that conflicts
     // with another chapter's printed number. The printed label is stronger.
     private val printedIssue = Regex(
@@ -37,7 +49,7 @@ internal object InkShelf2GuideChapterFinder {
             InkShelfComicIssueGaps.coveredNumbers(chapter).size > 1
 
     private fun inCombinedEntry(chapter: Chapter, number: Int): Boolean {
-        if (nonRegular.containsMatchIn(chapter.name)) return false
+        if (!isRegular(chapter)) return false
         val match = numberedRange.find(chapter.name) ?: return false
         val first = match.groupValues[1].toIntOrNull() ?: return false
         val last = match.groupValues[2].toIntOrNull() ?: return false
@@ -70,7 +82,7 @@ internal object InkShelf2GuideChapterFinder {
         val number = issue.number.trim().removePrefix("#").toIntOrNull()
             ?.takeIf { it in 0..999 } ?: return null
 
-        val regular = chapters.filterNot { nonRegular.containsMatchIn(it.name) }
+        val regular = chapters.filter(::isRegular)
         val printed = regular.filter { printedNumber(it) == number && !isGrouped(it) }
         if (printed.size == 1) return Found(printed.single(), grouped = false)
         if (printed.size > 1) return null
@@ -83,7 +95,7 @@ internal object InkShelf2GuideChapterFinder {
         if (exact.size == 1) return Found(exact.single(), grouped = false)
         if (exact.size > 1) return null
 
-        val bundled = chapters.filter { chapter ->
+        val bundled = regular.filter { chapter ->
             inCombinedEntry(chapter, number) ||
                 InkShelfComicIssueGaps.coveredNumbers(chapter).let {
                     it.size > 1 && number in it

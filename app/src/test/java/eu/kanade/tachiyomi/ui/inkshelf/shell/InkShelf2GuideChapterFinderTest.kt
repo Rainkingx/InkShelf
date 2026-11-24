@@ -33,6 +33,22 @@ class InkShelf2GuideChapterFinderTest {
     }
 
     @Test
+    fun originalWarOfTheRealmsIssueWinsOverDirectorsCut() {
+        val first = chapter("#1", 2f)
+        val chapters = (6 downTo 2).map { chapter("#" + it, it.toFloat()) } +
+            listOf(first, chapter("#1 Director 's Cut", 1f))
+        org.junit.Assert.assertSame(first, InkShelf2GuideChapterFinder.find(issue, chapters)?.chapter)
+    }
+
+    @Test
+    fun alternateEditionAloneDoesNotReplaceOriginal() {
+        assertNull(InkShelf2GuideChapterFinder.find(issue,
+            listOf(chapter("#1 Director’s Cut", 1f))))
+        assertNull(InkShelf2GuideChapterFinder.find(issue,
+            listOf(chapter("#1 Facsimile Edition", 1f))))
+    }
+
+    @Test
     fun articleAliasIsSpecificToWarOfTheRealms() {
         assertEquals(3, InkShelf2GuideAutoMatch.rank(issue, "The War of the Realms (2019)"))
         org.junit.Assert.assertTrue(InkShelf2GuideAutoMatch.queries(issue).contains("The War of the Realms"))
