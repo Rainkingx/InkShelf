@@ -32,6 +32,10 @@ internal object InkShelf2GuideChapterFinder {
     }
 
     fun find(issue: InkShelf2GuideIssue, chapters: List<Chapter>): Found? {
+        if (issue.number.equals("Full", ignoreCase = true)) {
+            val standalone = chapters.filterNot { nonRegular.containsMatchIn(it.name) }
+            return if (standalone.size == 1) Found(standalone.single(), grouped = false) else null
+        }
         val number = issue.number.trim().removePrefix("#").toIntOrNull()
             ?.takeIf { it in 0..999 } ?: return null
 

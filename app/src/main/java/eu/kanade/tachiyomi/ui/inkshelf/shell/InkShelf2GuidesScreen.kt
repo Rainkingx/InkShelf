@@ -69,6 +69,8 @@ internal fun InkShelf2GuidesScreen(
     onReadIssue: (InkShelf2GuideIssue) -> Unit,
     onFindCollection: (InkShelf2GuideCollections.Collection) -> Unit,
     onMetronSettings: () -> Unit,
+    openingIssueId: Int? = null,
+    readingError: String? = null,
 ) {
     val context = LocalContext.current
     var guides by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
@@ -173,7 +175,8 @@ internal fun InkShelf2GuidesScreen(
             padding = padding,
             onBack = { chosen = null; started = InkShelf2GuidesData.startedGuides(context) },
             onReadIssue = onReadIssue,
-            onFindCollection = onFindCollection,
+            openingIssueId = openingIssueId,
+            readingError = readingError,
         )
         return
     }
@@ -683,40 +686,44 @@ private fun InkShelf2GuideFeatureCard(
     }
 }
 
-/** The full ordered issue checklist is separate from the directory. */
+/**
+ * Event details: artwork, introduction, two reading modes and one start action.
+ * A list item also opens the exact issue directly. Source resolution is
+ * handled by the Activity/auto-reader, never an intermediate search screen.
+ */
 @Composable
 private fun InkShelf2GuideDetails(
     guide: InkShelf2Guide,
     padding: PaddingValues,
     onBack: () -> Unit,
     onReadIssue: (InkShelf2GuideIssue) -> Unit,
-    onFindCollection: (InkShelf2GuideCollections.Collection) -> Unit,
+    openingIssueId: Int?,
+    readingError: String?,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val collections = remember(guide.id, guide.name) {
-        InkShelf2GuideCollections.forGuide(guide)
-    }
     var all by remember(guide.id) { mutableStateOf<List<InkShelf2GuideIssue>>(emptyList()) }
     var nextPage by remember(guide.id) { mutableStateOf(1) }
     var hasMore by remember(guide.id) { mutableStateOf(true) }
     var loading by remember(guide.id) { mutableStateOf(false) }
     var essential by remember(guide.id) { mutableStateOf(true) }
-    var missingOnly by remember(guide.id) { mutableStateOf(false) }
-    var readIds by remember(guide.id) { mutableStateOf(InkShelf2GuidesData.readIds(context, guide.id)) }
+    var description by remember(guide.id) { mutableStateOf<String?>(null) }
+    var readIds by remember(guide.id) {
+        mutableStateOf(InkShelf2GuidesData.readIds(context, guide.id))
+    }
 
     suspend fun loadPage() {
         if (loading || !hasMore) return
         loading = true
         try {
-            val loaded = guide.batcaveSlug?.let {
+            val page = guide.batcaveSlug?.let {
                 InkShelf2BatCaveGuides.issues(context, it, nextPage)
             } ?: InkShelf2GuidesData.issues(context, guide.id, nextPage)
-            if (loaded.issues.isNotEmpty()) {
-                all = (all + loaded.issues).distinctBy { it.id }.sortedBy { it.position }
-                nextPage += 1
+            if (page.issues.isNotEmpty()) {
+                all = (all + page.issues).distinctBy { it.id }.sortedBy { it.position }
+                nextPage++
             }
-            hasMore = loaded.more && loaded.issues.isNotEmpty()
+            hasMore = page.more && page.issues.isNotEmpty()
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: Exception) {
@@ -725,16 +732,30 @@ private fun InkShelf2GuideDetails(
             loading = false
         }
     }
-    // Metron paginates long events. Prefetch a bounded number of pages
-    // progressively so Read Next and the checklist do not stop at page one.
-    // Very large community lists retain the explicit Load More control.
+
     LaunchedEffect(guide.id) {
-        repeat(6) {
+        repeat(8) {
             if (hasMore) loadPage()
         }
     }
-    val filtered = all.filter { (!essential || it.isEssential) && (!missingOnly || it.id.toString() !in readIds) }
-    val nextUnread = all.firstOrNull { (!essential || it.isEssential) && it.id.toString() !in readIds }
+    LaunchedEffect(guide.batcaveSlug) {
+        val slug = guide.batcaveSlug
+        if (slug != null) {
+            try {
+                description = InkShelf2BatCaveGuides.synopsis(context, slug)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                description = null
+            }
+        }
+    }
+
+    val selected = InkShelf2GuideReadingSelection.issuesForMode(all, essential)
+    val nextIssue = InkShelf2GuideReadingSelection.next(selected, readIds)
+    val completed = selected.count { it.id.toString() in readIds }
+    val essentialMissing = essential && all.isNotEmpty() && all.none { it.isEssential }
+    val currentlyOpening = openingIssueId != null
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
@@ -742,41 +763,57 @@ private fun InkShelf2GuideDetails(
             top = padding.calculateTopPadding() + 5.dp,
             bottom = padding.calculateBottomPadding() + 25.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp),
     ) {
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 7.dp)) {
+        item(key = "event-back") {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 6.dp)) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back to guides", tint = InkShelf2Colors.Text)
+                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back to Reading Guides",
+                        tint = InkShelf2Colors.Text)
                 }
-                Text("Reading Guide", color = InkShelf2Colors.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("READING GUIDE", color = InkShelf2Colors.AccentLight,
+                    fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
-        item {
+        item(key = "event-details") {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = 16.dp)
                     .background(InkShelf2Colors.SurfaceRaised, RoundedCornerShape(16.dp))
-                    .border(1.dp, InkShelf2Colors.AccentLight.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                    .padding(15.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .border(1.dp, InkShelf2Colors.Border, RoundedCornerShape(16.dp))
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp),
             ) {
-                Text(guide.name, color = InkShelf2Colors.Text, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(13.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.width(108.dp)) {
+                        InkShelf2GuideArt(guide, 156)
+                    }
+                    Column(modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(guide.publisher.uppercase() + " · EVENT",
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(guide.name, color = InkShelf2Colors.Text,
+                            fontSize = 21.sp, lineHeight = 24.sp,
+                            fontWeight = FontWeight.Bold)
+                        Text(
+                            (if (all.isEmpty()) "Loading issues…" else
+                                all.size.toString() + if (hasMore) "+ issues" else " issues") +
+                                " · " + completed + " of " + selected.size + " read",
+                            color = InkShelf2Colors.Muted, fontSize = 11.sp,
+                        )
+                    }
+                }
                 Text(
-                    if (guide.batcaveSlug != null)
-                        "BatCave event order · verified series links where available"
-                    else "Order by " + guide.author.ifBlank { "a Metron contributor" } +
-                        (if (guide.attribution.isBlank()) "" else " · " + guide.attribution),
-                    color = InkShelf2Colors.Muted,
-                    fontSize = 11.sp,
+                    description ?: "Explore this event in its intended reading order. " +
+                        "Choose the main storyline or every available tie-in, then start reading.",
+                    color = InkShelf2Colors.Text, fontSize = 13.sp, lineHeight = 19.sp,
                 )
-                Text(
-                    readIds.size.toString() + " issues marked read • " + all.size +
-                        if (hasMore) " issues loaded so far" else " issues in guide",
-                    color = InkShelf2Colors.AccentLight, fontSize = 12.sp,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     InkShelf2ActionButton(
-                        label = if (essential) "★ Essential" else "Essential",
+                        label = if (essential) "✓ Essential" else "Essential",
                         outlined = !essential,
                         onClick = { essential = true },
                         modifier = Modifier.weight(1f),
@@ -788,74 +825,76 @@ private fun InkShelf2GuideDetails(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                if (collections.isNotEmpty()) {
+                if (essentialMissing) {
                     Text(
-                        "COLLECTED EDITIONS · BETA",
-                        color = InkShelf2Colors.AccentLight,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        "No shorter essential path is provided for this event, so the complete order is shown.",
+                        color = InkShelf2Colors.Muted, fontSize = 11.sp,
                     )
-                    collections.forEach { collection ->
-                        InkShelf2ActionButton(
-                            label = "Find: " + collection.title,
-                            onClick = { onFindCollection(collection) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Text(
-                            collection.scope + " · " + collection.issueCount +
-                                " included original issues · verified published book. " +
-                                "Source availability still needs checking.",
-                            color = InkShelf2Colors.Muted,
-                            fontSize = 11.sp,
-                        )
-                    }
                 }
-                if (guide.batcaveSlug != null && all.isEmpty() && !loading) {
-                    Text("This BatCave event page is unavailable or did not provide readable issue links. Try again when the site is reachable.",
+                InkShelf2ActionButton(
+                    label = when {
+                        currentlyOpening -> "OPENING ISSUE…"
+                        nextIssue == null -> "LOADING READING ORDER…"
+                        completed == selected.size -> "START AGAIN"
+                        completed > 0 -> "CONTINUE READING"
+                        else -> "START READING",
+                    },
+                    onClick = { if (nextIssue != null) onReadIssue(nextIssue) },
+                    enabled = nextIssue != null && !currentlyOpening,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (currentlyOpening) {
+                    Text("Finding the exact issue in your installed sources…",
                         color = InkShelf2Colors.Muted, fontSize = 12.sp)
                 }
-                if (nextUnread != null) {
-                    InkShelf2ActionButton(
-                        label = "Read Next: " + nextUnread.displayName,
-                        onClick = { onReadIssue(nextUnread) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                if (!readingError.isNullOrBlank()) {
+                    Text(readingError, color = InkShelf2Colors.AccentLight,
+                        fontSize = 12.sp, lineHeight = 18.sp)
                 }
-                TextButton(onClick = { missingOnly = !missingOnly }) {
-                    Text(
-                        if (missingOnly) "Show all issues"
-                        else "Catch Me Up • Show unread links",
-                        color = InkShelf2Colors.AccentLight,
-                    )
-                }
-                Text(
-                    "Catch Me Up lists missing issues without spoiling their plots. " +
-                        "Only issues marked Core, Prologue or Epilogue appear in Essential; " +
-                        "unlabelled issues are included to avoid skipping an important part.",
-                    fontSize = 11.sp, color = InkShelf2Colors.Muted,
-                )
             }
         }
-        if (all.isEmpty()) {
+        item(key = "reading-order-title") {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text(if (essential) "Essential Reading" else "Complete Reading Order",
+                    color = InkShelf2Colors.Text,
+                    fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(selected.size.toString() + (if (hasMore) "+ listed issues" else " listed issues") +
+                    " · Tap any issue to read",
+                    color = InkShelf2Colors.Muted, fontSize = 12.sp)
+            }
+        }
+        if (selected.isEmpty()) {
             item {
-                Text(
-                    if (loading) "Loading ordered issues from Metron…" else "No issues available for this reading list.",
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
-                    color = InkShelf2Colors.Muted,
-                )
+                Column(modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (loading) "Loading event issues…"
+                        else "The reading order could not be loaded from the provider.",
+                        color = InkShelf2Colors.Muted, fontSize = 13.sp)
+                    if (!loading) {
+                        TextButton(onClick = {
+                            all = emptyList()
+                            nextPage = 1
+                            hasMore = true
+                            scope.launch { loadPage() }
+                        }) {
+                            Text("Retry loading", color = InkShelf2Colors.AccentLight)
+                        }
+                    }
+                }
             }
         } else {
-            items(filtered, key = { it.id }) { issue ->
+            items(selected, key = { it.id }) { issue ->
                 val checked = issue.id.toString() in readIds
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 16.dp)
                         .background(InkShelf2Colors.SurfaceRaised, RoundedCornerShape(13.dp))
-                        .border(
-                            1.dp,
+                        .border(1.dp,
                             if (checked) InkShelf2Colors.AccentLight.copy(alpha = 0.45f)
                             else InkShelf2Colors.Border,
-                            RoundedCornerShape(13.dp),
-                        ).padding(11.dp),
+                            RoundedCornerShape(13.dp))
+                        .clickable(enabled = !currentlyOpening) { onReadIssue(issue) }
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -863,39 +902,33 @@ private fun InkShelf2GuideDetails(
                         Icons.Outlined.CheckCircleOutline,
                         contentDescription = if (checked) "Mark unread" else "Mark read",
                         tint = if (checked) InkShelf2Colors.AccentLight else InkShelf2Colors.Muted,
-                        modifier = Modifier.size(25.dp).clickable {
+                        modifier = Modifier.size(23.dp).clickable {
                             readIds = InkShelf2GuidesData.setRead(context, guide.id, issue.id, !checked)
                         },
                     )
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(issue.displayName, fontSize = 13.sp, color = InkShelf2Colors.Text, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "Step " + issue.position + "  •  " + issue.role.ifBlank { "Unlabelled issue" },
-                            fontSize = 10.sp, color = InkShelf2Colors.Muted,
-                        )
+                        Text(issue.displayName, color = InkShelf2Colors.Text,
+                            fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text("STEP " + issue.position +
+                            if (checked) " · READ" else " · " + issue.role.ifBlank { "ISSUE" },
+                            color = InkShelf2Colors.Muted, fontSize = 10.sp)
                     }
-                    Text(
-                        "READ ›", color = InkShelf2Colors.AccentLight,
-                        modifier = Modifier.clickable { onReadIssue(issue) }.padding(5.dp),
-                        fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                    )
+                    Text(if (openingIssueId == issue.id) "OPENING"
+                        else "READ", color = InkShelf2Colors.AccentLight,
+                        fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 }
-            }
-            if (filtered.isEmpty()) {
-                item { Text("No unread issues in this selection.", modifier = Modifier.padding(17.dp), color = InkShelf2Colors.Muted) }
             }
         }
         if (hasMore && !loading) {
             item {
                 InkShelf2ActionButton(
-                    label = "Load More Issues",
+                    label = "LOAD MORE ISSUES",
                     onClick = { scope.launch { loadPage() } },
                     outlined = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 )
             }
-        } else if (loading) {
-            item { Text("Loading more issues…", modifier = Modifier.padding(17.dp), color = InkShelf2Colors.Muted) }
         }
     }
 }

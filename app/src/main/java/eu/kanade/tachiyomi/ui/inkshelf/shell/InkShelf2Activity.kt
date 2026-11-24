@@ -161,6 +161,8 @@ class InkShelf2Activity : AppCompatActivity() {
             var discoverSearchPreset by remember { mutableStateOf("") }
             var guideIssueSearch by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
             var guideIssuePicker by remember { mutableStateOf<InkShelf2GuideIssue?>(null) }
+            var guideOpeningId by remember { mutableStateOf<Int?>(null) }
+            var guideReadError by remember { mutableStateOf<String?>(null) }
             var guideCollectionPicker by remember {
                 mutableStateOf<InkShelf2GuideCollections.Collection?>(null)
             }
@@ -1080,66 +1082,46 @@ class InkShelf2Activity : AppCompatActivity() {
                             home = engine.loadHome(enabledSourceIds)
                         },
                     )
-                    tab == InkShelf2Tab.GUIDES -> Box(modifier = Modifier.fillMaxSize()) {
-                        // Keep the selected guide mounted beneath its
-                        // dedicated issue finder. Back returns to the same
-                        // reading order instead of dumping into Discover.
-                        InkShelf2GuidesScreen(
-                            padding = padding,
-                            onMetronSettings = {
-                                openTab(InkShelf2Tab.ACCOUNT)
-                                metronOpen = true
-                            },
-                            onReadIssue = { requestedIssue ->
-                                guideCollectionPicker = null
-                                guideIssuePicker = requestedIssue
-                            },
-                            onFindCollection = { requestedCollection ->
-                                guideIssuePicker = null
-                                guideCollectionPicker = requestedCollection
-                            },
-                        )
-                        val requested = guideIssuePicker
-                        if (requested != null) {
-                            Box(
-                                modifier = Modifier.fillMaxSize()
-                                    .background(InkShelf2Colors.Surface),
-                            ) {
-                                InkShelf2GuideIssuePickerScreen(
-                                    requestedIssue = requested,
-                                    sources = enabledSources,
-                                    padding = padding,
-                                    onBack = { guideIssuePicker = null },
-                                    onOpenComic = { comic ->
-                                        guideIssuePicker = null
-                                        openComicDetails(comic)
-                                    },
-                                    onOpenExactIssue = { comic, chapter ->
-                                        guideIssuePicker = null
-                                        openChapter(comic, chapter)
-                                    },
-                                )
+                    tab == InkShelf2Tab.GUIDES -> InkShelf2GuidesScreen(
+                        padding = padding,
+                        onMetronSettings = {
+                            openTab(InkShelf2Tab.ACCOUNT)
+                            metronOpen = true
+                        },
+                        openingIssueId = guideOpeningId,
+                        readingError = guideReadError,
+                        onReadIssue = { requestedIssue ->
+                            if (guideOpeningId == null) {
+                                guideOpeningId = requestedIssue.id
+                                guideReadError = null
+                                lifecycleScope.launch {
+                                    try {
+                                        val reading = InkShelf2GuideAutoReader.resolve(
+                                            applicationContext,
+                                            sourcesEngine, enabledSources, requestedIssue,
+                                        )
+                                        if (reading != null) {
+                                            openChapter(reading.manga, reading.chapter)
+                                        } else {
+                                            guideReadError =
+                                                "This exact issue could not be verified in your enabled " +
+                                                "comic sources. Check BatCave is enabled, or try again later."
+                                        }
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        guideReadError =
+                                            "Could not open this issue from your sources. Try again later."
+                                    } finally {
+                                        guideOpeningId = null
+                                    }
+                                }
                             }
-                        }
-                        val collection = guideCollectionPicker
-                        if (collection != null) {
-                            Box(
-                                modifier = Modifier.fillMaxSize()
-                                    .background(InkShelf2Colors.Surface),
-                            ) {
-                                InkShelf2GuideCollectionFinderScreen(
-                                    collection = collection,
-                                    padding = padding,
-                                    sources = enabledSources,
-                                    onBack = { guideCollectionPicker = null },
-                                    onOpenComic = { comic ->
-                                        guideCollectionPicker = null
-                                        openComicDetails(comic)
-                                    },
-                                )
-                            }
-                        }
-                    }
+                        },
+                        // Guide details now resolve issues automatically. There
+                        // is no user-facing collection/source search stage.
+                        onFindCollection = { },
+                    )
                     tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
                         library = library,
                         readingHistory = home?.history.orEmpty(),

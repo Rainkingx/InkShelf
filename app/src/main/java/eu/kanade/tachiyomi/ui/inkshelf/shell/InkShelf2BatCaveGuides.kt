@@ -126,6 +126,17 @@ internal object InkShelf2BatCaveGuides {
         return parseIssues(raw, slug, page, firstPage)
     }
 
+    suspend fun synopsis(context: Context, slug: String): String? {
+        if (!validSlug.matches(slug)) return null
+        val raw = html(context, "$BASE/event/$slug/") ?: return null
+        val doc = Jsoup.parse(raw, BASE)
+        val description = doc.selectFirst("meta[property=og:description],meta[name=description]")
+            ?.attr("content")?.trim()?.replace(Regex("""\s+"""), " ")
+        return description?.takeIf {
+            it.length in 60..450 && !it.contains("Read comics online", ignoreCase = true)
+        }
+    }
+
     suspend fun coverUrl(context: Context, slug: String): String? {
         if (!validSlug.matches(slug)) return null
         val raw = html(context, "$BASE/event/$slug/") ?: return null
