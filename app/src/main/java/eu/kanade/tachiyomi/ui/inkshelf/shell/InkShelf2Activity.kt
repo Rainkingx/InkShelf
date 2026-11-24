@@ -1114,6 +1114,10 @@ class InkShelf2Activity : AppCompatActivity() {
                                         guideIssuePicker = null
                                         openComicDetails(comic)
                                     },
+                                    onOpenExactIssue = { comic, chapter ->
+                                        guideIssuePicker = null
+                                        openChapter(comic, chapter)
+                                    },
                                 )
                             }
                         }
