@@ -47,7 +47,7 @@ internal object InkShelf2BundledEventOrders {
         Slice("House of M", 6, 7, 2005, HOUSE_OF_M_PATH),
         Slice("Mutopia X", 4, 4, 2005, "/22231-mutopia-x.html"),
         Slice("House of M", 8, 8, 2005, HOUSE_OF_M_PATH),
-        Slice("Giant-Size Ms. Marvel", 1, 1, 2005, null, "One-shot"),
+        Slice("Giant-Size Ms. Marvel", 1, 1, 2006, null, "One-shot"),
     ).flatMap { slice ->
         (slice.first..slice.last).map { number -> slice to number }
     }.mapIndexed { index, (slice, number) ->
