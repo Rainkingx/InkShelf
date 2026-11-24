@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.FormatListNumbered
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -86,8 +87,7 @@ enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
     DISCOVER("Discover", Icons.Outlined.Search),
     LIBRARY("Library", Icons.Outlined.LibraryBooks),
-    // Kept for saved-state compatibility and eventual feature return;
-    // Reading Guides is hidden from the visible navigation for now.
+    // Available through the header icon, never in the bottom bar.
     GUIDES("Guides", Icons.Outlined.AutoStories),
     ACCOUNT("Menu", Icons.Outlined.Menu),
 }
@@ -175,6 +175,8 @@ fun InkShelf2Shell(
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
     onPulse: () -> Unit,
+    onGuides: () -> Unit,
+    guidesActive: Boolean = false,
     pulseActive: Boolean = false,
     pulseHasNewStories: Boolean = false,
     notificationCount: Int = 0,
@@ -194,6 +196,8 @@ fun InkShelf2Shell(
                         onSearch = onSearch,
                         onNotifications = onNotifications,
                         onPulse = onPulse,
+                        onGuides = onGuides,
+                        guidesActive = guidesActive,
                         pulseActive = pulseActive,
                         pulseHasNewStories = pulseHasNewStories,
                         notificationCount = notificationCount,
@@ -218,6 +222,8 @@ private fun InkShelf2Header(
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
     onPulse: () -> Unit,
+    onGuides: () -> Unit,
+    guidesActive: Boolean,
     pulseActive: Boolean,
     pulseHasNewStories: Boolean,
     notificationCount: Int,
@@ -262,8 +268,20 @@ private fun InkShelf2Header(
             )
         }
         IconButton(
+            onClick = onGuides,
+            modifier = Modifier.size(40.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.FormatListNumbered,
+                contentDescription = "Reading Guides",
+                tint = if (guidesActive) InkShelf2Colors.AccentLight
+                    else InkShelf2Colors.Text,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        IconButton(
             onClick = onPulse,
-            modifier = Modifier.semantics {
+            modifier = Modifier.size(40.dp).semantics {
                 contentDescription = if (pulseHasNewStories) {
                     "Open The Pulse, new stories available"
                 } else {
@@ -305,7 +323,7 @@ private fun InkShelf2Header(
                 }
             }
         }
-        IconButton(onClick = onNotifications) {
+        IconButton(onClick = onNotifications, modifier = Modifier.size(40.dp)) {
             Box(modifier = Modifier.size(32.dp)) {
                 Icon(
                     imageVector = Icons.Outlined.NotificationsNone,
@@ -332,7 +350,7 @@ private fun InkShelf2Header(
                 }
             }
         }
-        IconButton(onClick = onSearch) {
+        IconButton(onClick = onSearch, modifier = Modifier.size(40.dp)) {
             Icon(
                 imageVector = Icons.Outlined.Search,
                 contentDescription = "Search comics",
