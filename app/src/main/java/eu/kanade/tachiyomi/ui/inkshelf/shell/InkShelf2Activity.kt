@@ -1090,7 +1090,8 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         openingIssueId = guideOpeningId,
                         readingError = guideReadError,
-                        onReadIssue = { requestedIssue ->
+                        refreshEpoch = refreshEpoch,
+                        onReadIssue = { guideId, requestedIssue ->
                             if (guideOpeningId == null) {
                                 guideOpeningId = requestedIssue.id
                                 guideReadError = null
@@ -1104,15 +1105,16 @@ class InkShelf2Activity : AppCompatActivity() {
                                         )
                                         if (reading != null) {
                                             openChapter(reading.manga, reading.chapter)
-                                            val slug = requestedIssue.batcaveIssuePath
-                                                ?.removePrefix("/event/")?.substringBefore("/")
-                                            InkShelf2BatCaveGuides.verified()
-                                                .firstOrNull { it.batcaveSlug == slug }
-                                                ?.let { guide ->
-                                                    InkShelf2GuidesData.start(
-                                                        applicationContext, guide.id, requestedIssue.id,
-                                                    )
-                                                }
+                                            InkShelf2GuidesData.start(
+                                                applicationContext, guideId, requestedIssue.id,
+                                            )
+                                            val mangaId = reading.manga.id
+                                            val chapterId = reading.chapter.id
+                                            if (mangaId != null && chapterId != null) {
+                                                InkShelf2GuidesData.rememberChapter(
+                                                    applicationContext, guideId, requestedIssue.id, mangaId, chapterId,
+                                                )
+                                            }
                                         } else {
                                             guideReadError =
                                                 "Could not match " + requestedIssue.displayName +

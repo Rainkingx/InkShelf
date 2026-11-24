@@ -91,7 +91,6 @@ private fun IssueArtwork(
     // Use that first; only ask Metron to fill genuine cover gaps.
     val sourceCover = InkShelfIssueMetadata.from(chapter).coverUrl
     val imageUrl = sourceCover ?: cover
-    var failed by remember(imageUrl) { mutableStateOf(false) }
     DisposableEffect(context, manga.source, manga.url, chapter.name, issue, anchorIssueNumber) {
         var active = true
         if (sourceCover == null && issue != null) {
@@ -104,6 +103,25 @@ private fun IssueArtwork(
         onDispose { active = false }
     }
 
+    InkShelf2IssueArtworkFrame(
+        imageUrl = imageUrl,
+        title = chapter.name,
+        fallbackLabel = issue?.let { "ISSUE #$it" } ?: "ISSUE",
+        read = chapter.read,
+        modifier = modifier,
+    )
+}
+
+/** Common issue artwork, including the honest missing-cover placeholder. */
+@Composable
+internal fun InkShelf2IssueArtworkFrame(
+    imageUrl: String?,
+    title: String,
+    fallbackLabel: String,
+    read: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    var failed by remember(imageUrl) { mutableStateOf(false) }
     val shape = RoundedCornerShape(9.dp)
     Box(
         modifier = modifier.clip(shape)
@@ -131,7 +149,7 @@ private fun IssueArtwork(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                issue?.let { "ISSUE #$it" } ?: "ISSUE",
+                fallbackLabel,
                 color = InkShelf2Colors.Text,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -140,13 +158,13 @@ private fun IssueArtwork(
         if (imageUrl != null && !failed) {
             AsyncImage(
                 model = imageUrl,
-                contentDescription = "Cover for ${chapter.name}",
+                contentDescription = "Cover for $title",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
                 onError = { failed = true },
             )
         }
-        if (chapter.read) {
+        if (read) {
             Box(
                 modifier = Modifier.align(Alignment.TopEnd)
                     .padding(6.dp)

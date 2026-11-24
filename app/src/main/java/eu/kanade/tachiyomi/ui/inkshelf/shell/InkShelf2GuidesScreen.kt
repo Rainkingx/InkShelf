@@ -61,7 +61,8 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun InkShelf2GuidesScreen(
     padding: PaddingValues,
-    onReadIssue: (InkShelf2GuideIssue) -> Unit,
+    onReadIssue: (Int, InkShelf2GuideIssue) -> Unit,
+    refreshEpoch: Int = 0,
     onFindCollection: (InkShelf2GuideCollections.Collection) -> Unit,
     onMetronSettings: () -> Unit,
     openingIssueId: Int? = null,
@@ -73,11 +74,23 @@ internal fun InkShelf2GuidesScreen(
     val catalogue = installed.map { guide -> guide.copy(imageUrl = eventCovers[guide.id]) }
     var chosen by remember { mutableStateOf<InkShelf2Guide?>(null) }
     var started by remember { mutableStateOf(InkShelf2GuidesData.startedGuides(context)) }
+    var progress by remember { mutableStateOf<Map<Int, InkShelf2GuideProgress.EventState>>(emptyMap()) }
+    LaunchedEffect(refreshEpoch, installed) {
+        try {
+            progress = InkShelf2GuideProgress.load(context, installed)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // A local database refresh failure does not stop the guide from opening.
+        }
+        started = InkShelf2GuidesData.startedGuides(context)
+    }
     var guideSearch by rememberSaveable { mutableStateOf("") }
     var guideFilter by rememberSaveable { mutableStateOf("All") }
     val filters = listOf("All", "Marvel", "DC", "Started")
     val activeFilter = guideFilter.takeIf { it in filters } ?: "All"
-    val verifiedStarted = started.intersect(catalogue.map { it.id }.toSet())
+    val verifiedStarted = (started + progress.filterValues { it.readIds.isNotEmpty() || it.partialIds.isNotEmpty() }.keys)
+        .intersect(catalogue.map { it.id }.toSet())
     val connected = InkShelf2GuidesData.configured(context)
     // Keep artwork loading independent of lazy cards and hero rotation. A
     // single sequential coroutine completes all installed event covers.
@@ -98,7 +111,9 @@ internal fun InkShelf2GuidesScreen(
             guide = selected,
             padding = padding,
             onBack = { chosen = null; started = InkShelf2GuidesData.startedGuides(context) },
-            onReadIssue = onReadIssue,
+            onReadIssue = { issue -> onReadIssue(selected.id, issue) },
+            progress = progress[selected.id] ?: InkShelf2GuideProgress.EventState(),
+            refreshEpoch = refreshEpoch,
             openingIssueId = openingIssueId,
             readingError = readingError,
         )
@@ -108,8 +123,9 @@ internal fun InkShelf2GuidesScreen(
     val inProgress = catalogue.filter { guide ->
         if (guide.id !in verifiedStarted) false else {
             val issues = guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
-            val read = InkShelf2GuidesData.readIds(context, guide.id)
-            issues.isNotEmpty() && issues.any { it.id.toString() !in read }
+            val read = InkShelf2GuideProgress.effectiveRead(context, guide.id, progress[guide.id] ?: InkShelf2GuideProgress.EventState())
+            val path = InkShelf2GuideReadingSelection.issuesForMode(issues, InkShelf2GuidesData.essentialMode(context, guide.id))
+            path.isNotEmpty() && path.any { it.id.toString() !in read }
         }
     }
     val finding = guideSearch.trim()
@@ -203,7 +219,7 @@ internal fun InkShelf2GuidesScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     items(inProgress, key = { it.id }) { guide ->
-                        InkShelf2EventCoverCard(guide, width = 105.dp, onOpen = { openGuide(guide) })
+                        InkShelf2EventCoverCard(guide, width = 105.dp, progress = progress[guide.id], onOpen = { openGuide(guide) })
                     }
                 }
             }
@@ -229,7 +245,7 @@ internal fun InkShelf2GuidesScreen(
             ) {
                 row.forEach { guide ->
                     Box(Modifier.weight(1f)) {
-                        InkShelf2EventCoverCard(guide, width = null, onOpen = { openGuide(guide) })
+                        InkShelf2EventCoverCard(guide, width = null, progress = progress[guide.id], onOpen = { openGuide(guide) })
                     }
                 }
                 repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -264,15 +280,17 @@ private fun InkShelf2GuideNotice(message: String, onClick: () -> Unit, action: S
 private fun InkShelf2EventCoverCard(
     guide: InkShelf2Guide,
     width: androidx.compose.ui.unit.Dp?,
+    progress: InkShelf2GuideProgress.EventState?,
     onOpen: () -> Unit,
 ) {
     val context = LocalContext.current
     val all = remember(guide.batcaveSlug) {
         guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()
     }
-    val read = InkShelf2GuidesData.readIds(context, guide.id)
-    val completed = all.count { it.id.toString() in read }
-    val percentage = if (all.isNotEmpty() && completed > 0) completed * 100 / all.size else null
+    val read = InkShelf2GuideProgress.effectiveRead(context, guide.id, progress ?: InkShelf2GuideProgress.EventState())
+    val path = InkShelf2GuideReadingSelection.issuesForMode(all, InkShelf2GuidesData.essentialMode(context, guide.id))
+    val completed = path.count { it.id.toString() in read }
+    val percentage = if (path.isNotEmpty() && completed > 0) completed * 100 / path.size else null
     InkShelf2CoverCard(
         imageModel = guide.imageUrl,
         title = guide.name,
@@ -295,6 +313,8 @@ private fun InkShelf2GuideDetails(
     padding: PaddingValues,
     onBack: () -> Unit,
     onReadIssue: (InkShelf2GuideIssue) -> Unit,
+    progress: InkShelf2GuideProgress.EventState,
+    refreshEpoch: Int,
     openingIssueId: Int?,
     readingError: String?,
 ) {
@@ -304,10 +324,11 @@ private fun InkShelf2GuideDetails(
     var nextPage by remember(guide.id) { mutableStateOf(1) }
     var hasMore by remember(guide.id) { mutableStateOf(true) }
     var loading by remember(guide.id) { mutableStateOf(false) }
-    var essential by remember(guide.id) { mutableStateOf(true) }
+    var essential by remember(guide.id) { mutableStateOf(InkShelf2GuidesData.essentialMode(context, guide.id)) }
     var description by remember(guide.id) { mutableStateOf<String?>(null) }
-    var readIds by remember(guide.id) {
-        mutableStateOf(InkShelf2GuidesData.readIds(context, guide.id))
+    var manualRevision by remember(guide.id) { mutableStateOf(0) }
+    val readIds = remember(guide.id, progress, manualRevision, refreshEpoch) {
+        InkShelf2GuideProgress.effectiveRead(context, guide.id, progress)
     }
 
     suspend fun loadPage() {
@@ -352,6 +373,7 @@ private fun InkShelf2GuideDetails(
     val selected = InkShelf2GuideReadingSelection.issuesForMode(all, essential)
     val lastOpened = InkShelf2GuidesData.lastOpenedIssue(context, guide.id)
     val nextIssue = selected.firstOrNull { it.id == lastOpened && it.id.toString() !in readIds && !it.sourceUnavailable }
+        ?: selected.firstOrNull { it.id in progress.partialIds && it.id.toString() !in readIds && !it.sourceUnavailable }
         ?: InkShelf2GuideReadingSelection.next(selected, readIds)
     val completed = selected.count { it.id.toString() in readIds }
     val essentialMissing = essential && all.isNotEmpty() && all.none { it.isEssential }
@@ -384,13 +406,13 @@ private fun InkShelf2GuideDetails(
                     InkShelf2ActionButton(
                         label = if (essential) "✓ Essential" else "Essential",
                         outlined = !essential,
-                        onClick = { essential = true },
+                        onClick = { essential = true; InkShelf2GuidesData.setEssentialMode(context, guide.id, true) },
                         modifier = Modifier.weight(1f),
                     )
                     InkShelf2ActionButton(
                         label = if (!essential) "✓ Complete" else "Complete",
                         outlined = essential,
-                        onClick = { essential = false },
+                        onClick = { essential = false; InkShelf2GuidesData.setEssentialMode(context, guide.id, false) },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -406,7 +428,7 @@ private fun InkShelf2GuideDetails(
                         nextIssue == null -> "LOADING READING ORDER…"
                         nextIssue.sourceUnavailable -> "ISSUE UNAVAILABLE"
                         completed == selected.size -> "READ AGAIN"
-                        completed > 0 || lastOpened != null -> "CONTINUE READING"
+                        completed > 0 || lastOpened != null || selected.any { it.id in progress.partialIds } -> "CONTINUE READING"
                         else -> "START READING"
                     },
                     onClick = { if (nextIssue != null && !nextIssue.sourceUnavailable) onReadIssue(nextIssue) },
@@ -472,12 +494,14 @@ private fun InkShelf2GuideDetails(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    InkShelf2GuideIssueArtwork(issue, progress.issues[issue.id]?.coverUrl, checked)
                     Icon(
                         Icons.Outlined.CheckCircleOutline,
-                        contentDescription = if (checked) "Mark unread" else "Mark read",
+                        contentDescription = if (checked) "Mark unread in guide" else "Mark read in guide",
                         tint = if (checked) InkShelf2Colors.AccentLight else InkShelf2Colors.Muted,
                         modifier = Modifier.size(23.dp).clickable {
-                            readIds = InkShelf2GuidesData.setRead(context, guide.id, issue.id, !checked)
+                            InkShelf2GuidesData.setGuideRead(context, guide.id, issue.id, !checked)
+                            manualRevision++
                         },
                     )
                     Column(modifier = Modifier.weight(1f)) {
@@ -485,7 +509,7 @@ private fun InkShelf2GuideDetails(
                             fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text("STEP " + issue.position +
-                            if (checked) " · READ" else " · " + issue.role.ifBlank { "ISSUE" },
+                            if (checked) " · READ" else if (issue.id in progress.partialIds) " · IN PROGRESS" else " · " + issue.role.ifBlank { "ISSUE" },
                             color = InkShelf2Colors.Muted, fontSize = 10.sp)
                     }
                     Text(if (issue.sourceUnavailable) "UNAVAILABLE"
@@ -505,4 +529,22 @@ private fun InkShelf2GuideDetails(
             }
         }
     }
+}
+
+
+/** Lazy rows request metadata only while composed; no full-event download or artwork flood. */
+@Composable
+private fun InkShelf2GuideIssueArtwork(issue: InkShelf2GuideIssue, sourceCover: String?, read: Boolean) {
+    val context = LocalContext.current
+    var cover by remember(issue, sourceCover) { mutableStateOf(sourceCover) }
+    LaunchedEffect(issue, sourceCover) {
+        if (sourceCover == null) cover = InkShelf2GuidesData.issueCover(context, issue)
+    }
+    InkShelf2IssueArtworkFrame(
+        imageUrl = cover,
+        title = issue.displayName,
+        fallbackLabel = if (issue.number.equals("Full", true)) "ISSUE" else "#"+issue.number,
+        read = read,
+        modifier = Modifier.size(52.dp, 76.dp),
+    )
 }

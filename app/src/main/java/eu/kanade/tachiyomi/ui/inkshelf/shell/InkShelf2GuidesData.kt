@@ -380,6 +380,55 @@ internal object InkShelf2GuidesData {
         }
     }
 
+    /** Resolve only an unambiguous numbered issue of the known series edition. */
+    suspend fun issueCover(context: Context, issue: InkShelf2GuideIssue): String? =
+        withContext(Dispatchers.IO) {
+            val year = issue.yearBegan ?: InkShelf2GuideAutoMatch.year(issue.series)
+                ?: return@withContext null
+            val number = issue.number.trim().removePrefix("#").toIntOrNull()
+                ?: return@withContext null
+            if (!issue.issueLabel.isNullOrBlank()) return@withContext null
+            val title = InkShelf2GuideAutoMatch.seriesName(issue.series)
+            val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val key = "guide_issue_cover_v1_" + Uri.encode(artTitle(title)) + "_" + year + "_" + number
+            coverMutex.withLock {
+                val cached = prefs.getString(key, null)
+                val ttl = if (cached.isNullOrBlank()) COVER_MISS_CACHE_MS else COVER_CACHE_MS
+                if (cached != null && System.currentTimeMillis() - prefs.getLong(key + "_time", 0L) in 0L until ttl)
+                    return@withLock imageUrl(cached)
+                val secret = token(context) ?: return@withLock imageUrl(cached)
+                try {
+                    delay(2_650)
+                    val response = JSONObject(get(
+                        "https://metron.cloud/api/issue/?series_name=" + Uri.encode(title) +
+                            "&series_year_began=" + year + "&number=" + number,
+                        secret,
+                    ))
+                    val rows = response.optJSONArray("results") ?: JSONArray()
+                    val matches = (0 until rows.length()).mapNotNull { index ->
+                        val row = rows.optJSONObject(index) ?: return@mapNotNull null
+                        val series = row.optJSONObject("series") ?: return@mapNotNull null
+                        val suppliedYear = series.optInt("year_began", 0)
+                        if (artTitle(series.optString("name")) != artTitle(title) ||
+                            (suppliedYear > 0 && suppliedYear != year) ||
+                            row.optString("number").trim().toIntOrNull() != number) return@mapNotNull null
+                        val id = row.optInt("id", 0).takeIf { it > 0 } ?: return@mapNotNull null
+                        id to (imageUrl(row.optString("image")) ?: return@mapNotNull null)
+                    }.distinct()
+                    val more = !response.isNull("next") && response.optString("next").isNotBlank()
+                    val found = if (!more) matches.singleOrNull()?.second else null
+                    val retained = found ?: imageUrl(cached)
+                    prefs.edit().putString(key, retained ?: "")
+                        .putLong(key + "_time", System.currentTimeMillis()).apply()
+                    retained
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    imageUrl(cached)
+                }
+            }
+        }
+
     fun readIds(context: Context, guideId: Int): Set<String> =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getStringSet("read_" + guideId, emptySet())?.toSet().orEmpty()
@@ -390,6 +439,40 @@ internal object InkShelf2GuidesData {
         if (read) updated += issueId.toString() else updated -= issueId.toString()
         prefs.edit().putStringSet("read_" + guideId, updated).apply()
         return updated
+    }
+
+    // Manual guide-only marks remain independent of the original chapter table.
+    fun manualUnreadIds(context: Context, guideId: Int): Set<String> =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getStringSet("manual_unread_" + guideId, emptySet())?.toSet().orEmpty()
+
+    fun setGuideRead(context: Context, guideId: Int, issueId: Int, read: Boolean) {
+        setRead(context, guideId, issueId, read)
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val old = manualUnreadIds(context, guideId)
+        val updated = if (read) old - issueId.toString() else old + issueId.toString()
+        prefs.edit().putStringSet("manual_unread_" + guideId, updated).apply()
+    }
+
+    fun rememberChapter(context: Context, guideId: Int, issueId: Int, mangaId: Long, chapterId: Long) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString("matched_" + guideId + "_" + issueId, "$mangaId:$chapterId").apply()
+    }
+
+    fun matchedChapter(context: Context, guideId: Int, issueId: Int): Pair<Long, Long>? {
+        val parts = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString("matched_" + guideId + "_" + issueId, null)?.split(':') ?: return null
+        if (parts.size != 2) return null
+        return (parts[0].toLongOrNull() ?: return null) to (parts[1].toLongOrNull() ?: return null)
+    }
+
+    fun essentialMode(context: Context, guideId: Int): Boolean =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean("essential_mode_" + guideId, true)
+
+    fun setEssentialMode(context: Context, guideId: Int, essential: Boolean) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean("essential_mode_" + guideId, essential).apply()
     }
 
     fun startedGuides(context: Context): Set<Int> {
