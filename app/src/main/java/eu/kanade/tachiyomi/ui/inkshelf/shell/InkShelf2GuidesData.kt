@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 import android.content.Context
 import android.net.Uri
 import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCredentials
+import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -380,52 +381,52 @@ internal object InkShelf2GuidesData {
         }
     }
 
-    /** Resolve only an unambiguous numbered issue of the known series edition. */
+    /** Match a known series edition only. Do not guess named specials or unknown years. */
+    data class IssueArtworkKey(val title: String, val year: Int, val number: Int) {
+        val seriesKey: String get() = artTitle(title) + "|" + year
+        val cacheKey: String get() = "guide_issue_cover_v1_" + Uri.encode(artTitle(title)) + "_" + year + "_" + number
+    }
+
+    fun issueArtworkKey(issue: InkShelf2GuideIssue): IssueArtworkKey? {
+        val year = issue.yearBegan ?: InkShelf2GuideAutoMatch.year(issue.series) ?: return null
+        val number = issue.number.trim().removePrefix("#").toIntOrNull() ?: return null
+        if (number !in 1..999 || !issue.issueLabel.isNullOrBlank()) return null
+        return IssueArtworkKey(InkShelf2GuideAutoMatch.seriesName(issue.series), year, number)
+    }
+
+    /** Reuse exact covers already retrieved by Phase 2A without waiting for a network call. */
+    fun cachedIssueCover(context: Context, key: IssueArtworkKey): String? =
+        imageUrl(context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(key.cacheKey, null))
+
+    fun rememberIssueCover(context: Context, key: IssueArtworkKey, url: String) {
+        val valid = imageUrl(url) ?: return
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(key.cacheKey, valid)
+            .putLong(key.cacheKey + "_time", System.currentTimeMillis()).apply()
+    }
+
+    /** One-shot fallback for a missing numbered cover, using the shared rate-limited service. */
     suspend fun issueCover(context: Context, issue: InkShelf2GuideIssue): String? =
         withContext(Dispatchers.IO) {
-            val year = issue.yearBegan ?: InkShelf2GuideAutoMatch.year(issue.series)
-                ?: return@withContext null
-            val number = issue.number.trim().removePrefix("#").toIntOrNull()
-                ?: return@withContext null
-            if (!issue.issueLabel.isNullOrBlank()) return@withContext null
-            val title = InkShelf2GuideAutoMatch.seriesName(issue.series)
+            val key = issueArtworkKey(issue) ?: return@withContext null
             val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            val key = "guide_issue_cover_v1_" + Uri.encode(artTitle(title)) + "_" + year + "_" + number
-            coverMutex.withLock {
-                val cached = prefs.getString(key, null)
-                val ttl = if (cached.isNullOrBlank()) COVER_MISS_CACHE_MS else COVER_CACHE_MS
-                if (cached != null && System.currentTimeMillis() - prefs.getLong(key + "_time", 0L) in 0L until ttl)
-                    return@withLock imageUrl(cached)
-                val secret = token(context) ?: return@withLock imageUrl(cached)
-                try {
-                    delay(2_650)
-                    val response = JSONObject(get(
-                        "https://metron.cloud/api/issue/?series_name=" + Uri.encode(title) +
-                            "&series_year_began=" + year + "&number=" + number,
-                        secret,
-                    ))
-                    val rows = response.optJSONArray("results") ?: JSONArray()
-                    val matches = (0 until rows.length()).mapNotNull { index ->
-                        val row = rows.optJSONObject(index) ?: return@mapNotNull null
-                        val series = row.optJSONObject("series") ?: return@mapNotNull null
-                        val suppliedYear = series.optInt("year_began", 0)
-                        if (artTitle(series.optString("name")) != artTitle(title) ||
-                            (suppliedYear > 0 && suppliedYear != year) ||
-                            row.optString("number").trim().toIntOrNull() != number) return@mapNotNull null
-                        val id = row.optInt("id", 0).takeIf { it > 0 } ?: return@mapNotNull null
-                        id to (imageUrl(row.optString("image")) ?: return@mapNotNull null)
-                    }.distinct()
-                    val more = !response.isNull("next") && response.optString("next").isNotBlank()
-                    val found = if (!more) matches.singleOrNull()?.second else null
-                    val retained = found ?: imageUrl(cached)
-                    prefs.edit().putString(key, retained ?: "")
-                        .putLong(key + "_time", System.currentTimeMillis()).apply()
-                    retained
-                } catch (cancel: CancellationException) {
-                    throw cancel
-                } catch (_: Exception) {
-                    imageUrl(cached)
+            val cached = prefs.getString(key.cacheKey, null)
+            val ttl = if (cached.isNullOrBlank()) COVER_MISS_CACHE_MS else COVER_CACHE_MS
+            if (cached != null && System.currentTimeMillis() - prefs.getLong(key.cacheKey + "_time", 0L) in 0L until ttl)
+                return@withContext imageUrl(cached)
+            try {
+                val found = imageUrl(InkShelfMetronCovers.exactIssueCover(context, key.title, key.year, key.number))
+                val retained = found ?: imageUrl(cached)
+                if (configured(context)) {
+                    prefs.edit().putString(key.cacheKey, retained ?: "")
+                        .putLong(key.cacheKey + "_time", System.currentTimeMillis()).apply()
                 }
+                retained
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                imageUrl(cached)
             }
         }
 

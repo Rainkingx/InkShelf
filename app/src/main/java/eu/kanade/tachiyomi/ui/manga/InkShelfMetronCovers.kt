@@ -48,7 +48,8 @@ internal object InkShelfMetronCovers {
     private var lastCallAt = 0L
     private val lock = Any()
     private val cache = mutableMapOf<String, Entry>()
-    private val pending = mutableMapOf<String, MutableList<Pair<Int, (String) -> Unit>>>()
+    private data class Listener(val number: Int, val onFound: (String) -> Unit, val onFinished: () -> Unit)
+    private val pending = mutableMapOf<String, MutableList<Listener>>()
     // Covers discovered on an early Metron page stay available to newly
     // composed rows while later metadata pages are still loading.
     private val inFlightCovers = mutableMapOf<String, Map<Int, String>>()
@@ -71,34 +72,62 @@ internal object InkShelfMetronCovers {
         anchorIssueNumber: Int? = null,
         onFound: (String) -> Unit,
     ) {
-        if (issueNumber !in 1..999) return
+        requestIssueCover(context, manga.title, issueNumber, anchorIssueNumber, onFound = onFound)
+    }
+
+    /** Metadata-only entry point for event issues; uses the same series cache as Discover. */
+    fun requestIssueCover(
+        context: Context,
+        title: String,
+        issueNumber: Int,
+        anchorIssueNumber: Int? = null,
+        onFinished: () -> Unit = {},
+        onFound: (String) -> Unit,
+    ) {
+        if (issueNumber !in 1..999) {
+            onFinished()
+            return
+        }
         // Avoid decrypting the Android Keystore token for every row on the UI
         // thread. The actual credential is read once on Dispatchers.IO.
         if (!InkShelf2MetronTokenStore(context).hasToken() &&
-            !InkShelfMetronCredentials.isConfigured(context)) return
+            !InkShelfMetronCredentials.isConfigured(context)) {
+            onFinished()
+            return
+        }
         val appContext = context.applicationContext
-        val cleanTitle = seriesTitle(manga.title)
-        if (cleanTitle.length < 3) return
-        val year = publicationYear(manga.title)
+        val cleanTitle = seriesTitle(title)
+        if (cleanTitle.length < 3) {
+            onFinished()
+            return
+        }
+        val year = publicationYear(title)
         val anchor = anchorIssueNumber?.takeIf { it in 1..999 }
         val key = "${normalized(cleanTitle)}|${year ?: "unknown"}|${anchor ?: "unanchored"}"
+        // Only a completely disambiguated title/year may be shared across different anchors.
+        val sharedKey = year?.let { "${normalized(cleanTitle)}|$it|verified-unique" }
+        val listener = Listener(issueNumber, onFound, onFinished)
         var cachedUrl: String? = null
         var inFlightUrl: String? = null
         var shouldFetch = false
         var hadCache = false
         synchronized(lock) {
             val now = System.currentTimeMillis()
-            val entry = cache[key] ?: loadCache(appContext, key)?.also { cache[key] = it }
+            val shared = sharedKey?.let { alias ->
+                (cache[alias] ?: loadCache(appContext, alias)?.also { cache[alias] = it })
+                    ?.takeIf { it.expiresAt > now && it.covers.containsKey(issueNumber) }
+            }
+            val entry = shared ?: cache[key] ?: loadCache(appContext, key)?.also { cache[key] = it }
             if (entry != null && entry.expiresAt > now) {
                 hadCache = true
                 cachedUrl = entry.covers[issueNumber]
             } else {
                 val listeners = pending[key]
                 if (listeners != null) {
-                    listeners.add(issueNumber to onFound)
+                    listeners.add(listener)
                     inFlightUrl = inFlightCovers[key]?.get(issueNumber)
                 } else {
-                    pending[key] = mutableListOf(issueNumber to onFound)
+                    pending[key] = mutableListOf(listener)
                     inFlightCovers[key] = emptyMap()
                     shouldFetch = true
                 }
@@ -106,6 +135,7 @@ internal object InkShelfMetronCovers {
         }
         if (hadCache) {
             cachedUrl?.let(onFound)
+            onFinished()
             return
         }
         inFlightUrl?.let(onFound)
@@ -126,31 +156,33 @@ internal object InkShelfMetronCovers {
                             val listeners = synchronized(lock) {
                                 pending[key]?.toList().orEmpty()
                             }
-                            listeners.forEach { (number, callback) ->
-                                partial[number]?.let(callback)
+                            listeners.forEach { listener ->
+                                partial[listener.number]?.let(listener.onFound)
                             }
                         }
                     }
                 }.getOrNull()
             // A bad token, outage or rate limit must not become a long-lived
             // missing-cover entry. Keep previously delivered covers visible.
-            val entry = result?.let { covers ->
+            val entry = result?.let { lookup ->
                 Entry(
-                    System.currentTimeMillis() + if (covers.isEmpty()) CACHE_MISS_MS else CACHE_OK_MS,
-                    covers,
+                    System.currentTimeMillis() + if (lookup.covers.isEmpty()) CACHE_MISS_MS else CACHE_OK_MS,
+                    lookup.covers,
                 )
             }
             if (entry != null) saveCache(appContext, key, entry)
+            val share = result?.uniqueEdition == true && entry != null && entry.covers.isNotEmpty() && sharedKey != null
+            if (share && entry != null && sharedKey != null) saveCache(appContext, sharedKey, entry)
             val listeners = synchronized(lock) {
                 if (entry != null) cache[key] = entry
+                if (share && entry != null && sharedKey != null) cache[sharedKey] = entry
                 inFlightCovers.remove(key)
                 pending.remove(key).orEmpty()
             }
-            if (entry != null) {
-                withContext(Dispatchers.Main) {
-                    listeners.forEach { (number, callback) ->
-                        entry.covers[number]?.let(callback)
-                    }
+            withContext(Dispatchers.Main) {
+                listeners.forEach { listener ->
+                    entry?.covers?.get(listener.number)?.let(listener.onFound)
+                    listener.onFinished()
                 }
             }
         }
@@ -219,13 +251,15 @@ internal object InkShelfMetronCovers {
      * that the installed source actually lists. This avoids guessing which
      * Invincible, Batman or X-Men volume corresponds to the reader chapters.
      */
+    private data class SeriesLookup(val covers: Map<Int, String>, val uniqueEdition: Boolean = false)
+
     private suspend fun lookupSeriesIssues(
         title: String,
         year: Int?,
         token: String,
         anchorNumber: Int?,
         onPartialCovers: suspend (Map<Int, String>) -> Unit,
-    ): Map<Int, String> {
+    ): SeriesLookup {
         val searchUrl = endpoint("series").newBuilder()
             .addQueryParameter("name", title)
             .apply { if (year != null) addQueryParameter("year_began", year.toString()) }
@@ -234,8 +268,8 @@ internal object InkShelfMetronCovers {
         var nextSeries: HttpUrl? = searchUrl
         var searchPages = 0
         while (nextSeries != null && searchPages < 2) {
-            val page = getJson(nextSeries, token) ?: return emptyMap()
-            val candidates = page.optJSONArray("results") ?: return emptyMap()
+            val page = getJson(nextSeries, token) ?: return SeriesLookup(emptyMap())
+            val candidates = page.optJSONArray("results") ?: return SeriesLookup(emptyMap())
             for (i in 0 until candidates.length()) {
                 val item = candidates.optJSONObject(i) ?: continue
                 val itemTitle = item.optString("series")
@@ -251,9 +285,10 @@ internal object InkShelfMetronCovers {
             nextSeries = next?.toHttpUrlOrNull()
         }
 
-        val seriesId = if (matches.size == 1) {
+        val uniqueEdition = matches.size == 1 && nextSeries == null && year != null
+        val seriesId = if (matches.size == 1 && nextSeries == null) {
             matches.single()
-        } else if (matches.size > 1 && anchorNumber != null) {
+        } else if (matches.size > 1 && nextSeries == null && anchorNumber != null) {
             // Metron supports exact issue-number filters, including the image.
             // Require ONE matching series among the already exact-title matches.
             // A reprint/alternate run that also has this issue remains ambiguous.
@@ -262,8 +297,8 @@ internal object InkShelfMetronCovers {
                 .addQueryParameter("number", anchorNumber.toString())
                 .apply { if (year != null) addQueryParameter("series_year_began", year.toString()) }
                 .build()
-            val anchorPage = getJson(anchorUrl, token) ?: return emptyMap()
-            val issues = anchorPage.optJSONArray("results") ?: return emptyMap()
+            val anchorPage = getJson(anchorUrl, token) ?: return SeriesLookup(emptyMap())
+            val issues = anchorPage.optJSONArray("results") ?: return SeriesLookup(emptyMap())
             val matchingSeries = mutableSetOf<Int>()
             for (i in 0 until issues.length()) {
                 val issue = issues.optJSONObject(i) ?: continue
@@ -278,7 +313,7 @@ internal object InkShelfMetronCovers {
             matchingSeries.singleOrNull()
         } else {
             null
-        } ?: return emptyMap()
+        } ?: return SeriesLookup(emptyMap())
 
         val covers = mutableMapOf<Int, String>()
         var nextUrl: HttpUrl? = endpoint("series", seriesId.toString(), "issue_list")
@@ -304,8 +339,37 @@ internal object InkShelfMetronCovers {
             val next = body.optString("next").takeIf { it.startsWith("https://metron.cloud/api/") }
             nextUrl = next?.toHttpUrlOrNull()
         }
-        return covers
+        return SeriesLookup(covers, uniqueEdition)
     }
+
+    /** Strict, single-issue fallback for long or ambiguous series; same API throttle. */
+    suspend fun exactIssueCover(context: Context, title: String, year: Int, number: Int): String? =
+        withContext(Dispatchers.IO) {
+            val token = configuredToken(context.applicationContext) ?: return@withContext null
+            val url = endpoint("issue").newBuilder()
+                .addQueryParameter("series_name", title)
+                .addQueryParameter("series_year_began", year.toString())
+                .addQueryParameter("number", number.toString())
+                .build()
+            val response = getJson(url, token) ?: return@withContext null
+            if (!response.isNull("next") && response.optString("next").isNotBlank())
+                return@withContext null
+            val rows = response.optJSONArray("results") ?: return@withContext null
+            val matches = buildList<Pair<Int, String>> {
+                for (index in 0 until rows.length()) {
+                    val issue = rows.optJSONObject(index) ?: continue
+                    val series = issue.optJSONObject("series") ?: continue
+                    val suppliedYear = series.optInt("year_began", 0)
+                    if (normalized(seriesTitle(series.optString("name"))) != normalized(seriesTitle(title)) ||
+                        (suppliedYear > 0 && suppliedYear != year) ||
+                        issue.optString("number").trim().toIntOrNull() != number) continue
+                    val id = issue.optInt("id", 0)
+                    val image = issue.optString("image")
+                    if (id > 0 && validImageUrl(image)) add(id to image)
+                }
+            }.distinct()
+            matches.singleOrNull()?.second
+        }
 
     private suspend fun getJson(url: HttpUrl, token: String): JSONObject? {
         callMutex.lock()

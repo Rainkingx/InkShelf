@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -94,9 +96,12 @@ internal fun InkShelf2GuidesScreen(
     val connected = InkShelf2GuidesData.configured(context)
     // Keep artwork loading independent of lazy cards and hero rotation. A
     // single sequential coroutine completes all installed event covers.
-    LaunchedEffect(connected, installed) {
+    LaunchedEffect(connected, installed, chosen?.id) {
         if (connected) {
-            for (guide in installed) {
+            // Prioritise the opened event. Cancel unrelated hero lookups while reading.
+            val wanted = chosen?.let { current -> installed.filter { it.id == current.id } } ?: installed
+            for (guide in wanted) {
+                if (eventCovers.containsKey(guide.id)) continue
                 val url = InkShelf2GuidesData.coverUrl(context, guide)
                 if (url != null) eventCovers = eventCovers + (guide.id to url)
             }
@@ -371,6 +376,13 @@ private fun InkShelf2GuideDetails(
     }
 
     val selected = InkShelf2GuideReadingSelection.issuesForMode(all, essential)
+    // Only batch series with multiple needed covers. One-off tie-ins use one exact request.
+    val multiIssueSeries = remember(selected) {
+        selected.mapNotNull(InkShelf2GuidesData::issueArtworkKey)
+            .groupBy { it.seriesKey }
+            .filterValues { keys -> keys.map { it.number }.distinct().size > 1 }
+            .keys
+    }
     val lastOpened = InkShelf2GuidesData.lastOpenedIssue(context, guide.id)
     val nextIssue = selected.firstOrNull { it.id == lastOpened && it.id.toString() !in readIds && !it.sourceUnavailable }
         ?: selected.firstOrNull { it.id in progress.partialIds && it.id.toString() !in readIds && !it.sourceUnavailable }
@@ -494,7 +506,10 @@ private fun InkShelf2GuideDetails(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    InkShelf2GuideIssueArtwork(issue, progress.issues[issue.id]?.coverUrl, checked)
+                    InkShelf2GuideIssueArtwork(
+                        issue, progress.issues[issue.id]?.coverUrl, checked,
+                        batch = InkShelf2GuidesData.issueArtworkKey(issue)?.seriesKey in multiIssueSeries,
+                    )
                     Icon(
                         Icons.Outlined.CheckCircleOutline,
                         contentDescription = if (checked) "Mark unread in guide" else "Mark read in guide",
@@ -532,18 +547,45 @@ private fun InkShelf2GuideDetails(
 }
 
 
-/** Lazy rows request metadata only while composed; no full-event download or artwork flood. */
+/** Visible/near-visible rows request one coalesced series lookup, with exact fallback. */
 @Composable
-private fun InkShelf2GuideIssueArtwork(issue: InkShelf2GuideIssue, sourceCover: String?, read: Boolean) {
+private fun InkShelf2GuideIssueArtwork(
+    issue: InkShelf2GuideIssue,
+    sourceCover: String?,
+    read: Boolean,
+    batch: Boolean,
+) {
     val context = LocalContext.current
-    var cover by remember(issue, sourceCover) { mutableStateOf(sourceCover) }
-    LaunchedEffect(issue, sourceCover) {
-        if (sourceCover == null) cover = InkShelf2GuidesData.issueCover(context, issue)
+    val key = remember(issue) { InkShelf2GuidesData.issueArtworkKey(issue) }
+    var cover by remember(issue, sourceCover) {
+        mutableStateOf(sourceCover ?: key?.let { InkShelf2GuidesData.cachedIssueCover(context, it) })
+    }
+    var batchFinished by remember(issue, sourceCover, batch) { mutableStateOf(!batch) }
+    DisposableEffect(issue, sourceCover, batch) {
+        var active = true
+        if (cover == null && batch && key != null) {
+            InkShelfMetronCovers.requestIssueCover(
+                context = context,
+                title = key.title + " (" + key.year + ")",
+                issueNumber = key.number,
+                onFinished = { if (active) batchFinished = true },
+                onFound = { url ->
+                    InkShelf2GuidesData.rememberIssueCover(context, key, url)
+                    if (active) cover = url
+                },
+            )
+        } else batchFinished = true
+        onDispose { active = false }
+    }
+    LaunchedEffect(issue, sourceCover, batchFinished) {
+        if (batchFinished && cover == null && key != null) {
+            cover = InkShelf2GuidesData.issueCover(context, issue)
+        }
     }
     InkShelf2IssueArtworkFrame(
         imageUrl = cover,
         title = issue.displayName,
-        fallbackLabel = if (issue.number.equals("Full", true)) "ISSUE" else "#"+issue.number,
+        fallbackLabel = if (issue.number.equals("Full", true)) "ISSUE" else "#" + issue.number,
         read = read,
         modifier = Modifier.size(52.dp, 76.dp),
     )
