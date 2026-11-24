@@ -74,7 +74,8 @@ internal fun InkShelf2GuidesScreen(
 ) {
     val context = LocalContext.current
     var guides by remember { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
-    // Local event cards are immediate. Website metadata is imported on demand.
+    // Display known guides immediately, even if BatCave's event website is
+    // temporarily blocked. Background discovery adds the wider catalogue.
     var batcaveGuides by remember {
         mutableStateOf(InkShelf2BatCaveGuides.featured())
     }
@@ -171,21 +172,8 @@ internal fun InkShelf2GuidesScreen(
         }
     }
 
-    var importRevision by remember { mutableStateOf(0) }
     val selected = chosen
     if (selected != null) {
-        val slug = selected.batcaveSlug
-        val needsImport = remember(selected.id, importRevision) {
-            slug != null && InkShelf2BundledEventOrders.get(slug, 1) == null &&
-                InkShelf2EventMetadataStore.read(context, slug) == null
-        }
-        if (slug != null && needsImport) {
-            InkShelf2EventImportScreen(selected, padding,
-                onBack = { chosen = null },
-                onSaved = { importRevision++ },
-                onProvider = { chosen = null; onMetronSettings() })
-            return
-        }
         InkShelf2GuideDetails(
             guide = selected,
             padding = padding,
@@ -272,12 +260,9 @@ internal fun InkShelf2GuidesScreen(
             )
         }
         item(key = "guides-hero") {
-            val eventHeroes = (listOf(InkShelf2FeaturedGuide("Blood Hunt",
-                batcaveGuides.first { it.batcaveSlug == "blood-hunt" })) + featured)
-                .distinctBy { it.guide.id }
-            if (eventHeroes.isNotEmpty()) {
+            if (featured.isNotEmpty()) {
                 InkShelf2FeaturedGuidesHero(
-                    featured = eventHeroes,
+                    featured = featured,
                     started = started,
                     onOpenGuide = openGuide,
                 )
