@@ -6,7 +6,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Regression coverage for House of M working without BatCave event HTML. */
+/** Regression coverage for offline event reading orders. */
 class InkShelf2BundledEventOrdersTest {
     private val order = InkShelf2BundledEventOrders.get("house-of-m", 1)!!
 
@@ -78,4 +78,33 @@ class InkShelf2BundledEventOrdersTest {
         assertTrue(InkShelf2BundledEventOrders.get("house-of-m", 2)!!.issues.isEmpty())
         assertEquals(null, InkShelf2BundledEventOrders.get("blackest-night", 1))
     }
+
+    @Test
+    fun civilWarOfflineOrderKeepsAll132Positions() {
+        val civilWar = InkShelf2BundledEventOrders.get("civil-war-2006", 1)!!
+        assertEquals(132, civilWar.issues.size)
+        assertEquals((1..132).toList(), civilWar.issues.map { it.position })
+        assertFalse(civilWar.more)
+        assertTrue(InkShelf2BundledEventOrders.get("civil-war-2006", 2)!!.issues.isEmpty())
+        val essential = InkShelf2GuideReadingSelection.issuesForMode(civilWar.issues, true)
+        assertEquals(listOf(7, 8, 19, 51, 52, 84, 113, 114), essential.map { it.position })
+    }
+
+    @Test
+    fun civilWarRetainsOriginalSourceIdentityAndUnavailableEntry() {
+        val civilWar = InkShelf2BundledEventOrders.get("civil-war-2006", 1)!!.issues
+        val first = civilWar.first()
+        assertEquals(1963, first.yearBegan)
+        assertEquals("529", first.number)
+        assertEquals("/6966-the-amazing-spider-man-1963.html", first.batcaveSeriesPath)
+        assertEquals(38796, InkShelf2BundledEventOrders.civilWarChapterId(1))
+        val unavailable = civilWar.single { it.position == 64 }
+        assertEquals(null, unavailable.batcaveIssuePath)
+        assertEquals(null, unavailable.batcaveSeriesPath)
+        assertEquals(null, InkShelf2BundledEventOrders.civilWarChapterId(64))
+        val ids = civilWar.mapNotNull { InkShelf2BundledEventOrders.civilWarChapterId(it.position) }
+        assertEquals(131, ids.size)
+        assertEquals(131, ids.distinct().size)
+    }
+
 }
