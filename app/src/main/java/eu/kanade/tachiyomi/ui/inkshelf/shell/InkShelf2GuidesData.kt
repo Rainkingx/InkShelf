@@ -24,6 +24,7 @@ internal data class InkShelf2Guide(
     val rating: Double,
     val publisher: String = "",
     val imageUrl: String? = null,
+    val batcaveSlug: String? = null,
 )
 
 internal data class InkShelf2GuideIssue(
@@ -36,11 +37,14 @@ internal data class InkShelf2GuideIssue(
     // Metron volume is a volume NUMBER, not a publication year.
     val yearBegan: Int? = null,
     val seriesId: Int? = null,
+    val batcaveSeriesPath: String? = null,
+    val batcaveIssuePath: String? = null,
 ) {
     val isEssential: Boolean get() =
         role.equals("Core Issue", true) || role.equals("Prologue", true) ||
             role.equals("Epilogue", true) || role.isBlank()
-    val displayName: String get() = series + (yearBegan?.let { " ($it)" } ?: "") + " #" + number
+    val displayName: String get() = series + (yearBegan?.let { " ($it)" } ?: "") +
+        (if (number.isBlank()) "" else if (number == "Full") " · One-shot" else " #" + number)
 }
 
 internal data class InkShelf2GuidePage(
