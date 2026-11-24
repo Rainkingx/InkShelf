@@ -30,6 +30,12 @@ internal object InkShelf2BatCaveGuides {
     private val yearPattern = Regex("""\(((?:19|20)\d{2})(?:[-–—].*?)?\)""")
     private val cataloguePath = Regex("""^/event/([a-z0-9-]+)/?$""")
     private val excluded = setOf("marvel", "dc", "epic", "evening", "weekend", "month", "runs", "relaunches")
+    private fun localPath(value: String): String = runCatching {
+        val url = java.net.URI("$BASE/").resolve(value)
+        if (url.scheme == "https" && url.host in setOf("batcave.biz", "www.batcave.biz"))
+            url.path else ""
+    }.getOrDefault("")
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(6, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
@@ -97,7 +103,7 @@ internal object InkShelf2BatCaveGuides {
 
     internal fun parseCatalogue(raw: String): List<InkShelf2Guide> =
         Jsoup.parse(raw, BASE).select("a[href]").mapNotNull { link ->
-            val slug = cataloguePath.matchEntire(link.attr("href").substringBefore('?'))
+            val slug = cataloguePath.matchEntire(localPath(link.attr("href")))
                 ?.groupValues?.get(1) ?: return@mapNotNull null
             if (slug in excluded) return@mapNotNull null
             val text = link.text().trim().replace(Regex("""\s+"""), " ")
@@ -147,7 +153,7 @@ internal object InkShelf2BatCaveGuides {
         )
         val entries = doc.select("li").mapNotNull { li ->
             val target = li.select("a[href]").firstOrNull {
-                issuePath.matchEntire(it.attr("href"))?.groupValues?.get(1) == slug
+                issuePath.matchEntire(localPath(it.attr("href")))?.groupValues?.get(1) == slug
             }
             // BatCave explicitly labels missing items "not on the site yet".
             // Keep their reading-order positions without fabricating links.
@@ -173,11 +179,11 @@ internal object InkShelf2BatCaveGuides {
                     batcaveSeriesPath = null, batcaveIssuePath = null,
                 )
             }
-            val match = issuePath.matchEntire(target.attr("href")) ?: return@mapNotNull null
+            val match = issuePath.matchEntire(localPath(target.attr("href"))) ?: return@mapNotNull null
             val pos = match.groupValues[2].toIntOrNull()?.takeIf { it in 1..10_000 }
                 ?: return@mapNotNull null
             val seriesLink = li.select("a[href]").firstOrNull {
-                seriesPath.matches(it.attr("href").substringBefore('?'))
+                seriesPath.matches(localPath(it.attr("href")))
             } ?: return@mapNotNull null
             // The adjacent series hyperlink is often only a ↗ glyph.
             // The issue's primary anchor carries the *series name* and #number.
@@ -200,13 +206,13 @@ internal object InkShelf2BatCaveGuides {
                 number = number, role = if (normalizedKey(seriesName, number) in essential)
                     "Core Issue" else "Optional tie-in",
                 yearBegan = yearPattern.find(seriesName)?.groupValues?.get(1)?.toIntOrNull(),
-                batcaveSeriesPath = seriesLink.attr("href").substringBefore('?'),
-                batcaveIssuePath = target.attr("href"),
+                batcaveSeriesPath = localPath(seriesLink.attr("href")),
+                batcaveIssuePath = localPath(target.attr("href")),
             )
         }.distinctBy { it.position }.sortedBy { it.position }
         val next = page + 1
         val morePath = Regex("^/event/" + slug + "/list/" + next + "/?$")
-        val more = doc.select("a[href]").any { morePath.matches(it.attr("href")) }
+        val more = doc.select("a[href]").any { morePath.matches(localPath(it.attr("href"))) }
         return InkShelf2GuidePage(entries, more)
     }
 
