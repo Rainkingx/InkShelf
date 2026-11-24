@@ -601,6 +601,78 @@ private fun InkShelf2DetailQuickAction(
     }
 }
 
+/** Shared comic/event detail page. Content providers supply their own issue rows. */
+@Composable
+internal fun InkShelf2DetailPage(
+    imageModel: Any?,
+    title: String,
+    subtitle: String,
+    attribution: String,
+    padding: PaddingValues,
+    onBack: () -> Unit,
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
+        contentPadding = padding,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item {
+            Box(modifier = Modifier.fillMaxWidth().height(285.dp)) {
+                AsyncImage(
+                    model = imageModel,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = 0.65f,
+                )
+                Box(
+                    modifier = Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(listOf(Color.Transparent, InkShelf2Colors.Background)),
+                    ),
+                )
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+                ) {
+                    Icon(Icons.Outlined.ArrowBack, "Back", tint = Color.White)
+                }
+                Row(
+                    modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    AsyncImage(
+                        model = imageModel,
+                        contentDescription = "Cover of $title",
+                        modifier = Modifier.size(100.dp, 140.dp).clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Column(modifier = Modifier.padding(start = 14.dp)) {
+                        Text(
+                            title,
+                            color = Color.White,
+                            fontSize = 25.sp,
+                            lineHeight = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            subtitle,
+                            color = InkShelf2Colors.Muted,
+                            fontSize = 11.sp,
+                        )
+                        Text(
+                            text = attribution,
+                            color = InkShelf2Colors.AccentLight,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+            }
+        }
+        content()
+    }
+}
+
 @Composable
 internal fun InkShelf2DetailsScreen(
     manga: Manga,
@@ -791,64 +863,14 @@ internal fun InkShelf2DetailsScreen(
             textContentColor = InkShelf2Colors.Muted,
         )
     }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
-        contentPadding = padding,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    InkShelf2DetailPage(
+        imageModel = manga,
+        title = manga.title,
+        subtitle = manga.getGenres()?.take(3)?.joinToString(" • ").orEmpty(),
+        attribution = if (sourceName.isNullOrBlank()) "Source not installed" else "Source: $sourceName",
+        padding = padding,
+        onBack = onBack,
     ) {
-        item {
-            Box(modifier = Modifier.fillMaxWidth().height(285.dp)) {
-                AsyncImage(
-                    model = manga,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    alpha = 0.65f,
-                )
-                Box(
-                    modifier = Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(listOf(Color.Transparent, InkShelf2Colors.Background)),
-                    ),
-                )
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-                ) {
-                    Icon(Icons.Outlined.ArrowBack, "Back", tint = Color.White)
-                }
-                Row(
-                    modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    AsyncImage(
-                        model = manga,
-                        contentDescription = "Cover of ${manga.title}",
-                        modifier = Modifier.size(100.dp, 140.dp).clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop,
-                    )
-                    Column(modifier = Modifier.padding(start = 14.dp)) {
-                        Text(
-                            manga.title,
-                            color = Color.White,
-                            fontSize = 25.sp,
-                            lineHeight = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            manga.getGenres()?.take(3)?.joinToString(" • ").orEmpty(),
-                            color = InkShelf2Colors.Muted,
-                            fontSize = 11.sp,
-                        )
-                        Text(
-                            text = if (sourceName.isNullOrBlank()) "Source not installed"
-                                else "Source: $sourceName",
-                            color = InkShelf2Colors.AccentLight,
-                            fontSize = 11.sp,
-                        )
-                    }
-                }
-            }
-        }
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 // Three compact icon actions replace the former stacked pill
@@ -1164,6 +1186,31 @@ internal fun ComicCoverCard(
     showTitle: Boolean = true,
     libraryShape: Boolean = false,
 ) {
+    InkShelf2CoverCard(
+        imageModel = manga,
+        title = manga.title,
+        onClick = onClick,
+        percent = percent,
+        percentLabel = percentLabel,
+        badgeText = badgeText,
+        width = width,
+        showTitle = showTitle,
+        libraryShape = libraryShape,
+    )
+}
+
+@Composable
+internal fun InkShelf2CoverCard(
+    imageModel: Any?,
+    title: String,
+    onClick: () -> Unit,
+    percent: Int? = null,
+    percentLabel: String = "",
+    badgeText: String? = null,
+    width: androidx.compose.ui.unit.Dp? = 106.dp,
+    showTitle: Boolean = true,
+    libraryShape: Boolean = false,
+) {
     Column(
         modifier = (if (width == null) Modifier.fillMaxWidth() else Modifier.width(width))
             .clickable(onClick = onClick),
@@ -1184,8 +1231,8 @@ internal fun ComicCoverCard(
                 ),
         ) {
             AsyncImage(
-                model = manga,
-                contentDescription = "Open ${manga.title}",
+                model = imageModel,
+                contentDescription = "Open $title",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
@@ -1227,7 +1274,7 @@ internal fun ComicCoverCard(
         }
         if (showTitle) {
         Text(
-            manga.title,
+            title,
             color = InkShelf2Colors.Text,
             fontSize = 11.sp,
             maxLines = 2,

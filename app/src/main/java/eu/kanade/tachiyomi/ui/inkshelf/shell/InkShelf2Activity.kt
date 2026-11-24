@@ -1104,6 +1104,15 @@ class InkShelf2Activity : AppCompatActivity() {
                                         )
                                         if (reading != null) {
                                             openChapter(reading.manga, reading.chapter)
+                                            val slug = requestedIssue.batcaveIssuePath
+                                                ?.removePrefix("/event/")?.substringBefore("/")
+                                            InkShelf2BatCaveGuides.verified()
+                                                .firstOrNull { it.batcaveSlug == slug }
+                                                ?.let { guide ->
+                                                    InkShelf2GuidesData.start(
+                                                        applicationContext, guide.id, requestedIssue.id,
+                                                    )
+                                                }
                                         } else {
                                             guideReadError =
                                                 "Could not match " + requestedIssue.displayName +

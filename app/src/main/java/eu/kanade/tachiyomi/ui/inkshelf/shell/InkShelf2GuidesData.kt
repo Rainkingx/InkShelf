@@ -392,17 +392,29 @@ internal object InkShelf2GuidesData {
         return updated
     }
 
-    fun startedGuides(context: Context): Set<Int> =
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getStringSet("started", emptySet())?.mapNotNull(String::toIntOrNull)?.toSet().orEmpty()
-
-    fun start(context: Context, guideId: Int) {
+    fun startedGuides(context: Context): Set<Int> {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putStringSet(
-            "started",
-            (startedGuides(context) + guideId).map(Int::toString).toSet(),
-        ).apply()
+        val opened = prefs.getStringSet("started_reader_v2", emptySet())
+            ?.mapNotNull(String::toIntOrNull)?.toSet().orEmpty()
+        // Previous builds marked a guide started merely by viewing it.
+        // Preserve actual marked issues, not the unreliable viewed flag.
+        val marked = InkShelf2BatCaveGuides.verified().filter {
+            readIds(context, it.id).isNotEmpty()
+        }.map { it.id }
+        return opened + marked
     }
+
+    fun start(context: Context, guideId: Int, issueId: Int? = null) {
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val opened = prefs.getStringSet("started_reader_v2", emptySet())?.toSet().orEmpty()
+        val edit = prefs.edit().putStringSet("started_reader_v2", opened + guideId.toString())
+        if (issueId != null) edit.putInt("last_opened_" + guideId, issueId)
+        edit.apply()
+    }
+
+    fun lastOpenedIssue(context: Context, guideId: Int): Int? =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getInt("last_opened_" + guideId, 0).takeIf { it > 0 }
 
     private fun parseLists(json: String): List<InkShelf2Guide> = try {
         val rows = if (json.trim().startsWith("[")) JSONArray(json)

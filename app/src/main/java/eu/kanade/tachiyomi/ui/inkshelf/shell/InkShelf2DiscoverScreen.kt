@@ -889,26 +889,13 @@ private fun DiscoverShelf(comics: List<Manga>, onOpen: (Manga) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(comics, key = { "${it.source}:${it.url}" }) { comic ->
-            Column(
-                modifier = Modifier.width(105.dp).clickable { onOpen(comic) },
-            ) {
-                AsyncImage(
-                    model = comic,
-                    contentDescription = comic.title,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(0.71f)
-                        .clip(RoundedCornerShape(9.dp)),
-                    contentScale = ContentScale.Crop,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    comic.title,
-                    color = InkShelf2Colors.Text,
-                    fontSize = 11.sp,
-                    lineHeight = 13.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            InkShelf2CoverCard(
+                imageModel = comic,
+                title = comic.title,
+                onClick = { onOpen(comic) },
+                width = 105.dp,
+                libraryShape = true,
+            )
         }
     }
 }
