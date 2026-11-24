@@ -330,8 +330,8 @@ class InkShelf2Activity : AppCompatActivity() {
                                     throw cancel
                                 } catch (_: Exception) { null }
                             }
-                            val resume = savedTarget?.takeIf { !it.chapter.read && (it.chapter.last_page_read > 0 || it.chapter.pages_left > 0) }
-                                ?: offlineTarget ?: savedTarget
+                            // The pinned source owns the saved page; offline duplicates are fallback only.
+                            val resume = savedTarget ?: offlineTarget
                             val reading = resume?.let { InkShelf2GuideAutoReader.Resolved(it.manga, it.chapter) }
                                 ?: InkShelf2GuideAutoReader.resolve(
                                 applicationContext,

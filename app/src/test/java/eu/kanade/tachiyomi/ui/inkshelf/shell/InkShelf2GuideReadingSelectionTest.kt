@@ -79,6 +79,36 @@ class InkShelf2GuideReadingSelectionTest {
     }
 
     @Test
+    fun eventRereadResumesSavedPageDespiteOldReadFlag() {
+        val chapter = eu.kanade.tachiyomi.data.database.models.Chapter.create().apply {
+            read = true
+            last_page_read = 5
+            pages_left = 17
+        }
+        assertEquals(false to true, InkShelf2GuideProgress.chapterStatus(chapter, listOf(chapter)))
+        assertEquals(5, eu.kanade.tachiyomi.ui.reader.InkShelf2EventPageResume.page(chapter, 22))
+        assertEquals(3, eu.kanade.tachiyomi.ui.reader.InkShelf2EventPageResume.page(chapter, 4))
+        // A read flag on the final double-page spread remains completion.
+        chapter.last_page_read = 20
+        chapter.pages_left = 2
+        assertEquals(true to false, InkShelf2GuideProgress.chapterStatus(chapter, listOf(chapter)))
+        assertEquals(0, eu.kanade.tachiyomi.ui.reader.InkShelf2EventPageResume.page(chapter, 22))
+    }
+
+    @Test
+    fun eventPageZeroAndUnreadSavedPageAreHandled() {
+        val chapter = eu.kanade.tachiyomi.data.database.models.Chapter.create().apply {
+            last_page_read = 0
+            pages_left = 22
+        }
+        assertEquals(false to true, InkShelf2GuideProgress.chapterStatus(chapter, listOf(chapter)))
+        assertEquals(0, eu.kanade.tachiyomi.ui.reader.InkShelf2EventPageResume.page(chapter, 22))
+        chapter.last_page_read = 8
+        chapter.pages_left = 14
+        assertEquals(8, eu.kanade.tachiyomi.ui.reader.InkShelf2EventPageResume.page(chapter, 22))
+    }
+
+    @Test
     fun startAndContinueUseFirstUnreadThenAllowRereading() {
         val all = listOf(issue(1, 1, "Core Issue"), issue(2, 2, "Core Issue"))
         assertEquals(1, InkShelf2GuideReadingSelection.next(all, emptySet())?.id)

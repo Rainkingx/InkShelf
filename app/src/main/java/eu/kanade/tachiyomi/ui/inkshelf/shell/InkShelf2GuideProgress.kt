@@ -5,6 +5,7 @@ import eu.kanade.tachiyomi.data.database.DatabaseHelper
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.ui.manga.InkShelfIssueMetadata
+import eu.kanade.tachiyomi.ui.reader.InkShelf2EventPageResume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
@@ -18,6 +19,9 @@ internal object InkShelf2GuideProgress {
         val partial: Boolean,
         val coverUrl: String?,
         val targets: List<Target> = emptyList(),
+        // A verified grouped entry may resume, but must not count as completion
+        // or an individually downloadable issue.
+        val boundTarget: Target? = null,
     )
     data class EventState(val issues: Map<Int, IssueState> = emptyMap()) {
         val readIds: Set<String> get() = issues.filterValues { it.read }.keys.map(Int::toString).toSet()
@@ -60,14 +64,18 @@ internal object InkShelf2GuideProgress {
                     val candidates = mutableListOf<Chapter>()
                     val linked = bindings[guideId]?.get(issue.id)
                     var linkedChapter: Chapter? = null
+                    var boundChapter: Chapter? = null
                     if (linked != null) {
                         val found = chapters[linked.first].orEmpty().firstOrNull { it.id == linked.second }
                         // Verify the chapter is still the exact issue, and never infer individual
                         // progress from a multi-issue grouped chapter.
                         val exact = InkShelf2GuideChapterFinder.find(issue, chapters[linked.first].orEmpty())
-                        if (found != null && exact?.grouped == false && exact.chapter.id == found.id) {
-                            candidates += found
-                            linkedChapter = found
+                        if (found != null && exact != null && exact.chapter.id == found.id) {
+                            boundChapter = found
+                            if (!exact.grouped) {
+                                candidates += found
+                                linkedChapter = found
+                            }
                         }
                     }
                     byTitle[InkShelf2GuideAutoMatch.key(issue.series)].orEmpty()
@@ -81,11 +89,17 @@ internal object InkShelf2GuideProgress {
                     // A finished duplicate must never advance an unfinished source copy.
                     // Without a binding, prefer unfinished reading progress over an
                     // inferred completion from another edition-matched library copy.
-                    val status = chapterStatus(linkedChapter, valid)
-                    if (valid.isEmpty()) null else issue.id to IssueState(
+                    val bound = boundChapter?.let { chapter ->
+                        chapter.manga_id?.let(knownManga::get)?.let { manga -> Target(manga, chapter) }
+                    }
+                    val status = if (linkedChapter == null && bound != null && InkShelf2EventPageResume.isPartial(bound.chapter))
+                        false to true
+                    else chapterStatus(linkedChapter, valid)
+                    if (valid.isEmpty() && bound == null) null else issue.id to IssueState(
                         read = status.first,
                         partial = status.second,
                         coverUrl = valid.firstNotNullOfOrNull { InkShelfIssueMetadata.from(it).coverUrl },
+                        boundTarget = bound,
                         targets = valid.mapNotNull { chapter ->
                             val manga = chapter.manga_id?.let(knownManga::get) ?: return@mapNotNull null
                             Target(manga, chapter)
@@ -98,7 +112,10 @@ internal object InkShelf2GuideProgress {
     internal fun chapterStatus(linked: Chapter?, candidates: List<Chapter>): Pair<Boolean, Boolean> {
         fun partial(chapter: Chapter) =
             !chapter.read && (chapter.last_page_read > 0 || chapter.pages_left > 0)
-        if (linked != null) return linked.read to partial(linked)
+        if (linked != null) {
+            val unfinished = InkShelf2EventPageResume.isPartial(linked)
+            return (linked.read && !unfinished) to unfinished
+        }
         val unfinished = candidates.any(::partial)
         return (candidates.any { it.read } && !unfinished) to unfinished
     }
@@ -112,14 +129,15 @@ internal object InkShelf2GuideProgress {
         enabledSourceIds: Set<Long>,
     ): Target? {
         val linked = InkShelf2GuidesData.matchedChapter(context, guideId, issueId)
-        val candidates = state.issues[issueId]?.targets.orEmpty()
-            .filter { it.manga.source in enabledSourceIds }
-        val exact = candidates.firstOrNull { it.manga.id == linked?.first && it.chapter.id == linked?.second }
-        fun partial(target: Target) = !target.chapter.read &&
-            (target.chapter.last_page_read > 0 || target.chapter.pages_left > 0)
-        return exact?.takeIf(::partial)
-            ?: candidates.filter(::partial).maxByOrNull { it.chapter.last_page_read }
-            ?: exact
+        val issue = state.issues[issueId] ?: return null
+        val candidates = issue.targets.filter { it.manga.source in enabledSourceIds }
+        val exact = (listOfNotNull(issue.boundTarget) + candidates).firstOrNull {
+            it.manga.source in enabledSourceIds && it.manga.id == linked?.first && it.chapter.id == linked?.second
+        }
+        // Never switch to an alternate copy merely because it was downloaded
+        // or has a later page. A saved page belongs to its original chapter.
+        return exact ?: candidates.filter { !it.chapter.read && InkShelf2EventPageResume.isPartial(it.chapter) }
+            .maxByOrNull { it.chapter.last_page_read }
     }
 
     fun effectiveRead(context: Context, guideId: Int, state: EventState): Set<String> =

@@ -172,7 +172,9 @@ class ReaderViewModel(
             .filterNotNull()
             .onEach { currentChapter ->
                 chapterId = currentChapter.chapter.id!!
-                if (secondRun || !currentChapter.chapter.read) {
+                // Event startup already selects and clamps its page after loading.
+                // Do not overwrite that page in this asynchronous state observer.
+                if (!eventOnly && (secondRun || !currentChapter.chapter.read)) {
                     currentChapter.requestedPage = currentChapter.chapter.last_page_read
                 }
                 secondRun = true
@@ -399,6 +401,9 @@ class ReaderViewModel(
         chapter: ReaderChapter,
     ): ViewerChapters {
         loader.loadChapter(chapter)
+        if (eventOnly) {
+            chapter.requestedPage = InkShelf2EventPageResume.page(chapter.chapter, chapter.pages?.size ?: 0)
+        }
 
         val chapterPos = chapterList.indexOf(chapter)
         val newChapters =
