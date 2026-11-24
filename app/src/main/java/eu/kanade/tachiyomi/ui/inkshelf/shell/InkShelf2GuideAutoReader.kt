@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.content.Context
+import android.widget.Toast
+import eu.kanade.tachiyomi.data.database.DatabaseHelper
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.source.CatalogueSource
@@ -8,6 +10,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 /**
  * Opens event issues through the installed J2K extension. All UI stays on the
@@ -33,6 +37,52 @@ internal object InkShelf2GuideAutoReader {
             ?: "/" + url.substringBefore('?').trimStart('/')
     }
 
+    /**
+     * Probe the existing source API, not a new page scraper. Persist only a
+     * successful direct chapter in an isolated non-favourite guide record so
+     * the canonical series, library entries and reading progress stay intact.
+     */
+    private suspend fun resolveDirectPilot(
+        source: CatalogueSource,
+        issue: InkShelf2GuideIssue,
+    ): Resolved? {
+        val path = issue.batcaveIssuePath ?: return null
+        val chapter = Chapter.create().apply {
+            url = path
+            name = "${issue.series} #${issue.number}"
+            chapter_number = issue.number.toFloatOrNull() ?: -1f
+            date_upload = 0L
+            date_fetch = System.currentTimeMillis()
+            source_order = 0
+        }
+        return try {
+            val readable = withTimeoutOrNull(15_000L) {
+                source.getPageList(chapter).isNotEmpty()
+            } ?: false
+            if (!readable) return null
+
+            val database: DatabaseHelper = Injekt.get()
+            val manga = database.getManga(path, source.id).executeAsBlocking()
+                ?: Manga.create(path, "Excalibur #13 (House of M guide)", source.id).apply {
+                    favorite = false
+                    initialized = true
+                    genre = "Comic"
+                    id = database.insertManga(this).executeAsBlocking().insertedId()
+                }
+            val mangaId = manga.id ?: return null
+            val saved = database.getChapter(path, mangaId).executeAsBlocking()
+                ?: chapter.apply {
+                    manga_id = mangaId
+                    id = database.insertChapter(this).executeAsBlocking().insertedId()
+                }
+            if (saved.id != null) Resolved(manga, saved) else null
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     suspend fun resolve(
         context: Context,
         engine: InkShelf2SourcesEngine,
@@ -49,6 +99,24 @@ internal object InkShelf2GuideAutoReader {
             else InkShelf2GuidesData.resolveIssueEdition(context, requested)
         val preferred = sources.firstOrNull {
             it.name.contains("batcave", ignoreCase = true)
+        }
+        // Pilot only: the first event-reader link was confirmed on-device.
+        // Other bundled positions are not verified URL-to-issue mappings.
+        // Keep all other guide issues on the existing matching path.
+        if (preferred != null && issue.position == 1 &&
+            issue.batcaveIssuePath == "/event/house-of-m/1" &&
+            issue.series.equals("Excalibur", ignoreCase = true) && issue.number == "13"
+        ) {
+            val direct = resolveDirectPilot(preferred, issue)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context.applicationContext,
+                    if (direct != null) "Guide: direct URL opened"
+                    else "Guide: direct URL unavailable; using existing match",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+            if (direct != null) return@withContext direct
         }
         val store = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val cacheKey = key(issue)
