@@ -18,7 +18,9 @@ internal object InkShelf2GuideReadingSelection {
     ): InkShelf2GuideIssue? {
         val readable = issues.sortedBy { it.position }.filterNot { it.sourceUnavailable }
         val unread = readable.filter { it.id.toString() !in readIds }
-        return unread.firstOrNull { it.id == lastOpened && it.id in partialIds }
+        // Even page zero or a reader exited before its first page was saved
+        // is a legitimate unfinished session; don't jump to a later tie-in.
+        return unread.firstOrNull { it.id == lastOpened }
             ?: unread.firstOrNull { it.id in partialIds }
             ?: unread.firstOrNull()
             ?: readable.firstOrNull()

@@ -49,6 +49,36 @@ class InkShelf2GuideReadingSelectionTest {
     }
 
     @Test
+    fun continueKeepsLastOpenedUnreadIssueEvenBeforePageProgressIsSaved() {
+        val first = issue(1, 1, "Core Issue")
+        val second = issue(2, 2, "Optional tie-in")
+        val all = listOf(first, second)
+        assertEquals(1, InkShelf2GuideReadingSelection.next(all, emptySet(), 1, setOf(2))?.id)
+        assertEquals(1, InkShelf2GuideReadingSelection.next(all, emptySet(), 1)?.id)
+        assertEquals(2, InkShelf2GuideReadingSelection.next(all, setOf("1"), 1)?.id)
+    }
+
+    @Test
+    fun boundUnfinishedCopyWinsOverFinishedDuplicate() {
+        val partial = eu.kanade.tachiyomi.data.database.models.Chapter.create().apply {
+            id = 1L
+            last_page_read = 4
+            pages_left = 18
+        }
+        val finished = eu.kanade.tachiyomi.data.database.models.Chapter.create().apply {
+            id = 2L
+            read = true
+        }
+        assertEquals(false to true, InkShelf2GuideProgress.chapterStatus(partial, listOf(partial, finished)))
+        assertEquals(false to true, InkShelf2GuideProgress.chapterStatus(null, listOf(partial, finished)))
+        partial.last_page_read = 0
+        partial.pages_left = 0
+        assertEquals(false to false, InkShelf2GuideProgress.chapterStatus(partial, listOf(partial, finished)))
+        partial.read = true
+        assertEquals(true to false, InkShelf2GuideProgress.chapterStatus(partial, listOf(partial, finished)))
+    }
+
+    @Test
     fun startAndContinueUseFirstUnreadThenAllowRereading() {
         val all = listOf(issue(1, 1, "Core Issue"), issue(2, 2, "Core Issue"))
         assertEquals(1, InkShelf2GuideReadingSelection.next(all, emptySet())?.id)

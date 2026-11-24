@@ -59,13 +59,16 @@ internal object InkShelf2GuideProgress {
                 EventState(issues.mapNotNull { issue ->
                     val candidates = mutableListOf<Chapter>()
                     val linked = bindings[guideId]?.get(issue.id)
+                    var linkedChapter: Chapter? = null
                     if (linked != null) {
                         val found = chapters[linked.first].orEmpty().firstOrNull { it.id == linked.second }
                         // Verify the chapter is still the exact issue, and never infer individual
                         // progress from a multi-issue grouped chapter.
                         val exact = InkShelf2GuideChapterFinder.find(issue, chapters[linked.first].orEmpty())
-                        if (found != null && exact?.grouped == false && exact.chapter.id == found.id)
+                        if (found != null && exact?.grouped == false && exact.chapter.id == found.id) {
                             candidates += found
+                            linkedChapter = found
+                        }
                     }
                     byTitle[InkShelf2GuideAutoMatch.key(issue.series)].orEmpty()
                         .filter { InkShelf2GuideAutoMatch.rank(issue, it.title) == 3 }
@@ -74,9 +77,14 @@ internal object InkShelf2GuideProgress {
                             if (exact != null && !exact.grouped) candidates += exact.chapter
                         }
                     val valid = candidates.distinctBy { it.id }
+                    // An explicitly opened chapter is authoritative for this event.
+                    // A finished duplicate must never advance an unfinished source copy.
+                    // Without a binding, prefer unfinished reading progress over an
+                    // inferred completion from another edition-matched library copy.
+                    val status = chapterStatus(linkedChapter, valid)
                     if (valid.isEmpty()) null else issue.id to IssueState(
-                        read = valid.any { it.read },
-                        partial = valid.any { !it.read && (it.last_page_read > 0 || it.pages_left > 0) },
+                        read = status.first,
+                        partial = status.second,
                         coverUrl = valid.firstNotNullOfOrNull { InkShelfIssueMetadata.from(it).coverUrl },
                         targets = valid.mapNotNull { chapter ->
                             val manga = chapter.manga_id?.let(knownManga::get) ?: return@mapNotNull null
@@ -86,6 +94,14 @@ internal object InkShelf2GuideProgress {
                 }.toMap())
             }
         }
+
+    internal fun chapterStatus(linked: Chapter?, candidates: List<Chapter>): Pair<Boolean, Boolean> {
+        fun partial(chapter: Chapter) =
+            !chapter.read && (chapter.last_page_read > 0 || chapter.pages_left > 0)
+        if (linked != null) return linked.read to partial(linked)
+        val unfinished = candidates.any(::partial)
+        return (candidates.any { it.read } && !unfinished) to unfinished
+    }
 
     /** Prefer the previously read source to preserve its saved page. */
     fun resumeTarget(
