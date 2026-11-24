@@ -113,21 +113,65 @@ internal object InkShelf2BatCaveGuides {
         val url = if (page == 1) "$BASE/event/$slug/"
             else "$BASE/event/$slug/list/$page/"
         val raw = html(context, url) ?: return InkShelf2GuidePage(emptyList(), false)
-        return parseIssues(raw, slug, page)
+        // Essential entries can occur on later pages, but the short path is
+        // published only on page one. Carry its reference into page two etc.
+        val firstPage = if (page > 1) html(context, "$BASE/event/$slug/") else null
+        return parseIssues(raw, slug, page, firstPage)
     }
 
-    internal fun parseIssues(raw: String, slug: String, page: Int): InkShelf2GuidePage {
+    suspend fun coverUrl(context: Context, slug: String): String? {
+        if (!validSlug.matches(slug)) return null
+        val raw = html(context, "$BASE/event/$slug/") ?: return null
+        val doc = Jsoup.parse(raw, BASE)
+        val candidate = doc.selectFirst("meta[property=og:image]")?.attr("content")
+            ?.takeIf { it.isNotBlank() }
+            ?: doc.selectFirst("main img[src], article img[src]")?.absUrl("src")
+        val uri = runCatching { java.net.URI(candidate) }.getOrNull() ?: return null
+        return candidate?.takeIf {
+            uri.scheme == "https" && uri.host in setOf(
+                "img.batcave.biz", "batcave.biz", "www.batcave.biz")
+        }
+    }
+
+    internal fun parseIssues(
+        raw: String, slug: String, page: Int, firstPageHtml: String? = null,
+    ): InkShelf2GuidePage {
         if (!validSlug.matches(slug)) return InkShelf2GuidePage(emptyList(), false)
         val doc = Jsoup.parse(raw, BASE)
+        val essentialDoc = if (firstPageHtml != null) Jsoup.parse(firstPageHtml, BASE) else doc
         val essential = shortPathKeys(
-            doc.select("h1,h2,h3").firstOrNull {
+            essentialDoc.select("h1,h2,h3").firstOrNull {
                 it.text().contains("Start here: the short path", true)
             },
         )
         val entries = doc.select("li").mapNotNull { li ->
             val target = li.select("a[href]").firstOrNull {
                 issuePath.matchEntire(it.attr("href"))?.groupValues?.get(1) == slug
-            } ?: return@mapNotNull null
+            }
+            // BatCave explicitly labels missing items "not on the site yet".
+            // Keep their reading-order positions without fabricating links.
+            if (target == null) {
+                val missing = li.text().trim()
+                if (!missing.contains("not on the site yet", ignoreCase = true))
+                    return@mapNotNull null
+                val positionMatch = Regex("""^(\d{1,5})\s+(.+)$""").find(missing)
+                    ?: return@mapNotNull null
+                val pos = positionMatch.groupValues[1].toIntOrNull()
+                    ?.takeIf { it in 1..10_000 } ?: return@mapNotNull null
+                val clean = positionMatch.groupValues[2]
+                    .replace(Regex("""(?i)\s+not on the site yet\s*$"""), "")
+                val num = issueNumber.findAll(clean).lastOrNull()?.groupValues?.get(1)
+                    ?: return@mapNotNull null
+                val title = clean.substringBeforeLast('#').trim()
+                if (title.length !in 3..140) return@mapNotNull null
+                return@mapNotNull InkShelf2GuideIssue(
+                    id = pos, position = pos, series = title, volume = null,
+                    number = num,
+                    role = if (normalizedKey(title, num) in essential)
+                        "Core Issue" else "Optional tie-in",
+                    batcaveSeriesPath = null, batcaveIssuePath = null,
+                )
+            }
             val match = issuePath.matchEntire(target.attr("href")) ?: return@mapNotNull null
             val pos = match.groupValues[2].toIntOrNull()?.takeIf { it in 1..10_000 }
                 ?: return@mapNotNull null
