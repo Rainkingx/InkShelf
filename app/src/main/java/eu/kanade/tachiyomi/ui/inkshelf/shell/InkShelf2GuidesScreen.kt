@@ -185,7 +185,20 @@ internal fun InkShelf2GuidesScreen(
         return
     }
 
+    // Prefer the verified Civil War index without merging sequel events
+    // or migrating progress by position from a different reading order.
+    val civilWar = batcaveGuides.firstOrNull { it.batcaveSlug == "civil-war-2006" }
+    fun primaryGuide(item: InkShelf2Guide): InkShelf2Guide {
+        val name = item.name.trim().lowercase(java.util.Locale.ROOT)
+            .replace(Regex("""[^a-z0-9]+"""), " ").trim()
+        return if (civilWar != null && item.batcaveSlug == null &&
+            name in setOf("civil war", "civil war 2006", "marvel civil war",
+                "marvel civil war 2006", "civil war reading order",
+                "marvel civil war reading order")
+        ) civilWar else item
+    }
     val catalogue = (batcaveGuides + guides + focused + featured.map { it.guide } + remoteResults)
+        .map(::primaryGuide)
         .distinctBy { it.id }
     val curated = InkShelf2GuideFocus.choose(catalogue)
     val modern = InkShelf2GuideFocus.choose(catalogue, InkShelf2GuideFocus.Era.MODERN)
@@ -226,9 +239,10 @@ internal fun InkShelf2GuidesScreen(
         )
     val browsingResults = finding.isNotBlank() || guideFilter != "All"
     val openGuide: (InkShelf2Guide) -> Unit = { item ->
-        InkShelf2GuidesData.start(context, item.id)
+        val primary = primaryGuide(item)
+        InkShelf2GuidesData.start(context, primary.id)
         started = InkShelf2GuidesData.startedGuides(context)
-        chosen = item
+        chosen = primary
     }
 
     LazyColumn(
