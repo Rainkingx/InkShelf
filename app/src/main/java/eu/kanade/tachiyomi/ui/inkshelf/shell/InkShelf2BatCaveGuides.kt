@@ -134,10 +134,22 @@ internal object InkShelf2BatCaveGuides {
             val seriesLink = li.select("a[href]").firstOrNull {
                 seriesPath.matches(it.attr("href").substringBefore('?'))
             } ?: return@mapNotNull null
-            val seriesName = seriesLink.text().trim().takeIf { it.length in 3..140 }
-                ?: return@mapNotNull null
-            val number = issueNumber.findAll(li.text()).lastOrNull()?.groupValues?.get(1)
-                ?: if (li.text().contains("Full", true)) "Full" else ""
+            // The adjacent series hyperlink is often only a ↗ glyph.
+            // The issue's primary anchor carries the *series name* and #number.
+            val rawLabel = eventAnchor.text().trim()
+                .replace(Regex("^\\s*" + pos + "\\s*"), "").trim()
+            val originalTitle = seriesLink.text().trim()
+            val withoutIssue = rawLabel
+                .replace(Regex("""(?i)\s*(?:Issue\s*)?#\s*\d{1,4}(?:\.\d+)?\s*$"""), "")
+                .replace(Regex("""(?i)\s*Full\s*$"""), "").trim()
+            val namedEdition = Regex("""^.+?\((?:19|20)\d{2}[^)]*\)""")
+                .find(withoutIssue)?.value
+            val seriesName = if (originalTitle.length in 3..140 &&
+                originalTitle != "Open series" && originalTitle != "View series")
+                originalTitle else namedEdition ?: withoutIssue
+            if (seriesName.length !in 3..140) return@mapNotNull null
+            val number = issueNumber.findAll(rawLabel).lastOrNull()?.groupValues?.get(1)
+                ?: if (rawLabel.contains("Full", true)) "Full" else ""
             InkShelf2GuideIssue(
                 id = pos, position = pos, series = seriesName, volume = null,
                 number = number, role = if (normalizedKey(seriesName, number) in essential)
