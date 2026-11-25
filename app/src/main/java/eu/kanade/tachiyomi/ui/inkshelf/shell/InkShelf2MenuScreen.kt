@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PersonOutline
@@ -58,6 +59,7 @@ internal fun InkShelf2MenuScreen(
     onMetron: () -> Unit,
     onThemes: () -> Unit,
     extensionUpdateCount: Int,
+    onNotifications: () -> Unit = {},
     onProfile: () -> Unit,
     onImportComics: () -> Unit,
     onBackupTools: () -> Unit,
@@ -87,6 +89,8 @@ internal fun InkShelf2MenuScreen(
         }
         item {
             MenuSection("YOUR INKSHELF") {
+                MenuEntry("Notifications", if (extensionUpdateCount > 0) "$extensionUpdateCount extension update(s) available" else "No extension updates",
+                    Icons.Outlined.NotificationsNone, onNotifications)
                 MenuEntry(
                     "Your Profile & Guided Setup",
                     if (profileName.isBlank()) "Choose a name and personalise your library"

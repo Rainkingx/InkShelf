@@ -1351,6 +1351,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         onMetron = { metronOpen = true },
                         onThemes = { themesOpen = true },
                         extensionUpdateCount = extensionUpdates.size,
+                        onNotifications = { notificationsOpen = true },
                         profileName = profileName,
                         onProfile = {
                             welcomeStep = 0

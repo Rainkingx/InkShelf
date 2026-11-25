@@ -508,6 +508,19 @@ internal object InkShelf2GuidesData {
             }
         }
 
+    /** Remove only local binding/mark overrides for replaced slots; never touch the chapter database. */
+    fun clearReplacementMarks(context: Context, guideId: Int, ids: Set<Int>) {
+        if (ids.isEmpty()) return
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val strings = ids.map(Int::toString).toSet()
+        val edit = prefs.edit()
+        ids.forEach { edit.remove("matched_" + guideId + "_" + it) }
+        edit.putStringSet("read_" + guideId, readIds(context, guideId) - strings)
+            .putStringSet("manual_unread_" + guideId, manualUnreadIds(context, guideId) - strings)
+        if (lastOpenedIssue(context, guideId) in ids) edit.remove("last_opened_" + guideId)
+        edit.apply()
+    }
+
     fun clearReadingMarks(context: Context, guideId: Int) {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val opened = prefs.getStringSet("started_reader_v2", emptySet())?.toSet().orEmpty()

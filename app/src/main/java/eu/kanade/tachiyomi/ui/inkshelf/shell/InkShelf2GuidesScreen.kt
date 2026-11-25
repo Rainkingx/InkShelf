@@ -487,7 +487,8 @@ private fun InkShelf2GuideDetails(
     var hasMore by remember(guide.id) { mutableStateOf(true) }
     var loading by remember(guide.id) { mutableStateOf(false) }
     var essential by remember(guide.id) { mutableStateOf(InkShelf2GuidesData.essentialMode(context, guide.id)) }
-    var description by remember(guide.id) { mutableStateOf<String?>(guide.description.takeIf { it.isNotBlank() }) }
+    val description = guide.description.takeIf { it.isNotBlank() }
+        ?: InkShelf2EventSynopses.get(guide.batcaveSlug)
     var editOrder by remember(guide.id) { mutableStateOf(false) }
     if (editOrder) InkShelf2EditEventDialog(guide, onDismiss = { editOrder = false }, onChanged = {
         all = InkShelf2PersonalEvents.order(context, guide)
@@ -572,19 +573,6 @@ private fun InkShelf2GuideDetails(
         hasMore = false
         loading = false
     }
-    LaunchedEffect(guide.batcaveSlug) {
-        val slug = guide.batcaveSlug
-        if (slug != null) {
-            try {
-                description = InkShelf2BatCaveGuides.synopsis(context, slug)
-            } catch (cancel: CancellationException) {
-                throw cancel
-            } catch (_: Exception) {
-                description = null
-            }
-        }
-    }
-
     val selected = InkShelf2GuideReadingSelection.issuesForMode(all, essential)
     val visibleIssues = if (hideRead) selected.filterNot { it.id.toString() in readIds } else selected
     // Only batch series with multiple needed covers. One-off tie-ins use one exact request.
@@ -704,7 +692,6 @@ private fun InkShelf2GuideDetails(
                     else description ?: "Explore this event in its intended reading order. " +
                         "Choose the main storyline or every available tie-in, then start reading.",
                     color = InkShelf2Colors.Muted, fontSize = 13.sp, lineHeight = 19.sp,
-                    maxLines = 3, overflow = TextOverflow.Ellipsis,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     InkShelf2ActionButton(
@@ -1015,11 +1002,7 @@ private fun InkShelf2EventTimelineRow(
                 Text(guide.publisher + " · " + order.size + " issues",
                     color = InkShelf2Colors.Muted, fontSize = 11.sp)
                 if (isNew) {
-                    val accent = InkShelf2Colors.Accent.copy(alpha = 1f)
-                    Text("NEW", modifier = Modifier.background(accent, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                        color = if (accent.luminance() > 0.179f) Color.Black else Color.White,
-                        fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                    Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(InkShelf2Colors.Accent))
                 }
                 if (completed > 0 && path.isNotEmpty()) {
                     Text("$completed of ${path.size} read", color = InkShelf2Colors.AccentLight, fontSize = 11.sp)

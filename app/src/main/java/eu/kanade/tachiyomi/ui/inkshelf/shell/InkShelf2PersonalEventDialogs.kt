@@ -43,6 +43,8 @@ internal fun InkShelf2AddToEventDialog(manga: Manga, chapter: Chapter, onDismiss
     var position by remember { mutableStateOf("") }
     var essential by remember { mutableStateOf(true) }
     var replacement by remember { mutableStateOf<Int?>(null) }
+    var collectedMode by remember { mutableStateOf(false) }
+    var collectedIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     val guide = selected
     val order = remember(guide) { guide?.let { InkShelf2PersonalEvents.order(context, it) }.orEmpty() }
     if (create) {
@@ -65,6 +67,8 @@ internal fun InkShelf2AddToEventDialog(manga: Manga, chapter: Chapter, onDismiss
                                 selected = event
                                 position = (InkShelf2PersonalEvents.order(context, event).size + 1).toString()
                                 replacement = null
+                                collectedMode = false
+                                collectedIds = emptySet()
                                 essential = true
                             }) { Text(event.name) }
                         }
@@ -74,6 +78,23 @@ internal fun InkShelf2AddToEventDialog(manga: Manga, chapter: Chapter, onDismiss
                 Column(modifier = Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(manga.title + " · " + chapter.name)
+                    if (order.isNotEmpty()) TextButton(onClick = {
+                        collectedMode = !collectedMode
+                        collectedIds = emptySet()
+                        replacement = null
+                    }) { Text(if (collectedMode) "Insert or replace a missing issue instead" else "Replace multiple issues with this collection") }
+                    if (collectedMode) {
+                        Text("Select every issue included in this collected edition. It will be inserted at the first selected position.")
+                        order.forEach { entry ->
+                            Row {
+                                Checkbox(checked = entry.id in collectedIds, onCheckedChange = { checked ->
+                                    collectedIds = if (checked) collectedIds + entry.id else collectedIds - entry.id
+                                    essential = order.any { it.id in collectedIds && it.isEssential }
+                                })
+                                Text("${entry.position}. ${entry.displayName}", Modifier.padding(top = 12.dp))
+                            }
+                        }
+                    } else {
                     Text("Insert before the selected position, or at the end.")
                     OutlinedTextField(position, { position = it.filter(Char::isDigit).take(5); replacement = null },
                         label = { Text("Position (1–" + (order.size + 1) + ")") }, singleLine = true,
@@ -89,6 +110,7 @@ internal fun InkShelf2AddToEventDialog(manga: Manga, chapter: Chapter, onDismiss
                             essential = missing.isEssential
                         }) { Text((if (replacement == missing.id) "✓ " else "") + "Replace " + missing.position + ": " + missing.displayName) }
                     }
+                    }
                     Row {
                         Checkbox(checked = essential, onCheckedChange = { essential = it })
                         Text(if (essential) "Essential" else "Tie-in", modifier = Modifier.padding(top = 14.dp))
@@ -97,10 +119,12 @@ internal fun InkShelf2AddToEventDialog(manga: Manga, chapter: Chapter, onDismiss
             }
         },
         confirmButton = { if (guide != null) TextButton(
-            enabled = replacement != null || (position.toIntOrNull()?.let { it in 1..(order.size + 1) } == true),
+            enabled = if (collectedMode) collectedIds.isNotEmpty()
+                else replacement != null || (position.toIntOrNull()?.let { it in 1..(order.size + 1) } == true),
             onClick = {
                 try {
-                    InkShelf2PersonalEvents.add(context, guide, manga, chapter, position.toInt(), replacement, essential)
+                    InkShelf2PersonalEvents.add(context, guide, manga, chapter, position.toIntOrNull() ?: 1,
+                        replacement, essential, if (collectedMode) collectedIds else emptySet())
                     Toast.makeText(context, "Issue added to " + guide.name, Toast.LENGTH_SHORT).show()
                     onAdded()
                 } catch (_: Exception) { Toast.makeText(context, "Could not add issue (it may already be included)", Toast.LENGTH_LONG).show() }
@@ -112,6 +136,26 @@ internal fun InkShelf2AddToEventDialog(manga: Manga, chapter: Chapter, onDismiss
 internal fun InkShelf2EditEventDialog(guide: InkShelf2Guide, onDismiss: () -> Unit, onChanged: () -> Unit) {
     val context = LocalContext.current
     var order by remember(guide.id) { mutableStateOf(InkShelf2PersonalEvents.order(context, guide)) }
+    var selectedIds by remember(guide.id) { mutableStateOf<Set<Int>>(emptySet()) }
+    var confirmRemove by remember { mutableStateOf(false) }
+    var confirmRestore by remember { mutableStateOf(false) }
+    if (confirmRemove || confirmRestore) {
+        AlertDialog(onDismissRequest = { confirmRemove = false; confirmRestore = false },
+            title = { Text(if (confirmRestore) "Restore original reading order?" else "Remove selected issues?") },
+            text = { Text("Only the event reading order changes. Comics, downloads and actual chapter progress are kept.") },
+            confirmButton = { TextButton(onClick = {
+                try {
+                    if (confirmRestore) InkShelf2PersonalEvents.restoreOriginal(context, guide)
+                    else InkShelf2PersonalEvents.removeIssues(context, guide, selectedIds)
+                    order = InkShelf2PersonalEvents.order(context, guide)
+                    selectedIds = emptySet()
+                    onChanged()
+                } catch (_: Exception) { Toast.makeText(context, "Could not update order", Toast.LENGTH_LONG).show() }
+                confirmRemove = false; confirmRestore = false
+            }) { Text("Confirm") } },
+            dismissButton = { TextButton(onClick = { confirmRemove = false; confirmRestore = false }) { Text("Cancel") } })
+        return
+    }
     fun edit(issue: InkShelf2GuideIssue, move: Int = 0, remove: Boolean = false, toggle: Boolean = false) {
         try {
             InkShelf2PersonalEvents.edit(context, guide, issue.id, move, remove, toggle)
@@ -121,19 +165,28 @@ internal fun InkShelf2EditEventDialog(guide: InkShelf2Guide, onDismiss: () -> Un
     }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Edit Reading Order") },
         text = {
-            LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+            Column {
+                if (guide.batcaveSlug != null) TextButton(onClick = { confirmRestore = true }) { Text("Restore original order") }
+                if (selectedIds.isNotEmpty()) TextButton(onClick = { confirmRemove = true }) { Text("Remove selected (${selectedIds.size})") }
+                LazyColumn(modifier = Modifier.heightIn(max = 350.dp)) {
                 items(order, key = { it.id }) { issue ->
                     Column {
-                        Text(issue.position.toString() + ". " + issue.displayName)
+                        Row {
+                            Checkbox(checked = issue.id in selectedIds, onCheckedChange = { checked ->
+                                selectedIds = if (checked) selectedIds + issue.id else selectedIds - issue.id
+                            })
+                            Text(issue.position.toString() + ". " + issue.displayName, Modifier.padding(top = 12.dp))
+                        }
                         Row {
                             TextButton(enabled = issue.position > 1, onClick = { edit(issue, -1) }) { Text("↑") }
                             TextButton(enabled = issue.position < order.size, onClick = { edit(issue, 1) }) { Text("↓") }
                             TextButton(onClick = { edit(issue, toggle = true) }) { Text(if (issue.isEssential) "Essential" else "Tie-in") }
-                            if (issue.id >= 1_000_000) TextButton(onClick = { edit(issue, remove = true) }) { Text("Remove") }
+                            TextButton(onClick = { selectedIds = setOf(issue.id); confirmRemove = true }) { Text("Remove") }
                         }
                         HorizontalDivider()
                     }
                 }
+            }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })

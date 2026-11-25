@@ -66,12 +66,14 @@ internal object InkShelf2PersonalEvents {
     }
 
     @Synchronized
-    fun add(context: Context, guide: InkShelf2Guide, manga: Manga, chapter: Chapter, position: Int, replaceId: Int?, essential: Boolean) {
+    fun add(context: Context, guide: InkShelf2Guide, manga: Manga, chapter: Chapter, position: Int, replaceId: Int?, essential: Boolean, replaceIds: Set<Int> = emptySet()) {
         val mangaId = requireNotNull(manga.id)
         val chapterId = requireNotNull(chapter.id)
         require(chapter.manga_id == mangaId && manga.url.isNotBlank() && chapter.url.isNotBlank())
         val order = order(context, guide).toMutableList()
         val original = replaceId?.let { id -> order.firstOrNull { it.id == id && it.sourceUnavailable } ?: error("Missing slot changed") }
+        val collected = order.filter { it.id in replaceIds }
+        require(collected.size == replaceIds.size && (original == null || collected.isEmpty()))
         require(order.none { it.explicitSource == manga.source && it.explicitSeriesUrl == manga.url && it.explicitChapterUrl == chapter.url })
         val p = prefs(context)
         val next = maxOf(1_000_000, p.getInt("next_issue_" + guide.id, 1_000_000), (order.maxOfOrNull { it.id } ?: 0) + 1)
@@ -83,8 +85,10 @@ internal object InkShelf2PersonalEvents {
             explicitSource = manga.source, explicitSeriesUrl = manga.url, explicitChapterUrl = chapter.url,
         )
         if (original != null) order[order.indexOf(original)] = issue else {
-            require(position in 1..(order.size + 1))
-            order.add(position - 1, issue)
+            val insertion = if (collected.isNotEmpty()) order.indexOf(collected.first()) else position - 1
+            require(insertion in 0..order.size)
+            if (collected.isNotEmpty()) order.removeAll { it.id in replaceIds }
+            order.add(insertion.coerceAtMost(order.size), issue)
             check(p.edit().putInt("next_issue_" + guide.id, next + 1).commit())
         }
         InkShelf2GuidesData.rememberChapter(context, guide.id, issue.id, mangaId, chapterId)
@@ -98,8 +102,6 @@ internal object InkShelf2PersonalEvents {
         if (index < 0) return
         val issue = order[index]
         if (remove) {
-            // Official entries cannot be accidentally deleted.
-            require(issue.id >= 1_000_000)
             order.removeAt(index)
         } else if (toggleRole) {
             order[index] = issue.copy(role = if (issue.isEssential) "Optional tie-in" else "Core Issue")
@@ -109,6 +111,21 @@ internal object InkShelf2PersonalEvents {
             order.add(target, issue)
         }
         saveOrder(context, guide.id, order)
+    }
+
+    @Synchronized
+    fun removeIssues(context: Context, guide: InkShelf2Guide, ids: Set<Int>) {
+        saveOrder(context, guide.id, order(context, guide).filterNot { it.id in ids })
+    }
+
+    @Synchronized
+    fun restoreOriginal(context: Context, guide: InkShelf2Guide) {
+        require(guide.batcaveSlug != null)
+        val original = InkShelf2BundledEventOrders.get(guide.batcaveSlug, 1)?.issues.orEmpty()
+        val restoredIds = original.map { it.id }.toSet()
+        val replacedIds = order(context, guide).filter { it.id in restoredIds && it.explicitSource != null }.map { it.id }.toSet()
+        InkShelf2GuidesData.clearReplacementMarks(context, guide.id, replacedIds)
+        check(prefs(context).edit().remove("order_" + guide.id).commit())
     }
 
     fun explicitMatches(issue: InkShelf2GuideIssue, manga: Manga, chapter: Chapter): Boolean =

@@ -1292,18 +1292,18 @@ internal fun InkShelf2CoverCard(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-            if (!badgeText.isNullOrBlank()) {
-                val isNewBadge = badgeText == "NEW"
-                val badgeBackground = if (isNewBadge) InkShelf2Colors.Accent.copy(alpha = 1f)
-                    else InkShelf2Colors.Background.copy(alpha = 0.90f)
+            if (badgeText == "NEW") {
+                Box(Modifier.align(Alignment.TopEnd).padding(7.dp).size(8.dp)
+                    .clip(RoundedCornerShape(50)).background(InkShelf2Colors.Accent))
+            } else if (!badgeText.isNullOrBlank()) {
                 Text(
                     text = badgeText,
                     modifier = Modifier.align(Alignment.TopEnd)
                         .padding(6.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(badgeBackground)
+                        .background(InkShelf2Colors.Background.copy(alpha = 0.90f))
                         .padding(horizontal = 7.dp, vertical = 4.dp),
-                    color = if (isNewBadge && badgeBackground.luminance() > 0.179f) Color.Black else Color.White,
+                    color = Color.White,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                 )

@@ -25,10 +25,12 @@ class InkShelf2EventTimelineTest {
     @Test
     fun spotlightIsLimitedToThreeEditorialEvents() {
         val custom = events.first().copy(id = Int.MIN_VALUE, type = "CUSTOM", batcaveSlug = null)
-        val spotlight = InkShelf2EventTimeline.spotlight(events.reversed() + custom)
+        val spotlight = InkShelf2EventTimeline.spotlight(events.reversed() + custom, week = 0L)
         assertEquals(3, spotlight.size)
         assertTrue(spotlight.none { it.type == "CUSTOM" })
-        assertEquals(listOf("dc-k-o", "absolute-power", "blood-hunt"), spotlight.map { it.batcaveSlug })
+        assertEquals(listOf("blood-hunt", "dc-k-o"), spotlight.take(2).map { it.batcaveSlug })
+        assertTrue(InkShelf2GuidesData.publicationYear(spotlight.last())!! < 2015)
+        assertTrue(InkShelf2EventTimeline.spotlight(events, week = 1L).last().id != spotlight.last().id)
     }
 
     @Test

@@ -9,14 +9,20 @@ internal object InkShelf2EventTimeline {
             InkShelf2GuidesData.publicationYear(it) ?: Int.MAX_VALUE
         }.thenBy { it.publisher }.thenBy { it.name })
 
-    /** Keep the spotlight stable while artwork loads, newest published events first. */
-    fun spotlight(guides: List<InkShelf2Guide>): List<InkShelf2Guide> =
-        guides.filter { it.type != "CUSTOM" && it.batcaveSlug != null }
+    /** Latest Marvel, latest DC and a weekly rotating pre-2015 classic. */
+    fun spotlight(guides: List<InkShelf2Guide>, week: Long = System.currentTimeMillis() / (7L * 24 * 60 * 60 * 1000)): List<InkShelf2Guide> {
+        val editorial = guides.filter { it.type != "CUSTOM" && it.batcaveSlug != null }
             .distinctBy { it.id }
             .sortedWith(compareByDescending<InkShelf2Guide> {
                 InkShelf2GuidesData.publicationYear(it) ?: 0
             }.thenBy { it.name })
-            .take(3)
+        val marvel = editorial.firstOrNull { it.publisher.equals("Marvel", true) }
+        val dc = editorial.firstOrNull { it.publisher.equals("DC", true) }
+        val classics = editorial.filter { it.id != marvel?.id && it.id != dc?.id &&
+            (InkShelf2GuidesData.publicationYear(it) ?: Int.MAX_VALUE) < 2015 }
+        val classic = if (classics.isEmpty()) null else classics[Math.floorMod(week, classics.size.toLong()).toInt()]
+        return listOfNotNull(marvel, dc, classic)
+    }
 
     fun related(current: InkShelf2Guide, guides: List<InkShelf2Guide>): List<InkShelf2Guide> {
         val year = InkShelf2GuidesData.publicationYear(current)

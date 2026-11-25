@@ -87,18 +87,16 @@ enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
     DISCOVER("Discover", Icons.Outlined.Search),
     LIBRARY("Library", Icons.Outlined.LibraryBooks),
-    // Available through the header icon, never in the bottom bar.
     GUIDES("Guides", Icons.Outlined.AutoStories),
     ACCOUNT("Menu", Icons.Outlined.Menu),
 }
 
-// The paused Guides feature is excluded from all user-facing tab items.
-// Keep four equal-width navigation targets with no empty placeholder.
+// Guides is a primary tab; Menu remains a header destination.
 private val visibleInkShelf2Tabs = listOf(
     InkShelf2Tab.HOME,
     InkShelf2Tab.DISCOVER,
     InkShelf2Tab.LIBRARY,
-    InkShelf2Tab.ACCOUNT,
+    InkShelf2Tab.GUIDES,
 )
 
 /**
@@ -194,10 +192,9 @@ fun InkShelf2Shell(
                 if (showHeader) {
                     InkShelf2Header(
                         onSearch = onSearch,
-                        onNotifications = onNotifications,
                         onPulse = onPulse,
-                        onGuides = onGuides,
-                        guidesActive = guidesActive,
+                        onMenu = { onTabSelected(InkShelf2Tab.ACCOUNT) },
+                        menuActive = currentTab == InkShelf2Tab.ACCOUNT,
                         pulseActive = pulseActive,
                         pulseHasNewStories = pulseHasNewStories,
                         notificationCount = notificationCount,
@@ -220,10 +217,9 @@ fun InkShelf2Shell(
 @Composable
 private fun InkShelf2Header(
     onSearch: () -> Unit,
-    onNotifications: () -> Unit,
     onPulse: () -> Unit,
-    onGuides: () -> Unit,
-    guidesActive: Boolean,
+    onMenu: () -> Unit,
+    menuActive: Boolean,
     pulseActive: Boolean,
     pulseHasNewStories: Boolean,
     notificationCount: Int,
@@ -265,18 +261,6 @@ private fun InkShelf2Header(
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = (-0.7).sp,
                 maxLines = 1,
-            )
-        }
-        IconButton(
-            onClick = onGuides,
-            modifier = Modifier.size(40.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.FormatListNumbered,
-                contentDescription = "Reading Guides",
-                tint = if (guidesActive) InkShelf2Colors.AccentLight
-                    else InkShelf2Colors.Text,
-                modifier = Modifier.size(24.dp),
             )
         }
         IconButton(
@@ -323,39 +307,22 @@ private fun InkShelf2Header(
                 }
             }
         }
-        IconButton(onClick = onNotifications, modifier = Modifier.size(40.dp)) {
-            Box(modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = Icons.Outlined.NotificationsNone,
-                    contentDescription = if (notificationCount > 0) {
-                        "Notifications, " + notificationCount + " extension updates"
-                    } else {
-                        "Notifications"
-                    },
-                    modifier = Modifier.align(Alignment.Center),
-                    tint = InkShelf2Colors.Text,
-                )
-                if (notificationCount > 0) {
-                    Text(
-                        text = if (notificationCount > 99) "99+" else notificationCount.toString(),
-                        modifier = Modifier.align(Alignment.TopEnd)
-                            .offset(x = 9.dp, y = (-6).dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(InkShelf2Colors.Accent)
-                            .padding(horizontal = 5.dp, vertical = 1.dp),
-                        color = Color.White,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-        }
         IconButton(onClick = onSearch, modifier = Modifier.size(40.dp)) {
             Icon(
                 imageVector = Icons.Outlined.Search,
                 contentDescription = "Search comics",
                 tint = InkShelf2Colors.Text,
             )
+        }
+        IconButton(onClick = onMenu, modifier = Modifier.size(40.dp)) {
+            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Menu, contentDescription = if (notificationCount > 0)
+                    "Menu, $notificationCount extension updates" else "Menu",
+                    tint = if (menuActive) InkShelf2Colors.AccentLight else InkShelf2Colors.Text)
+                if (notificationCount > 0) Box(Modifier.align(Alignment.TopEnd)
+                    .offset(x = (-1).dp, y = 1.dp).size(7.dp)
+                    .clip(RoundedCornerShape(50)).background(InkShelf2Colors.AccentLight))
+            }
         }
     }
 }
