@@ -1,24 +1,21 @@
-# InkShelf 2.0 — Public Beta 1
+# InkShelf 2.0 — Public Beta 2
 
-The first public beta of the rebuilt InkShelf interface. Feedback and reproducible bug reports are welcome.
+This update focuses on release delivery and build reliability.
 
-## What's new
+## Changes
 
-- Redesigned Home, Discover, Library, Events, comic details and shared navigation.
-- Daily picks, editorial spotlights, curated collections and personalised recommendations.
-- The Pulse: comic news and videos linking to original publishers.
-- Curated event reading orders, custom events, event artwork and reading-order editing.
-- Theme selection, limited-event themes, new branding and customisable cinematic startup.
-- Existing reader, downloads, library, local import, and backup and restore features.
+- InkShelf 2.0 now checks GitHub for updates when opened, after first-run setup.
+- A manual **Check for updates** option is available in Menu.
+- New versions can be downloaded and installed through InkShelf, with Android's normal installation permissions and notifications.
+- Development builds remain separate from the public update channel.
+- Removed an unnecessary external Gradle Kotlin DSL bootstrap dependency to improve build reliability.
 
-## Installation
+## Updating from Beta 1
 
-Download **InkShelf.apk** from this release. Android 8.0 or newer is required. Before updating, create and retain a backup of your existing library and settings.
+Download **InkShelf.apk** from this release and install it over the previous public version. Beta 1 users may need to perform this update manually once to activate the new 2.0 update flow. Back up your library first. Do not uninstall the existing public app just to update it.
 
-The public release uses the same Android package as previous public betas. A development/debug APK is a separate application and cannot be upgraded in place by this APK. For migration, restore a backup and verify your library and progress before removing the old installation. Downloaded files and third-party extension settings may require separate migration.
+The public app retains its Android package identity and signing key. Development/debug builds use a different package and cannot be updated in place with the public APK.
 
-## Beta notes
+This is a prerelease. Update checks require internet access; Android may require permission to display notifications or install APKs. Report bugs with the app version, device, Android version and reproduction steps.
 
-Device-specific issues, metadata gaps, third-party source availability and reading-order matching can still occur. Panel Flow remains experimental. Report issues with the app version, Android version, device and steps to reproduce.
-
-InkShelf is an independent reader based on TachiyomiJ2K. It does not include comic pages; extensions and external services are separate. Use lawful sources and respect content providers' rights. Publisher marks and artwork belong to their respective rights holders. See the README and Apache-2.0 licence.
+InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and metadata services remain separate. Use lawful sources and respect rights holders. See the README and Apache-2.0 licence.

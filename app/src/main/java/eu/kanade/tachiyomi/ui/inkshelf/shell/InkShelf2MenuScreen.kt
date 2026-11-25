@@ -67,6 +67,10 @@ internal fun InkShelf2MenuScreen(
     onDownloads: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
+    appUpdateEnabled: Boolean = false,
+    checkingAppUpdate: Boolean = false,
+    appVersion: String = "",
+    onCheckAppUpdate: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
@@ -145,6 +149,14 @@ internal fun InkShelf2MenuScreen(
         item {
             MenuSection("SETTINGS") {
                 MenuEntry("Advanced Settings", "Reader, library and download preferences", Icons.Outlined.Settings, onSettings)
+                if (appUpdateEnabled) {
+                    MenuEntry(
+                        if (checkingAppUpdate) "Checking for updates…" else "Check for updates",
+                        "InkShelf $appVersion · GitHub releases",
+                        Icons.Outlined.Download,
+                        { if (!checkingAppUpdate) onCheckAppUpdate() },
+                    )
+                }
             }
         }
         item {

@@ -6,7 +6,11 @@ import android.net.Uri
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.data.updater.AppDownloadInstallJob
+import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
+import eu.kanade.tachiyomi.data.updater.AppUpdateNotifier
+import eu.kanade.tachiyomi.data.updater.AppUpdateResult
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.ViewTreeObserver
@@ -204,6 +208,58 @@ class InkShelf2Activity : AppCompatActivity() {
             var updateAllExtensionsRequested by remember { mutableStateOf(false) }
             var externalRepoDraft by rememberSaveable { mutableStateOf("") }
             var updateNotes by remember { mutableStateOf<Pair<String, String>?>(null) }
+            var checkingAppUpdate by remember { mutableStateOf(false) }
+            val updateScope = rememberCoroutineScope()
+            val appUpdateChecker = remember { AppUpdateChecker() }
+
+            fun checkAppUpdate(manual: Boolean) {
+                if (!BuildConfig.INCLUDE_UPDATER || checkingAppUpdate) return
+                checkingAppUpdate = true
+                updateScope.launch {
+                    try {
+                        val result = appUpdateChecker.checkForUpdate(
+                            applicationContext,
+                            isUserPrompt = manual,
+                            doExtrasAfterNewUpdate = false,
+                        )
+                        if (result is AppUpdateResult.NewUpdate) {
+                            val release = result.release
+                            val uri = Uri.parse(release.downloadLink)
+                            if (uri.scheme == "https" && uri.host.equals("github.com", true) &&
+                                uri.path?.startsWith("/Rainkingx/InkShelf/releases/download/") == true &&
+                                uri.path?.endsWith("/InkShelf.apk") == true
+                            ) {
+                                updateNotes = ("New version: " + release.version + "\n\n" +
+                                    release.info).take(12_000) to release.downloadLink
+                                AppUpdateNotifier.releasePageUrl = release.releaseLink
+                                // Keep the foreground dialog useful even when Android
+                                // notification permission is disabled.
+                                runCatching { AppUpdateNotifier(this@InkShelf2Activity).promptUpdate(release) }
+                            } else if (manual) {
+                                Toast.makeText(this@InkShelf2Activity, "No verified update APK found", Toast.LENGTH_LONG).show()
+                            }
+                        } else if (manual) {
+                            Toast.makeText(this@InkShelf2Activity, "You're up to date", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        if (manual) Toast.makeText(this@InkShelf2Activity,
+                            "Could not check for updates. Try again later.", Toast.LENGTH_LONG).show()
+                    } finally {
+                        checkingAppUpdate = false
+                    }
+                }
+            }
+
+            LaunchedEffect(refreshEpoch, welcomeOpen) {
+                // The existing updater rate-limits automatic checks to once per day.
+                // Avoid interrupting first-run setup and never upgrade debug APKs.
+                if (!welcomeOpen && BuildConfig.INCLUDE_UPDATER) {
+                    delay(1_500)
+                    checkAppUpdate(manual = false)
+                }
+            }
             var activeSourceId by rememberSaveable { mutableStateOf<Long?>(null) }
             var selectedDay by remember { mutableStateOf<InkShelf2Engine.Day?>(null) }
             var selectedDiscoverShelf by rememberSaveable { mutableStateOf<String?>(null) }
@@ -817,7 +873,7 @@ class InkShelf2Activity : AppCompatActivity() {
                             onClick = {
                                 updateNotes = null
                                 AppDownloadInstallJob.start(
-                                    this@InkShelf2Activity, url, notifyOnInstall = false,
+                                    this@InkShelf2Activity, url, notifyOnInstall = true,
                                 )
                             },
                         ) { Text("Download & Install") }
@@ -1419,6 +1475,10 @@ class InkShelf2Activity : AppCompatActivity() {
                             historyOpen = true
                         },
                         onSettings = { settingsOpen = true },
+                        appUpdateEnabled = BuildConfig.INCLUDE_UPDATER,
+                        checkingAppUpdate = checkingAppUpdate,
+                        appVersion = BuildConfig.VERSION_NAME,
+                        onCheckAppUpdate = { checkAppUpdate(manual = true) },
                     )
                 }
             }
