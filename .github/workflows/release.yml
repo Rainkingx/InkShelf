@@ -4,38 +4,55 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   release:
+    # The one-time main-branch launch is explicit; ordinary main pushes
+    # never publish an APK. Existing version-tag releases remain supported.
+    if: github.ref_type == 'tag' || (github.ref == 'refs/heads/main' && github.event.head_commit.message == 'Prepare InkShelf 2.0 public beta')
     name: Build and publish InkShelf
     runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           java-version: 21
           distribution: temurin
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb
 
       - name: Copy CI Gradle settings
         run: |
           mkdir -p ~/.gradle
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
+      - name: Resolve release tag
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v2.0.0-b01"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Restore InkShelf release key
         env:
           INKSHELF_RELEASE_KEYSTORE: ${{ secrets.INKSHELF_RELEASE_KEYSTORE }}
         run: |
           mkdir -p "$RUNNER_TEMP/inkshelf-signing"
+          test -n "$INKSHELF_RELEASE_KEYSTORE"
           echo "$INKSHELF_RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/inkshelf-signing/inkshelf-release.keystore"
           chmod 600 "$RUNNER_TEMP/inkshelf-signing/inkshelf-release.keystore"
 
@@ -46,19 +63,84 @@ jobs:
         env:
           INKSHELF_RELEASE_STORE_FILE: ${{ runner.temp }}/inkshelf-signing/inkshelf-release.keystore
           INKSHELF_RELEASE_PASSWORD: ${{ secrets.INKSHELF_RELEASE_PASSWORD }}
-        run: ./gradlew :app:assembleStandardBeta -x :app:formatKotlinMain
+        shell: bash
+        run: |
+          test -n "$INKSHELF_RELEASE_PASSWORD"
+          for attempt in 1 2 3; do
+            set +e
+            ./gradlew :app:assembleStandardBeta -x :app:formatKotlinMain 2>&1 | tee "$RUNNER_TEMP/inkshelf-release-build.log"
+            result=${PIPESTATUS[0]}
+            set -e
+            if [ "$result" -eq 0 ]; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ] || ! grep -Fq "Plugin [id: 'org.gradle.kotlin.kotlin-dsl'" "$RUNNER_TEMP/inkshelf-release-build.log"; then
+              exit "$result"
+            fi
+            sleep $((attempt * 20))
+          done
+
+      - name: Run existing regression tests
+        run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' -x :app:formatKotlinMain
 
       - name: Prepare universal APK
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/standard/beta/*universal-beta.apk dist/InkShelf.apk
 
+      - name: Verify APK signature and upgrade compatibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$sdk"
+          signer="$(find "$sdk/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$signer"
+          aapt="$(dirname "$signer")/aapt"
+          "$signer" verify --print-certs dist/InkShelf.apk > "$RUNNER_TEMP/new-signature.txt"
+          cat "$RUNNER_TEMP/new-signature.txt"
+          if [[ "$RELEASE_TAG" == "v2.0.0-b01" ]]; then
+            mkdir -p "$RUNNER_TEMP/previous-release"
+            gh release download v0.1.7-beta --pattern InkShelf.apk --dir "$RUNNER_TEMP/previous-release"
+            "$signer" verify --print-certs "$RUNNER_TEMP/previous-release/InkShelf.apk" > "$RUNNER_TEMP/old-signature.txt"
+            grep 'certificate SHA-256 digest:' "$RUNNER_TEMP/new-signature.txt" | sort > "$RUNNER_TEMP/new-certs.txt"
+            grep 'certificate SHA-256 digest:' "$RUNNER_TEMP/old-signature.txt" | sort > "$RUNNER_TEMP/old-certs.txt"
+            test -s "$RUNNER_TEMP/new-certs.txt"
+            diff -u "$RUNNER_TEMP/old-certs.txt" "$RUNNER_TEMP/new-certs.txt"
+            "$aapt" dump badging dist/InkShelf.apk > "$RUNNER_TEMP/new-badging.txt"
+            "$aapt" dump badging "$RUNNER_TEMP/previous-release/InkShelf.apk" > "$RUNNER_TEMP/old-badging.txt"
+            grep -F "package: name='eu.kanade.tachiyomi.j2k'" "$RUNNER_TEMP/old-badging.txt"
+            grep -F "package: name='eu.kanade.tachiyomi.j2k'" "$RUNNER_TEMP/new-badging.txt"
+            grep -F "versionName='2.0.0-b01'" "$RUNNER_TEMP/new-badging.txt"
+            grep -F "versionCode='200'" "$RUNNER_TEMP/new-badging.txt"
+            old_code="$(sed -n "s/^package: .*versionCode='\\([0-9]*\\)'.*/\\1/p" "$RUNNER_TEMP/old-badging.txt")"
+            test -n "$old_code"
+            test "$old_code" -lt 200
+          fi
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            dist/InkShelf.apk \
-            --title "InkShelf $GITHUB_REF_NAME" \
-            --generate-notes \
-            --prerelease
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release already exists; leaving it untouched."
+            exit 0
+          fi
+          if [[ "$RELEASE_TAG" == "v2.0.0-b01" ]]; then
+            gh release create "$RELEASE_TAG" dist/InkShelf.apk \
+              --target "$GITHUB_SHA" \
+              --title "InkShelf 2.0 — Public Beta 1" \
+              --notes-file RELEASE_NOTES.md \
+              --prerelease
+          else
+            gh release create "$RELEASE_TAG" dist/InkShelf.apk \
+              --target "$GITHUB_SHA" \
+              --title "InkShelf $RELEASE_TAG" \
+              --generate-notes \
+              --prerelease
+          fi

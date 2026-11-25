@@ -2,8 +2,8 @@
     const val compileSdk = 37
     const val minSdk = 26
     const val targetSdk = 37
-    const val versionCode = 128
-    const val versionName = "1.9.6"
+    const val versionCode = 200
+    const val versionName = "2.0.0"
     const val ndk = "23.1.7779620"
     const val kotlin = "2.3.10"
 }

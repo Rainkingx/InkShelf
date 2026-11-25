@@ -116,5 +116,5 @@ Users are responsible for complying with the laws and terms applicable to the co
 <!-- INKSHELF_SCREENSHOTS_START -->
 ## Screenshots
 
-Updated InkShelf 2.0 screenshots will be added before the public beta.
+Updated InkShelf 2.0 screenshots will be added separately.
 <!-- INKSHELF_SCREENSHOTS_END -->
