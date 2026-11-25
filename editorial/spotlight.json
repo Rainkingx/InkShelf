@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "updated_at": "2026-11-23",
+  "updated_at": "2026-11-25",
   "description": "Up to four editorial event spotlights; Doom automatically becomes the lead slide from 1 December 2026 to 28 February 2027. Comic reading continues through installed sources. Check the edition and listed issue numbers.",
   "events": [
     {
@@ -115,70 +115,110 @@
       "artwork_url": "https://static.dc.com/2026-07/ABS_2026SDCC-FOIL.jpg"
     },
     {
-      "id": "marvel-ultimate",
-      "title": "ULTIMATE UNIVERSE",
+      "id": "marvel-what-if",
+      "title": "MARVEL WHAT IF...?",
       "publisher": "Marvel",
-      "label": "MARVEL'S NEW ULTIMATE ERA",
-      "summary": "Marvel's modern Ultimate Universe began with new versions of Spider-Man, Black Panther, the X-Men and the Ultimates. Follow their connected stories and the return of the Maker through Ultimate Endgame and Ultimate Universe: Finale.",
-      "official_url": "https://share.marvel.com/comics/discover/2529/ultimate-endgame",
-      "featured_from": "2026-11-01",
+      "label": "EXPLORE THE MULTIVERSE",
+      "summary": "What happens when one decision changes the fate of the Marvel Universe? Explore alternate histories, unexpected heroes and darker possibilities, from the original Watcher-narrated anthology to modern standalone stories and Venom's alternate hosts. Most stories can be read independently.",
+      "official_url": "https://www.marvel.com/comics/guides/1407/favorite-what-if-tales",
+      "featured_from": "2026-11-25",
       "expires": "2027-12-31",
       "pulse_keywords": [
-        "ultimate universe",
-        "ultimate endgame",
-        "ultimate spider-man",
-        "ultimate black panther",
-        "ultimate x-men",
-        "ultimate wolverine",
-        "ultimates 2024",
-        "the ultimates",
-        "ultimate universe finale"
+        "what if comics",
+        "what if venom",
+        "what if marvel",
+        "what if galactus",
+        "what if dark"
       ],
+      "artwork_url": "https://cdn.marvel.com/content/2x/whatifvenom2024001_cover.webp",
       "series": [
         {
-          "id": "spiderman",
-          "title": "Ultimate Spider-Man",
+          "id": "original",
+          "title": "What If?",
+          "year": 1977,
+          "aliases": [
+            "What If",
+            "What If...?",
+            "What If…?"
+          ],
+          "tagline": "START HERE: The Watcher explores alternate outcomes in classic Marvel history.",
+          "issues": "#1, #7, #10, #11"
+        },
+        {
+          "id": "second-series",
+          "title": "What If?",
+          "year": 1989,
+          "aliases": [
+            "What If",
+            "What If...?",
+            "What If…?"
+          ],
+          "tagline": "More parallel worlds, including alternate X-Men and Infinity Gauntlet stories.",
+          "issues": "#9, #49"
+        },
+        {
+          "id": "revival",
+          "title": "What If?",
+          "year": 2004,
+          "aliases": [
+            "What If",
+            "What If...?",
+            "What If…?"
+          ],
+          "tagline": "A revival of the anthology with new twists on iconic Marvel origins."
+        },
+        {
+          "id": "civil-war",
+          "title": "What If? Civil War",
+          "year": 2007,
+          "aliases": [
+            "What If: Civil War",
+            "What If? Civil War"
+          ],
+          "tagline": "Discover alternate outcomes for the superhero conflict.",
+          "issues": "#1"
+        },
+        {
+          "id": "planet-hulk",
+          "title": "What If? Planet Hulk",
+          "year": 2007,
+          "aliases": [
+            "What If: Planet Hulk"
+          ],
+          "tagline": "Different fates await the Hulk and Sakaar.",
+          "issues": "#1"
+        },
+        {
+          "id": "age-of-ultron",
+          "title": "What If? Age of Ultron",
+          "year": 2014,
+          "aliases": [
+            "What If: Age of Ultron"
+          ],
+          "tagline": "Explore different timelines shaped by Ultron's devastation."
+        },
+        {
+          "id": "miles",
+          "title": "What If...? Miles Morales",
+          "year": 2022,
+          "aliases": [
+            "What If? Miles Morales",
+            "What If…? Miles Morales"
+          ],
+          "tagline": "Imagine Miles taking on other iconic superhero identities."
+        },
+        {
+          "id": "venom",
+          "title": "What If...? Venom",
           "year": 2024,
-          "tagline": "Peter Parker starts an extraordinary new life."
-        },
-        {
-          "id": "black-panther",
-          "title": "Ultimate Black Panther",
-          "year": 2024,
-          "tagline": "A bold new story for Wakanda."
-        },
-        {
-          "id": "xmen",
-          "title": "Ultimate X-Men",
-          "year": 2024,
-          "tagline": "An unsettling new take on the X-Men."
-        },
-        {
-          "id": "ultimates",
-          "title": "The Ultimates",
-          "year": 2024,
-          "tagline": "The heroes of this new universe assemble."
-        },
-        {
-          "id": "wolverine",
-          "title": "Ultimate Wolverine",
-          "year": 2025,
-          "tagline": "A dangerous new beginning for Wolverine."
-        },
-        {
-          "id": "endgame",
-          "title": "Ultimate Endgame",
-          "year": 2025,
-          "tagline": "The Maker returns for a climactic showdown."
-        },
-        {
-          "id": "finale",
-          "title": "Ultimate Universe: Finale",
-          "year": 2026,
-          "tagline": "The conclusion of the modern Ultimate saga."
+          "aliases": [
+            "What If? Venom",
+            "What If…? Venom"
+          ],
+          "tagline": "The symbiote finds unexpected hosts across the Marvel Universe.",
+          "issues": "#1–5"
         }
-      ],
-      "artwork_url": "https://cdn.marvel.com/content/2x/ultimateendgame_teaser2.jpg"
+      ]
     },
     {
       "id": "doom-essential",

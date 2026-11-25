@@ -1,0 +1,66 @@
+{
+  "id": "marvel-ultimate",
+  "title": "ULTIMATE UNIVERSE",
+  "publisher": "Marvel",
+  "label": "MARVEL'S NEW ULTIMATE ERA",
+  "summary": "Marvel's modern Ultimate Universe began with new versions of Spider-Man, Black Panther, the X-Men and the Ultimates. Follow their connected stories and the return of the Maker through Ultimate Endgame and Ultimate Universe: Finale.",
+  "official_url": "https://share.marvel.com/comics/discover/2529/ultimate-endgame",
+  "featured_from": "2026-11-01",
+  "expires": "2027-12-31",
+  "pulse_keywords": [
+    "ultimate universe",
+    "ultimate endgame",
+    "ultimate spider-man",
+    "ultimate black panther",
+    "ultimate x-men",
+    "ultimate wolverine",
+    "ultimates 2024",
+    "the ultimates",
+    "ultimate universe finale"
+  ],
+  "series": [
+    {
+      "id": "spiderman",
+      "title": "Ultimate Spider-Man",
+      "year": 2024,
+      "tagline": "Peter Parker starts an extraordinary new life."
+    },
+    {
+      "id": "black-panther",
+      "title": "Ultimate Black Panther",
+      "year": 2024,
+      "tagline": "A bold new story for Wakanda."
+    },
+    {
+      "id": "xmen",
+      "title": "Ultimate X-Men",
+      "year": 2024,
+      "tagline": "An unsettling new take on the X-Men."
+    },
+    {
+      "id": "ultimates",
+      "title": "The Ultimates",
+      "year": 2024,
+      "tagline": "The heroes of this new universe assemble."
+    },
+    {
+      "id": "wolverine",
+      "title": "Ultimate Wolverine",
+      "year": 2025,
+      "tagline": "A dangerous new beginning for Wolverine."
+    },
+    {
+      "id": "endgame",
+      "title": "Ultimate Endgame",
+      "year": 2025,
+      "tagline": "The Maker returns for a climactic showdown."
+    },
+    {
+      "id": "finale",
+      "title": "Ultimate Universe: Finale",
+      "year": 2026,
+      "tagline": "The conclusion of the modern Ultimate saga."
+    }
+  ],
+  "artwork_url": "https://cdn.marvel.com/content/2x/ultimateendgame_teaser2.jpg"
+}
