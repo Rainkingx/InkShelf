@@ -157,15 +157,15 @@
           "issues": "#9, #49"
         },
         {
-          "id": "revival",
-          "title": "What If?",
-          "year": 2004,
+          "id": "aunt-may-one-shot",
+          "title": "What If Aunt May Had Died Instead of Uncle Ben?",
+          "year": 2005,
+          "tagline": "A standalone Spider-Man story released in December 2004 with a February 2005 cover date.",
+          "issues": "#1",
           "aliases": [
-            "What If",
-            "What If...?",
-            "What If…?"
-          ],
-          "tagline": "A revival of the anthology with new twists on iconic Marvel origins."
+            "What If? Aunt May Had Died Instead of Uncle Ben",
+            "What If... Aunt May Had Died Instead of Uncle Ben"
+          ]
         },
         {
           "id": "civil-war",
