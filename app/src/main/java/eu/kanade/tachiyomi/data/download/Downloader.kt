@@ -402,7 +402,15 @@ class Downloader(
             )
             return
         }
-        val mangaDir = provider.getMangaDir(download.manga, download.source)
+        val mangaDir = try {
+            provider.getMangaDir(download.manga, download.source)
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Timber.e(error)
+            download.status = Download.State.ERROR
+            notifier.onError(context.getString(R.string.invalid_download_location), chapName, download.manga.title)
+            return
+        }
 
         val availSpace = DiskUtil.getAvailableStorageSpace(mangaDir)
         if (availSpace != -1L && availSpace < MIN_DISK_SPACE) {
@@ -411,7 +419,15 @@ class Downloader(
             return
         }
         val chapterDirname = provider.getChapterDirName(download.chapter)
-        val tmpDir = mangaDir.createDirectory(chapterDirname + TMP_DIR_SUFFIX)
+        val tmpDir = try {
+            mangaDir.createDirectory(chapterDirname + TMP_DIR_SUFFIX)
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Timber.e(error)
+            download.status = Download.State.ERROR
+            notifier.onError(context.getString(R.string.invalid_download_location), chapName, download.manga.title)
+            return
+        }
 
         try {
             // If the page list already exists, start from the file

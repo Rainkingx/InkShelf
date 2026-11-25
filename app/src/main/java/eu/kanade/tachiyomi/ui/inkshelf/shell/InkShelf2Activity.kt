@@ -12,6 +12,12 @@ import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
 import eu.kanade.tachiyomi.data.updater.AppUpdateNotifier
 import eu.kanade.tachiyomi.data.updater.AppUpdateResult
 import android.os.Bundle
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import android.os.SystemClock
 import android.view.ViewTreeObserver
 import coil.imageLoader
@@ -107,6 +113,41 @@ class InkShelf2Activity : AppCompatActivity() {
     private var lastBackAtMillis = 0L
     private var readerOpenInProgress by mutableStateOf(false)
     private var guideIssueOpenInProgress = false
+    private var downloadStoragePrompt by mutableStateOf(false)
+    private val legacyStoragePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        Toast.makeText(this, if (granted) "Storage access granted. Tap download again."
+            else "Storage access is needed for offline downloads.", Toast.LENGTH_LONG).show()
+    }
+
+    private fun hasDownloadStorageAccess(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager()
+        else ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+            PackageManager.PERMISSION_GRANTED
+
+    /** Prompt only when the user tries to download, not while browsing or reading online. */
+    private fun requireDownloadStorageAccess(): Boolean {
+        if (hasDownloadStorageAccess()) return true
+        downloadStoragePrompt = true
+        return false
+    }
+
+    private fun openDownloadStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    Uri.parse("package:$packageName")))
+            } catch (_: Exception) {
+                try {
+                    startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                } catch (_: Exception) {
+                    Toast.makeText(this, "Open Android Settings > Special access > All files access.",
+                        Toast.LENGTH_LONG).show()
+                }
+            }
+        } else {
+            legacyStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+    }
     // Read from Android's native splash condition on the UI thread. The splash
     // remains until the initial Home, Library and Discover snapshot is ready.
     @Volatile private var initialShellReady = false
@@ -852,6 +893,26 @@ class InkShelf2Activity : AppCompatActivity() {
                     }
                 }
             }
+            if (downloadStoragePrompt) {
+                AlertDialog(
+                    onDismissRequest = { downloadStoragePrompt = false },
+                    title = { Text("Allow download storage access") },
+                    text = {
+                        Text("InkShelf needs storage access to save and read offline comics. " +
+                            "Allow access in Android settings, then return and tap download again. " +
+                            "You can still browse and read online without this permission.")
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            downloadStoragePrompt = false
+                            openDownloadStoragePermission()
+                        }) { Text("Allow storage access") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { downloadStoragePrompt = false }) { Text("Not now") }
+                    },
+                )
+            }
             updateNotes?.let { (notes, url) ->
                 val parsed = Uri.parse(url)
                 val isTrustedApk = parsed.scheme == "https" &&
@@ -1332,7 +1393,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         enabledSourceIds = enabledSourceIds,
                         downloadingGuideId = downloadingGuideId,
                         onDownloadIssues = { guideId, issues ->
-                            if (downloadingGuideId == null) {
+                            if (downloadingGuideId == null && requireDownloadStorageAccess()) {
                                 downloadingGuideId = guideId
                                 lifecycleScope.launch {
                                     try {
@@ -1600,6 +1661,7 @@ class InkShelf2Activity : AppCompatActivity() {
             Toast.makeText(this, "This comic source cannot download issues", Toast.LENGTH_LONG).show()
             return
         }
+        if (!requireDownloadStorageAccess()) return
         lifecycleScope.launch {
             try {
                 // Downloaded issues must remain reachable from the Library.
@@ -1645,6 +1707,7 @@ class InkShelf2Activity : AppCompatActivity() {
     }
 
     private fun resumeDownloads() {
+        if (!requireDownloadStorageAccess()) return
         if (preferences.downloadOnlyOverWifi() && !applicationContext.isConnectedToWifi()) {
             Toast.makeText(this, "Waiting for Wi-Fi. Change Wi-Fi-only in Download settings to use mobile data.", Toast.LENGTH_LONG).show()
             return
