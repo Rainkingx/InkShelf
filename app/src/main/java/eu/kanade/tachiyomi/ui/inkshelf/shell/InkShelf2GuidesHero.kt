@@ -154,31 +154,11 @@ internal fun InkShelf2FeaturedGuidesHero(
                 onOpen = { onOpenGuide(item.guide) },
             )
         }
-        if (featured.size > 1) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                featured.indices.forEach { index ->
-                    val selected = pager.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .width(if (selected) 25.dp else 8.dp)
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                if (selected) InkShelf2Colors.AccentLight
-                                else InkShelf2Colors.Muted.copy(alpha = 0.40f),
-                            )
-                            .clickable {
-                                scope.launch { pager.animateScrollToPage(index) }
-                            },
-                    )
-                }
-            }
-        }
+        InkShelf2SpotlightIndicators(
+            count = featured.size,
+            selectedIndex = pager.currentPage,
+            onSelected = { index -> scope.launch { pager.animateScrollToPage(index) } },
+        )
     }
 }
 
@@ -201,6 +181,32 @@ private fun InkShelf2FeaturedGuideSlide(
             }
         }
     }
+    InkShelf2SpotlightCard(
+        eyebrow = "FEATURED EVENT",
+        title = item.label + (InkShelf2GuideFocus.identify(item.guide)
+            ?.takeUnless { item.label.contains(it.year.toString()) }
+            ?.let { " (" + it.year + ")" } ?: ""),
+        subtitle = if (item.guide.publisher.equals("marvel", true)) "Marvel crossover reading order"
+            else if (item.guide.publisher.equals("dc", true)) "DC crossover reading order"
+            else "Crossovers and story arcs in the right order",
+        artwork = cover,
+        actionLabel = if (isStarted) "Resume Event" else "Open Event",
+        onOpen = onOpen,
+    )
+}
+
+/** Single visual template for the Discover and Main Event carousels. */
+@Composable
+internal fun InkShelf2SpotlightCard(
+    eyebrow: String,
+    title: String,
+    subtitle: String,
+    artwork: String?,
+    actionLabel: String,
+    onOpen: () -> Unit,
+    artworkAlignment: Alignment = Alignment.Center,
+    onArtworkError: () -> Unit = {},
+) {
     val eventSkin = InkShelf2Themes.eventSkin
     val shape = RoundedCornerShape(if (eventSkin != null) 10.dp else 20.dp)
     val backdrop = InkShelf2Colors.Background
@@ -221,11 +227,13 @@ private fun InkShelf2FeaturedGuideSlide(
     ) {
         // Genuine Metron image, clipped to the right so the left headline
         // always remains legible, even for brightly coloured comic covers.
-        if (cover != null) {
+        if (artwork != null) {
             AsyncImage(
-                model = cover,
-                contentDescription = "Artwork for " + item.guide.name,
+                model = artwork,
+                contentDescription = "Artwork for " + title,
                 contentScale = ContentScale.Crop,
+                alignment = artworkAlignment,
+                onError = { onArtworkError() },
                 modifier = Modifier.align(Alignment.CenterEnd)
                     .fillMaxWidth(0.64f).fillMaxHeight(),
                 // Same restrained midtone lift as Discover; no heavy black tint.
@@ -267,16 +275,17 @@ private fun InkShelf2FeaturedGuideSlide(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
-                    "FEATURED EVENT",
+                    eyebrow,
                     color = trim,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(0.58f),
                 )
                 Text(
-                    item.label + (InkShelf2GuideFocus.identify(item.guide)
-                        ?.takeUnless { item.label.contains(it.year.toString()) }
-                        ?.let { " (" + it.year + ")" } ?: ""),
+                    title,
                     color = Color.White,
                     fontSize = 27.sp,
                     lineHeight = 30.sp,
@@ -286,9 +295,7 @@ private fun InkShelf2FeaturedGuideSlide(
                     modifier = Modifier.fillMaxWidth(0.58f),
                 )
                 Text(
-                    if (item.guide.publisher.equals("marvel", true)) "Marvel crossover reading order"
-                    else if (item.guide.publisher.equals("dc", true)) "DC crossover reading order"
-                    else "Crossovers and story arcs in the right order",
+                    subtitle,
                     color = Color.White.copy(alpha = 0.84f),
                     fontSize = 12.sp,
                     lineHeight = 15.sp,
@@ -297,9 +304,33 @@ private fun InkShelf2FeaturedGuideSlide(
                 )
             }
             InkShelf2ActionButton(
-                label = if (isStarted) "Resume Event" else "Open Event",
+                label = actionLabel,
                 modifier = Modifier.width(153.dp),
                 onClick = onOpen,
+            )
+        }
+    }
+}
+
+
+@Composable
+internal fun InkShelf2SpotlightIndicators(count: Int, selectedIndex: Int, onSelected: (Int) -> Unit) {
+    if (count <= 1) return
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        repeat(count) { index ->
+            val selected = selectedIndex == index
+            Box(
+                modifier = Modifier.padding(horizontal = 4.dp)
+                    .width(if (selected) 25.dp else 8.dp)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (selected) InkShelf2Colors.AccentLight
+                        else InkShelf2Colors.Muted.copy(alpha = 0.40f))
+                    .clickable { onSelected(index) },
             )
         }
     }

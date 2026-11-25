@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -57,8 +56,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
@@ -580,7 +577,7 @@ internal fun InkShelf2DiscoverScreen(
                 if (heroSpotlight.isNotEmpty()) {
                     HorizontalPager(
                         state = heroPager,
-                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         pageSpacing = 10.dp,
                     ) { index ->
                         val feature = heroSpotlight[index]
@@ -599,117 +596,30 @@ internal fun InkShelf2DiscoverScreen(
                             mutableStateOf(emptySet<String>())
                         }
                         val heroImage = artCandidates.firstOrNull { it !in failedArt }
-                        val eventSkin = InkShelf2Themes.eventSkin
-                        val accent = eventSkin?.gold ?: when (feature.id) {
-                            "dc-absolute" -> Color(0xFFFF9C9A)
-                            "marvel-midnight" -> Color(0xFFE2C688)
-                            "marvel-ultimate" -> Color(0xFF9FC9FF)
-                            "doom-essential" -> Color(0xFF8FE7AF)
-                            else -> InkShelf2Colors.AccentLight
-                        }
-                        val backdrop = InkShelf2Colors.Background
-                        val shape = RoundedCornerShape(if (eventSkin != null) 10.dp else 17.dp)
-                        Box(
-                            modifier = Modifier.fillMaxWidth().height(208.dp)
-                                .clip(shape)
-                                .background(backdrop)
-                                .border(1.dp, (eventSkin?.gold ?: InkShelf2Colors.Border).copy(alpha = 0.55f), shape)
-                                .clickable {
-                                    activeSpotlight = feature
-                                    focusManager.clearFocus(force = true)
-                                    keyboard?.hide()
-                                },
-                        ) {
-                            // Identical portrait artwork viewport for every event.
-                            // Crop fills the window instead of letterboxing wide images.
-                            // The soft edge is confined to the artwork's left edge;
-                            // the rest of the artwork has no dark overlay.
-                            Box(
-                                modifier = Modifier.align(Alignment.CenterEnd)
-                                    .fillMaxHeight().fillMaxWidth(0.50f)
-                                    .background(InkShelf2Colors.SurfaceRaised),
-                            ) {
-                                if (heroImage != null) {
-                                    AsyncImage(
-                                        model = heroImage,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        alignment = if (feature.id == "dc-absolute" && heroImage == feature.artworkUrl)
-                                            Alignment.CenterEnd else Alignment.Center,
-                                        contentScale = ContentScale.Crop,
-                                        colorFilter = ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
-                                            1.035f, 0f, 0f, 0f, 9f,
-                                            0f, 1.035f, 0f, 0f, 9f,
-                                            0f, 0f, 1.035f, 0f, 9f,
-                                            0f, 0f, 0f, 1f, 0f,
-                                        ))),
-                                        onError = { failedArt = failedArt + heroImage },
-                                    )
-                                }
-                                Box(Modifier.fillMaxSize().background(
-                                    Brush.horizontalGradient(
-                                        0f to backdrop,
-                                        0.10f to backdrop.copy(alpha = 0.55f),
-                                        0.27f to Color.Transparent,
-                                        1f to Color.Transparent,
-                                    ),
-                                ))
-                            }
-                            Column(
-                                modifier = Modifier.align(Alignment.CenterStart)
-                                    .fillMaxWidth(0.54f)
-                                    .padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                Text(
-                                    feature.publisher.uppercase() + " · " + feature.label,
-                                    color = accent, fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp, lineHeight = 13.sp, maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Spacer(Modifier.height(9.dp))
-                                Text(
-                                    feature.title,
-                                    color = Color.White,
-                                    fontSize = 21.sp,
-                                    lineHeight = 23.sp,
-                                    fontWeight = FontWeight.Black,
-                                    maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    if (feature.id == "doom-essential")
-                                        "${feature.series.size} ESSENTIAL READS"
-                                    else "${feature.series.size} SERIES",
-                                    color = accent, fontSize = 11.sp, lineHeight = 14.sp,
-                                    fontWeight = FontWeight.Bold, maxLines = 1,
-                                )
-                                Text(
-                                    if (feature.id == "doom-essential") "START READING ›" else "EXPLORE ›",
-                                    color = InkShelf2Colors.Text, fontSize = 10.sp,
-                                    fontWeight = FontWeight.SemiBold, maxLines = 1,
-                                )
-                            }
-                        }
+                        InkShelf2SpotlightCard(
+                            eyebrow = "FEATURED SPOTLIGHT",
+                            title = feature.title,
+                            subtitle = if (feature.id == "doom-essential")
+                                "${feature.series.size} essential reads"
+                                else "${feature.publisher} · ${feature.series.size} series",
+                            artwork = heroImage,
+                            actionLabel = if (feature.id == "doom-essential") "Start Reading" else "Explore Spotlight",
+                            artworkAlignment = if (feature.id == "dc-absolute" && heroImage == feature.artworkUrl)
+                                Alignment.CenterEnd else Alignment.Center,
+                            onArtworkError = { if (heroImage != null) failedArt = failedArt + heroImage },
+                            onOpen = {
+                                activeSpotlight = feature
+                                focusManager.clearFocus(force = true)
+                                keyboard?.hide()
+                            },
+                        )
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        repeat(heroSpotlight.size) { index ->
-                            Box(
-                                modifier = Modifier.padding(horizontal = 3.dp)
-                                    .width(if (index == heroPager.currentPage) 16.dp else 6.dp)
-                                    .height(6.dp)
-                                    .clip(RoundedCornerShape(50))
-                                    .background(
-                                        if (index == heroPager.currentPage) InkShelf2Colors.AccentLight
-                                        else InkShelf2Colors.Border,
-                                    ),
-                            )
-                        }
-                    }
+                    Spacer(Modifier.height(11.dp))
+                    InkShelf2SpotlightIndicators(
+                        count = heroSpotlight.size,
+                        selectedIndex = heroPager.currentPage,
+                        onSelected = { index -> scope.launch { heroPager.animateScrollToPage(index) } },
+                    )
                 } else {
                     InkShelf2EmptyShelf("No current editorial features. The Spotlight will return with the next verified launches.")
                 }
