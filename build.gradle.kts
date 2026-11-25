@@ -40,7 +40,7 @@ buildscript {
 
 tasks.named("dependencyUpdates", com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask::class.java).configure {
     rejectVersionIf {
-        isNonStable(candidate.version)
+        BuildTools.isNonStable(candidate.version)
     }
     // optional parameters
     checkForGradleUpdate = true
