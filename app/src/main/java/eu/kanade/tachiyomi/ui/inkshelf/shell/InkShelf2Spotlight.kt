@@ -63,6 +63,7 @@ internal object InkShelf2Spotlight {
     private const val URL =
         "https://raw.githubusercontent.com/Rainkingx/InkShelf/inkshelf-2.0/editorial/spotlight.json"
     private const val CACHE = "inkshelf2_editorial_events_v3"
+    const val MAX_ACTIVE = 6
     const val TTL_MS = 15L * 60L * 1000L
     private val refreshMutex = Mutex()
     private val client = OkHttpClient.Builder()
@@ -182,7 +183,7 @@ internal object InkShelf2Spotlight {
         input.filter { it.featuredFrom <= today && it.expires >= today }
             .distinctBy { it.id }
             .sortedWith(compareByDescending<Event> { it.id == "doom-essential" })
-            .take(4)
+            .take(MAX_ACTIVE)
 
     private fun active(input: List<Event>): List<Event> {
         return selectVisible(input, todayUtc())

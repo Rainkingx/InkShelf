@@ -231,6 +231,29 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun spotlightShowsSixActiveDistinctEventsAndKeepsDoomFirst() {
+        val template = InkShelf2Spotlight.Event(
+            id = "template", title = "Test spotlight", publisher = "Marvel",
+            label = "FEATURED", summary = "Test event",
+            officialUrl = "https://example.com",
+            featuredFrom = "2026-12-01", expires = "2026-12-31",
+            pulseKeywords = emptyList(),
+            series = listOf(InkShelf2Spotlight.Series("series", "Test Comic", 2026, "Test")),
+        )
+        val active = (1..7).map { template.copy(id = "event-$it") }
+        val doom = template.copy(id = "doom-essential")
+        val future = template.copy(id = "future", featuredFrom = "2027-01-01", expires = "2027-01-31")
+        val expired = template.copy(id = "expired", featuredFrom = "2026-11-01", expires = "2026-11-30")
+        val visible = InkShelf2Spotlight.selectVisible(
+            listOf(future, expired, active.first()) + active + doom, "2026-12-01",
+        )
+        assertEquals(listOf(doom.id) + active.take(5).map { it.id }, visible.map { it.id })
+        assertEquals(6, InkShelf2Spotlight.MAX_ACTIVE)
+        assertEquals(emptyList<InkShelf2Spotlight.Event>(),
+            InkShelf2Spotlight.selectVisible(active + doom, "2027-01-01"))
+    }
+
+    @Test
     fun doomReadingGuideRespectsStartDateAndIssueRanges() {
         val doom = InkShelf2Spotlight.Event(
             id = "doom-essential", title = "DOCTOR DOOM", publisher = "Marvel",

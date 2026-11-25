@@ -264,7 +264,7 @@ internal fun InkShelf2DiscoverScreen(
         .distinctBy { "${it.source}:${it.url}" }
     // The featured carousel has its own current, date-expiring publisher lineup.
     // Popular extension results remain below; they never define the hero.
-    val heroSpotlight = spotlightEvents.take(4)
+    val heroSpotlight = spotlightEvents.take(InkShelf2Spotlight.MAX_ACTIVE)
     val newest = discover?.newest.orEmpty()
         .filter { it.source in enabledSourceIds && !it.thumbnail_url.isNullOrBlank() }
         .distinctBy { "${it.source}:${it.url}" }
