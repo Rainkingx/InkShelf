@@ -1,16 +1,12 @@
-# InkShelf 2.0 — Public Beta 6
+# InkShelf 2.0 — Public Beta 7
 
-This is a version-only test release for the improved in-app updater introduced in Beta 5. No reader, library, download, or artwork features have changed.
+- Built-in HD cinematic splash artwork: Iron Man, Superman, Spider-Man, Flash, then the InkShelf logo. No manual import is required.
+- Existing custom splash artwork is retained and can still be selected in Appearance.
+- The updater now uses InkShelf's native theme, fonts and progress display.
+- Original artwork is retained outside the packaged assets to avoid duplicating image files in the APK.
 
-## Update test
+## Updating
 
-1. Open InkShelf Beta 5.
-2. Open Menu, then Settings > Check for updates.
-3. Accept the Beta 6 update and allow installation from InkShelf if Android requests permission.
-4. Keep InkShelf open while download progress is displayed.
-5. Confirm the update in Android's package installer.
-6. Reopen InkShelf and check that Menu shows version 2.0.0-b06. Verify the library and reading progress remain intact.
+From Beta 6, open Menu > Check for updates and install Beta 7. Back up your library first. After installing, fully close and reopen InkShelf to see the cinematic splash if enabled. The new updater design will appear on the next update check when a newer release is available.
 
-Back up your library before updating. If the in-app updater fails, report the error and device details. A signed APK is also available on GitHub as a fallback. The public package identity and signing key are unchanged.
-
-This is a prerelease. InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders. See the README and Apache-2.0 licence.
+This is a prerelease. The public package identity and signing key remain unchanged. InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders.
