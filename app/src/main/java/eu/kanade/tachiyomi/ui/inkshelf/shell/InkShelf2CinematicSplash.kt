@@ -32,6 +32,10 @@ internal class InkShelf2CinematicSplash(
     companion object {
         private const val PREFS = "inkshelf_cinematic_startup"
         private const val ENABLED = "enabled"
+        private const val DURATION = "duration_seconds"
+        const val MIN_DURATION_SECONDS = 3
+        const val MAX_DURATION_SECONDS = 7
+        private const val DEFAULT_DURATION_SECONDS = 5
         private const val BEAT = 510L
         private const val REVEAL = 2040L
         private const val FINISH = 3000L
@@ -44,6 +48,16 @@ internal class InkShelf2CinematicSplash(
         fun setEnabled(context: Context, value: Boolean) {
             context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit().putBoolean(ENABLED, value).apply()
+        }
+
+        fun durationSeconds(context: Context): Int =
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getInt(DURATION, DEFAULT_DURATION_SECONDS)
+                .coerceIn(MIN_DURATION_SECONDS, MAX_DURATION_SECONDS)
+
+        fun setDurationSeconds(context: Context, seconds: Int) {
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putInt(DURATION, seconds.coerceIn(MIN_DURATION_SECONDS, MAX_DURATION_SECONDS)).apply()
         }
 
         fun claimColdStart(): Boolean {
@@ -61,6 +75,7 @@ internal class InkShelf2CinematicSplash(
     private val emblems = Array(4) { index ->
         InkShelf2SplashArtwork.load(context, index) ?: renderEmblem(index)
     }
+    private val durationMillis = durationSeconds(context) * 1000L
     private var firstFrame = 0L
     private var finished = false
     private var fadeStarted = 0L
@@ -97,8 +112,11 @@ internal class InkShelf2CinematicSplash(
         if (finished) return
         val now = SystemClock.elapsedRealtime()
         if (firstFrame == 0L) firstFrame = now
-        val elapsed = now - firstFrame
-        if (elapsed >= FINISH && (ready() || now - startedAt >= 8000L)) {
+        val realElapsed = (now - firstFrame).coerceAtLeast(0L)
+        // Keep every emblem, transition and the logo reveal in the same
+        // proportions at each speed. Readiness timeout stays in real time.
+        val elapsed = min(realElapsed, durationMillis) * FINISH / durationMillis
+        if (realElapsed >= durationMillis && (ready() || now - startedAt >= 8000L)) {
             if (fadeStarted == 0L) fadeStarted = now
             val fade = ((now - fadeStarted) / 180f).coerceIn(0f, 1f)
             alpha = 1f - fade

@@ -1,8 +1,6 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.graphics.Color as AndroidColor
-import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -59,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** Native InkShelf 2.0 appearance picker, with live previews and saved colours. */
 @Composable
@@ -68,6 +67,7 @@ internal fun InkShelf2ThemesScreen(
 ) {
     val context = LocalContext.current
     var cinematicEnabled by remember(context) { mutableStateOf(InkShelf2CinematicSplash.enabled(context)) }
+    var splashSeconds by remember(context) { mutableStateOf(InkShelf2CinematicSplash.durationSeconds(context)) }
     var artworkOpen by rememberSaveable { mutableStateOf(false) }
     var pendingArtwork by rememberSaveable { mutableStateOf(-1) }
     var artworkEpoch by remember { mutableStateOf(0) }
@@ -183,7 +183,7 @@ internal fun InkShelf2ThemesScreen(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("Cinematic opening", color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
-                    Text("Play the hero-symbol sequence on cold startup", color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                    Text("Play your image sequence on cold startup", color = InkShelf2Colors.Muted, fontSize = 12.sp)
                 }
                 androidx.compose.material3.Switch(checked = cinematicEnabled, onCheckedChange = {
                     cinematicEnabled = it
@@ -193,8 +193,38 @@ internal fun InkShelf2ThemesScreen(
         }
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Splash speed", modifier = Modifier.weight(1f),
+                        color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
+                    Text("$splashSeconds seconds", color = InkShelf2Colors.AccentLight, fontSize = 13.sp)
+                }
+                Slider(
+                    value = splashSeconds.toFloat(),
+                    onValueChange = { splashSeconds = it.roundToInt() },
+                    onValueChangeFinished = {
+                        InkShelf2CinematicSplash.setDurationSeconds(context, splashSeconds)
+                    },
+                    valueRange = InkShelf2CinematicSplash.MIN_DURATION_SECONDS.toFloat()..
+                        InkShelf2CinematicSplash.MAX_DURATION_SECONDS.toFloat(),
+                    steps = InkShelf2CinematicSplash.MAX_DURATION_SECONDS -
+                        InkShelf2CinematicSplash.MIN_DURATION_SECONDS - 1,
+                    enabled = cinematicEnabled,
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Fast · 3s", color = InkShelf2Colors.Muted, fontSize = 11.sp)
+                    Text("Slow · 7s", color = InkShelf2Colors.Muted, fontSize = 11.sp)
+                }
+                Text("Changes apply on the next cold launch. Tap the splash to skip.",
+                    color = InkShelf2Colors.Muted, fontSize = 12.sp)
+            }
+        }
+        item {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
                 TextButton(onClick = { artworkOpen = !artworkOpen }) {
-                    Text(if (artworkOpen) "Hide splash artwork" else "Custom splash artwork",
+                    Text(if (artworkOpen) "Hide custom images" else "Add your own splash",
                         color = InkShelf2Colors.AccentLight)
                 }
                 if (artworkOpen) {
@@ -203,17 +233,14 @@ internal fun InkShelf2ThemesScreen(
                     InkShelf2SplashArtwork.slots.forEachIndexed { index, slot ->
                         val imported = remember(artworkEpoch, index) { InkShelf2SplashArtwork.has(context, index) }
                         Spacer(Modifier.height(12.dp))
-                        Text(slot.title, color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
-                        Text(if (imported) "Custom image saved" else "Built-in emblem",
+                        Text(slot, color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
+                        Text(if (imported) "Custom image saved" else "Default image",
                             color = InkShelf2Colors.Muted, fontSize = 12.sp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             TextButton(enabled = !importingArtwork, onClick = {
                                 pendingArtwork = index
                                 picker.launch("image/*")
                             }) { Text(if (imported) "Replace" else "Choose image") }
-                            TextButton(onClick = {
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(slot.reference))) }
-                            }) { Text("Reference") }
                             if (imported) {
                                 TextButton(enabled = !importingArtwork, onClick = {
                                     InkShelf2SplashArtwork.reset(context, index)

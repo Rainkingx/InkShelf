@@ -13,13 +13,7 @@ import kotlin.math.max
 
 /** Locally chosen splash images are private to this installation, never uploaded. */
 internal object InkShelf2SplashArtwork {
-    data class Slot(val title: String, val reference: String)
-    val slots = listOf(
-        Slot("Iron Man — arc reactor", "https://propstoreauction.com/lot-details/index/catalog/489/lot/186352/654-Light-Up-Proof-That-Tony-Stark-Has-a-Heart-Arc-Reactor-Display-Replica-IRON-MAN-2008"),
-        Slot("Batman — bat emblem", "https://commons.wikimedia.org/wiki/File:Batman_yellow_oval_logo_with_DC_copyright.svg"),
-        Slot("Dredd — 2012 helmet", "https://propstore.com/product/dredd-2012/karl-urban-hero-costume/"),
-        Slot("Spider-Man — Raimi emblem", "https://propstore.com/product/spider-man-2002/spider-man-suit-components-and-patterns/"),
-    )
+    val slots = List(4) { index -> "Image ${index + 1}" }
 
     private fun file(context: Context, index: Int): File {
         require(index in slots.indices)
