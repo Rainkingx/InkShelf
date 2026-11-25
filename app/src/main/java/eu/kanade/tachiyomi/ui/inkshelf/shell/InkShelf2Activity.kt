@@ -7,11 +7,16 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import eu.kanade.tachiyomi.BuildConfig
-import eu.kanade.tachiyomi.data.updater.AppDownloadInstallJob
 import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
 import eu.kanade.tachiyomi.data.updater.AppUpdateNotifier
 import eu.kanade.tachiyomi.data.updater.AppUpdateResult
 import android.os.Bundle
+import androidx.core.content.pm.PackageInfoCompat
+import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.util.storage.getUriCompat
+import kotlinx.coroutines.ensureActive
+import java.io.File
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
@@ -114,6 +119,88 @@ class InkShelf2Activity : AppCompatActivity() {
     private var readerOpenInProgress by mutableStateOf(false)
     private var guideIssueOpenInProgress = false
     private var downloadStoragePrompt by mutableStateOf(false)
+    private var appUpdateProgress by mutableStateOf<Int?>(null)
+
+    private fun installPublicUpdate(url: String, onStarted: () -> Unit) {
+        if (appUpdateProgress != null) return
+        val uri = Uri.parse(url)
+        if (!BuildConfig.INCLUDE_UPDATER || uri.scheme != "https" ||
+            !uri.host.equals("github.com", true) ||
+            uri.path?.startsWith("/Rainkingx/InkShelf/releases/download/") != true ||
+            uri.path?.endsWith("/InkShelf.apk") != true
+        ) {
+            Toast.makeText(this, "Invalid update download address", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (!packageManager.canRequestPackageInstalls()) {
+            Toast.makeText(this, "Allow InkShelf to install unknown apps, then return and tap Download & Install again.", Toast.LENGTH_LONG).show()
+            try {
+                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            } catch (_: Exception) {
+                Toast.makeText(this, "Enable Install unknown apps for InkShelf in Android settings.", Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+        onStarted()
+        appUpdateProgress = 0
+        lifecycleScope.launch {
+            val apk = File(cacheDir, "inkshelf-update.apk")
+            val partial = File(cacheDir, "inkshelf-update.apk.part")
+            try {
+                withContext(Dispatchers.IO) {
+                    apk.delete()
+                    partial.delete()
+                    val network = Injekt.get<NetworkHelper>()
+                    network.client.newCall(GET(url)).execute().use { response ->
+                        if (!response.isSuccessful) error("Download failed (HTTP ${response.code})")
+                        val body = response.body
+                        val total = body.contentLength()
+                        var received = 0L
+                        var lastProgress = -1
+                        body.byteStream().use { input ->
+                            partial.outputStream().buffered().use { output ->
+                                val buffer = ByteArray(64 * 1024)
+                                while (true) {
+                                    ensureActive()
+                                    val count = input.read(buffer)
+                                    if (count < 0) break
+                                    output.write(buffer, 0, count)
+                                    received += count
+                                    val progress = if (total > 0) ((received * 100) / total).toInt().coerceIn(0, 99) else -1
+                                    if (progress != lastProgress) {
+                                        lastProgress = progress
+                                        withContext(Dispatchers.Main) { appUpdateProgress = progress }
+                                    }
+                                }
+                            }
+                        }
+                        if (received == 0L || (total > 0 && received != total)) error("Incomplete update download")
+                    }
+                    if (!partial.renameTo(apk)) error("Could not save update")
+                    @Suppress("DEPRECATION")
+                    val archive = packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+                        ?: error("Downloaded file is not a valid APK")
+                    if (archive.packageName != packageName ||
+                        PackageInfoCompat.getLongVersionCode(archive) <= BuildConfig.VERSION_CODE.toLong()
+                    ) error("The APK is not a newer InkShelf public release")
+                }
+                // The Android installer performs the final signature and upgrade checks.
+                startActivity(
+                    Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(apk.getUriCompat(this@InkShelf2Activity), "application/vnd.android.package-archive")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    },
+                )
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (error: Exception) {
+                Toast.makeText(this@InkShelf2Activity, "Update failed: ${error.message ?: "Unknown error"}. Check for updates to retry.", Toast.LENGTH_LONG).show()
+            } finally {
+                partial.delete()
+                appUpdateProgress = null
+            }
+        }
+    }
     private val legacyStoragePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         Toast.makeText(this, if (granted) "Storage access granted. Tap download again."
             else "Storage access is needed for offline downloads.", Toast.LENGTH_LONG).show()
@@ -913,6 +1000,17 @@ class InkShelf2Activity : AppCompatActivity() {
                     },
                 )
             }
+            appUpdateProgress?.let { progress ->
+                AlertDialog(
+                    onDismissRequest = {},
+                    title = { Text("Downloading InkShelf update") },
+                    text = {
+                        Text(if (progress < 0) "Downloading APK… Keep InkShelf open."
+                            else "$progress% downloaded. Keep InkShelf open; Android will ask you to install when ready.")
+                    },
+                    confirmButton = {},
+                )
+            }
             updateNotes?.let { (notes, url) ->
                 val parsed = Uri.parse(url)
                 val isTrustedApk = parsed.scheme == "https" &&
@@ -932,10 +1030,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         TextButton(
                             enabled = isTrustedApk,
                             onClick = {
-                                updateNotes = null
-                                AppDownloadInstallJob.start(
-                                    this@InkShelf2Activity, url, notifyOnInstall = true,
-                                )
+                                installPublicUpdate(url) { updateNotes = null }
                             },
                         ) { Text("Download & Install") }
                     },
