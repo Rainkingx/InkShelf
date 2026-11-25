@@ -104,6 +104,15 @@
 
     <style name="Theme.Tachiyomi" parent="Theme.Base"/>
 
+    <!-- The launcher owns its cinematic artwork; do not display the legacy icon first. -->
+    <style name="Theme.InkShelf2.Startup" parent="Theme.Tachiyomi">
+        <item name="android:windowBackground">#050409</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">#050409</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/inkshelf_startup_blank</item>
+        <item name="android:windowSplashScreenIconBackgroundColor" tools:targetApi="31">#050409</item>
+        <item name="android:windowSplashScreenAnimationDuration" tools:targetApi="31">0</item>
+    </style>
+
     <style name="ThemeOverlay.Tachiyomi.Amoled" parent="">
         <item name="colorSurface">@color/md_black_1000</item>
         <item name="colorSurfaceContainer">@color/md_black_1000</item>

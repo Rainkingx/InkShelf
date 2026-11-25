@@ -55,7 +55,7 @@
         <activity
             android:name=".ui.inkshelf.shell.InkShelf2Activity"
             android:exported="false"
-            android:theme="@style/Theme.Tachiyomi" />
+            android:theme="@style/Theme.InkShelf2.Startup" />
         <activity-alias
             android:name=".ui.inkshelf.shell.InkShelf2Preview"
             android:enabled="true"
