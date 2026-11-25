@@ -33,6 +33,7 @@ internal object InkShelf2Spotlight {
         val aliases: List<String> = emptyList(),
         val alternateYears: List<Int> = emptyList(),
         val artworkUrl: String? = null,
+        val group: String? = null,
     ) {
         val editionTitle: String get() = title + " (" + year + ")"
         val searchTerms: List<String> get() = (listOf(title) + aliases).distinct()
@@ -228,13 +229,20 @@ internal object InkShelf2Spotlight {
             }
         }
 
+    private fun artworkHosts(publisher: String): Set<String> = when (publisher) {
+        "Marvel" -> setOf("cdn.marvel.com")
+        "DC" -> setOf("static.dc.com")
+        "Marvel, DC & Indie" -> setOf("cdn.marvel.com", "static.dc.com")
+        else -> emptySet()
+    }
+
     private fun parse(raw: String): List<Event> = runCatching {
         val root = JSONObject(raw)
         if (root.optInt("schema") != 2) return@runCatching emptyList()
         val entries = root.optJSONArray("events") ?: return@runCatching emptyList()
         val date = Regex("""\d{4}-\d{2}-\d{2}""")
         buildList {
-            for (index in 0 until minOf(entries.length(), 4)) {
+            for (index in 0 until minOf(entries.length(), 24)) {
                 val item = entries.optJSONObject(index) ?: continue
                 val items = item.optJSONArray("series") ?: continue
                 val series = buildList {
@@ -258,13 +266,14 @@ internal object InkShelf2Spotlight {
                         val cover = element.optString("artwork_url").takeIf { candidate ->
                             candidate.length in 10..2048 && runCatching {
                                 val uri = URI(candidate)
-                                val host = if (item.optString("publisher") == "Marvel") "cdn.marvel.com" else "static.dc.com"
-                                uri.scheme == "https" && uri.host == host && uri.userInfo == null
+                                val hosts = artworkHosts(item.optString("publisher"))
+                                uri.scheme == "https" && uri.host in hosts && uri.userInfo == null
                             }.getOrDefault(false)
                         }
                         val s = Series(element.optString("id"), element.optString("title"),
                             year, element.optString("tagline"),
-                            element.optString("issues").takeIf { it.isNotBlank() }, aliases, years, cover)
+                            element.optString("issues").takeIf { it.isNotBlank() }, aliases, years, cover,
+                            element.optString("group").takeIf { it in setOf("Marvel", "DC", "Indie") })
                         if (s.id.length in 2..65 && s.title.length in 3..100 &&
                             s.year in 1900..2099 && s.tagline.length in 5..200 &&
                             (s.issues == null || s.issues.length <= 80)) add(s)
@@ -284,16 +293,17 @@ internal object InkShelf2Spotlight {
                     keywords, series, item.optString("artwork_url").takeIf { it.isNotBlank() })
                 val url = runCatching { URI(e.officialUrl) }.getOrNull()
                 val artUri = e.artworkUrl?.let { runCatching { URI(it) }.getOrNull() }
-                val allowed = if (e.publisher == "Marvel")
-                    setOf("www.marvel.com", "marvel.com", "share.marvel.com")
-                    else setOf("www.dc.com", "dc.com")
-                val allowedArtwork = if (e.publisher == "Marvel")
-                    setOf("cdn.marvel.com")
-                    else setOf("static.dc.com")
+                val allowed = when (e.publisher) {
+                    "Marvel" -> setOf("www.marvel.com", "marvel.com", "share.marvel.com")
+                    "DC" -> setOf("www.dc.com", "dc.com")
+                    "Marvel, DC & Indie" -> setOf("www.marvel.com", "marvel.com", "share.marvel.com", "www.dc.com", "dc.com", "www.boom-studios.com", "imagecomics.com", "www.darkhorse.com", "miragelicensing.com")
+                    else -> emptySet()
+                }
+                val allowedArtwork = artworkHosts(e.publisher)
                 if (e.artworkUrl != null &&
                     (artUri?.scheme != "https" || artUri.host !in allowedArtwork)) continue
                 if (e.id.length !in 3..80 || e.title.length !in 5..80 ||
-                    e.publisher !in setOf("Marvel", "DC") ||
+                    e.publisher !in setOf("Marvel", "DC", "Marvel, DC & Indie") ||
                     e.label.length !in 3..80 || e.summary.length !in 20..1000 ||
                     !date.matches(e.featuredFrom) || !date.matches(e.expires) ||
                     url?.scheme != "https" || url.host !in allowed) continue

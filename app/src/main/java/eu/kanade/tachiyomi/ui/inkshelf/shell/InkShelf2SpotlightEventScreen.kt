@@ -230,6 +230,7 @@ internal fun InkShelf2SpotlightEventScreen(
                         Spacer(Modifier.height(8.dp))
                         Text(if (event.id == "doom-essential")
                             event.series.size.toString() + " ESSENTIAL READS · IN ORDER"
+                            else if (event.id == "comic-christmas") event.series.size.toString() + " FESTIVE READS"
                             else event.series.size.toString() + " CONNECTED SERIES",
                             color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp)
                     }
@@ -242,7 +243,8 @@ internal fun InkShelf2SpotlightEventScreen(
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(event.officialUrl)))
                     }
                 }) {
-                    Text("Official " + event.publisher + " event page",
+                    Text(if (event.id == "comic-christmas") "Featured comic · official publisher page"
+                        else "Official " + event.publisher + " event page",
                         color = InkShelf2Colors.AccentLight)
                     Spacer(Modifier.width(6.dp))
                     Icon(Icons.Outlined.OpenInNew, null,
@@ -254,6 +256,7 @@ internal fun InkShelf2SpotlightEventScreen(
         item(key = "series-intro") {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(if (event.id == "doom-essential") "Essential reading order"
+                    else if (event.id == "comic-christmas") "Christmas reading collection"
                     else "Explore the series", color = InkShelf2Colors.Text,
                     fontWeight = FontWeight.Bold, fontSize = 22.sp)
                 if (event.id == "doom-essential") {
@@ -276,6 +279,12 @@ internal fun InkShelf2SpotlightEventScreen(
 
         items(event.series, key = { it.id }) { series ->
             val readingNumber = event.series.indexOfFirst { it.id == series.id } + 1
+            val group = series.group
+            if (group != null && (readingNumber == 1 || event.series[readingNumber - 2].group != group)) {
+                Text(if (group == "Indie") "Independent comics" else group,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    color = InkShelf2Colors.AccentLight, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            }
             val resolved = matches[series.id]
             val coverCandidates = listOfNotNull<Any>(
                 series.artworkUrl,

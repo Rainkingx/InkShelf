@@ -654,6 +654,7 @@ internal fun InkShelf2DiscoverScreen(
                             title = feature.title,
                             subtitle = if (feature.id == "doom-essential")
                                 "${feature.series.size} essential reads"
+                                else if (feature.id == "comic-christmas") "Marvel · DC · Indie · 12 festive reads"
                                 else "${feature.publisher} · ${feature.series.size} series",
                             artwork = heroImage,
                             actionLabel = if (feature.id == "doom-essential") "Start Reading" else "Explore Spotlight",

@@ -390,6 +390,162 @@
         }
       ],
       "artwork_url": "https://cdn.marvel.com/content/2x/ultimateendgame_teaser2.jpg"
+    },
+    {
+      "id": "comic-christmas",
+      "title": "A VERY COMIC CHRISTMAS",
+      "publisher": "Marvel, DC & Indie",
+      "label": "12 FESTIVE READS",
+      "summary": "Twelve festive favourites across Marvel, DC and independent publishers. Enjoy superhero holiday adventures, a Dickens-inspired Batman story, Santa mythology, a heartwarming Turtle tale and a little Christmas horror. Each entry is a standalone special or a short run.",
+      "official_url": "https://www.dc.com/graphic-novels/batman-noel-deluxe-edition",
+      "featured_from": "2026-12-01",
+      "expires": "2026-12-31",
+      "pulse_keywords": [
+        "christmas comics",
+        "holiday comics",
+        "christmas special",
+        "holiday special",
+        "batman noel",
+        "klaus comic"
+      ],
+      "artwork_url": "https://static.dc.com/dc/files/default_images/20181_900x1350.jpg",
+      "series": [
+        {
+          "id": "dc-noel",
+          "title": "Batman: Noël",
+          "year": 2011,
+          "tagline": "Lee Bermejo reimagines A Christmas Carol with the Dark Knight.",
+          "issues": "Graphic novel",
+          "group": "DC",
+          "aliases": [
+            "Batman: Noel",
+            "Batman Noel"
+          ]
+        },
+        {
+          "id": "dc-adventures",
+          "title": "The Batman Adventures Holiday Special",
+          "year": 1994,
+          "tagline": "Festive adventures from the animated Batman universe.",
+          "issues": "#1",
+          "group": "DC",
+          "aliases": [
+            "Batman Adventures Holiday Special",
+            "The Batman Adventures: Holiday Special"
+          ],
+          "alternate_years": [
+            1995
+          ]
+        },
+        {
+          "id": "dc-rebirth",
+          "title": "DC Rebirth Holiday Special",
+          "year": 2016,
+          "tagline": "A collection of holiday tales starring DC heroes.",
+          "issues": "#1",
+          "group": "DC",
+          "aliases": [
+            "DC Rebirth Holiday Special 2016"
+          ]
+        },
+        {
+          "id": "dc-smells",
+          "title": "DC's Batman Smells, Robin Laid an Egg",
+          "year": 2024,
+          "tagline": "A playful collection of winter adventures.",
+          "issues": "#1",
+          "group": "DC",
+          "aliases": [
+            "DC's Batman Smells Robin Laid an Egg",
+            "Batman Smells, Robin Laid an Egg"
+          ]
+        },
+        {
+          "id": "marvel-holiday",
+          "title": "Marvel Holiday Special",
+          "year": 1991,
+          "tagline": "Classic Christmas stories featuring Marvel's heroes.",
+          "issues": "1991 special",
+          "group": "Marvel",
+          "aliases": [
+            "Marvel Holiday Special 1991"
+          ]
+        },
+        {
+          "id": "marvel-spidey",
+          "title": "Spider-Man Holiday Special",
+          "year": 1995,
+          "tagline": "Peter Parker gets a seasonal adventure.",
+          "issues": "#1",
+          "group": "Marvel",
+          "aliases": [
+            "Spider Man Holiday Special"
+          ]
+        },
+        {
+          "id": "marvel-gwen",
+          "title": "Gwenpool Holiday Special: Merry Mix-Up",
+          "year": 2016,
+          "tagline": "Gwenpool turns the festive season upside down.",
+          "issues": "#1",
+          "group": "Marvel",
+          "aliases": [
+            "Gwenpool Holiday Special: Merry Mix Up"
+          ]
+        },
+        {
+          "id": "marvel-loki",
+          "title": "Alligator Loki Holiday Special",
+          "year": 2024,
+          "tagline": "A mischievous holiday tale about family.",
+          "issues": "#1",
+          "group": "Marvel"
+        },
+        {
+          "id": "indie-klaus",
+          "title": "Klaus",
+          "year": 2015,
+          "tagline": "BOOM! Studios — Grant Morrison and Dan Mora reimagine the origins of Santa Claus.",
+          "issues": "#1–7",
+          "group": "Indie"
+        },
+        {
+          "id": "indie-hellboy",
+          "title": "Hellboy Christmas Special",
+          "year": 1997,
+          "tagline": "Dark Horse — supernatural seasonal stories, including A Christmas Underground.",
+          "issues": "One-shot",
+          "group": "Indie",
+          "aliases": [
+            "Hellboy: Christmas Special"
+          ]
+        },
+        {
+          "id": "indie-tmnt",
+          "title": "Michaelangelo, Teenage Mutant Ninja Turtle",
+          "year": 1985,
+          "tagline": "Mirage — The Christmas Aliens follows Mikey on a heartwarming Christmas adventure.",
+          "issues": "#1",
+          "group": "Indie",
+          "aliases": [
+            "Michaelangelo",
+            "Michelangelo",
+            "Michaelangelo: Teenage Mutant Ninja Turtle",
+            "Teenage Mutant Ninja Turtles: Michaelangelo"
+          ]
+        },
+        {
+          "id": "indie-creepshow",
+          "title": "Creepshow Holiday Special 2023",
+          "year": 2023,
+          "tagline": "Image/Skybound — festive horror from the Creepshow anthology.",
+          "issues": "#1",
+          "group": "Indie",
+          "aliases": [
+            "Creepshow Holiday Special"
+          ]
+        }
+      ]
     }
   ]
 }
