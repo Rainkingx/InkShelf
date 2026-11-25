@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -153,6 +154,7 @@ class InkShelf2Activity : AppCompatActivity() {
         }
 
         setContent {
+            val pageState = rememberSaveableStateHolder()
             val openedFromDownloadNotice = intent.action == ACTION_SHOW_DOWNLOADS
             var tab by rememberSaveable {
                 mutableStateOf(if (openedFromDownloadNotice) InkShelf2Tab.ACCOUNT else InkShelf2Tab.HOME)
@@ -181,7 +183,7 @@ class InkShelf2Activity : AppCompatActivity() {
             }
             // Start a fresh search whenever Discover is left; guide and
             // Find Source entries can still supply a new explicit query.
-            var discoverSearchSession by remember { mutableIntStateOf(0) }
+            var discoverSearchSession by rememberSaveable { mutableIntStateOf(0) }
             fun clearDiscoverSearch() {
                 discoverSearchPreset = ""
                 guideIssueSearch = null
@@ -220,6 +222,7 @@ class InkShelf2Activity : AppCompatActivity() {
             fun openTab(destination: InkShelf2Tab) {
                 val visibleDestination = destination
                 if (tab == InkShelf2Tab.GUIDES) {
+                    pageState.removeState("events:$libraryGuideId")
                     libraryGuideId = null
                     guideIssuePicker = null
                     guideCollectionPicker = null
@@ -251,19 +254,15 @@ class InkShelf2Activity : AppCompatActivity() {
             fun openPulse() {
                 // The shortcut is a route to the existing full Pulse screen,
                 // not a fifth tab or a second/duplicated feed.
-                pulseReturnToTab = if (tab == InkShelf2Tab.HOME) "" else tab.name
-                openTab(InkShelf2Tab.HOME)
+                // Pulse is an overlay route: leave the current tab and child
+                // destination untouched so Back returns to exactly that page.
                 pulseExpanded = true
                 InkShelf2PulseStatus.markViewed(applicationContext)
                 pulseHasNewStories = false
             }
             fun closePulse() {
                 pulseExpanded = false
-                val previous = InkShelf2Tab.entries.firstOrNull {
-                    it.name == pulseReturnToTab
-                }
                 pulseReturnToTab = ""
-                if (previous != null) openTab(previous)
             }
             val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
             val availableExtensions by extensionManager.availableExtensionsFlow.collectAsState()
@@ -618,9 +617,8 @@ class InkShelf2Activity : AppCompatActivity() {
 
             // One immediate route for EVERY comic card, just like InkShelf 1.
             val openComicDetails: (Manga) -> Unit = { manga ->
-                // Opening details leaves Discover even though its tab stays
-                // selected underneath. Back must not restore stale results.
-                if (tab == InkShelf2Tab.DISCOVER) clearDiscoverSearch()
+                // Details is a child route, not a new Discover visit.
+                // Keep its parent query, Spotlight and list position intact.
                 comicBackStack = emptyList()
                 sourceLinkError = null
                 issuesError = null
@@ -858,7 +856,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 onPulse = { openPulse() },
                 onGuides = { openTab(InkShelf2Tab.GUIDES) },
                 guidesActive = tab == InkShelf2Tab.GUIDES,
-                pulseActive = tab == InkShelf2Tab.HOME && pulseExpanded,
+                pulseActive = pulseExpanded,
                 pulseHasNewStories = pulseHasNewStories,
                 notificationCount = extensionUpdates.size,
             ) { padding ->
@@ -1006,6 +1004,26 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                     )
                     }
+                    pulseExpanded -> pageState.SaveableStateProvider("pulse") {
+                        InkShelf2HomeScreen(
+                            home = home,
+                            library = library,
+                            profileName = profileName,
+                            padding = padding,
+                            pulseExpanded = true,
+                            onPulseExpandedChange = { expanded -> if (!expanded) closePulse() },
+                            onPulseArticlesUpdated = { articles ->
+                                pulseHasNewStories = !pulseExpanded &&
+                                    InkShelf2PulseStatus.hasUnread(applicationContext, articles)
+                            },
+                            onOpen = openComicDetails,
+                            onSave = { saveComic(it) },
+                            onDiscover = { openTab(InkShelf2Tab.DISCOVER) },
+                            onLibrary = { openTab(InkShelf2Tab.LIBRARY) },
+                            onDayPicks = { selectedDay = it },
+                            onTrendingSeeAll = { selectedDiscoverShelf = "Trending Right Now" },
+                        )
+                    }
                     notificationsOpen -> InkShelf2NotificationsScreen(
                         padding = padding,
                         updates = extensionUpdates,
@@ -1039,7 +1057,8 @@ class InkShelf2Activity : AppCompatActivity() {
                             }
                         },
                     )
-                    selectedDiscoverShelf != null -> InkShelf2DiscoverShelfScreen(
+                    selectedDiscoverShelf != null -> pageState.SaveableStateProvider("shelf:${selectedDiscoverShelf}") {
+                        InkShelf2DiscoverShelfScreen(
                         title = selectedDiscoverShelf!!,
                         comics = when (selectedDiscoverShelf) {
                             "New This Week" -> discover?.newest.orEmpty()
@@ -1066,12 +1085,15 @@ class InkShelf2Activity : AppCompatActivity() {
                         onBack = { selectedDiscoverShelf = null },
                         onOpen = openComicDetails,
                     )
-                    selectedDay != null -> InkShelf2DailyPicksScreen(
+                    }
+                    selectedDay != null -> pageState.SaveableStateProvider("daily-picks") {
+                        InkShelf2DailyPicksScreen(
                         day = selectedDay!!,
                         padding = padding,
                         onBack = { selectedDay = null },
                         onOpen = openComicDetails,
                     )
+                    }
                     welcomeOpen &&
                         (tab != InkShelf2Tab.ACCOUNT ||
                             (!sourceHubOpen && !metronOpen && !themesOpen && !backupOpen && !importOpen)) ->
@@ -1107,7 +1129,8 @@ class InkShelf2Activity : AppCompatActivity() {
                             importOpen = true
                         },
                     )
-                    tab == InkShelf2Tab.HOME -> InkShelf2HomeScreen(
+                    tab == InkShelf2Tab.HOME -> pageState.SaveableStateProvider("home") {
+                        InkShelf2HomeScreen(
                         home = home,
                         library = library,
                         profileName = profileName,
@@ -1127,7 +1150,9 @@ class InkShelf2Activity : AppCompatActivity() {
                         onDayPicks = { selectedDay = it },
                         onTrendingSeeAll = { selectedDiscoverShelf = "Trending Right Now" },
                     )
-                    tab == InkShelf2Tab.ACCOUNT && sourceHubOpen -> InkShelf2SourceHub(
+                    }
+                    tab == InkShelf2Tab.ACCOUNT && sourceHubOpen -> pageState.SaveableStateProvider("sourceHub:$sourceHubMode") {
+                        InkShelf2SourceHub(
                         padding = padding,
                         sources = catalogueSources,
                         installed = installedExtensions,
@@ -1146,7 +1171,9 @@ class InkShelf2Activity : AppCompatActivity() {
                         onExtensionStateChanged = { refreshEpoch += 1 },
                         onOpenComic = openComicDetails,
                     )
-                    tab == InkShelf2Tab.DISCOVER -> InkShelf2DiscoverScreen(
+                    }
+                    tab == InkShelf2Tab.DISCOVER -> pageState.SaveableStateProvider("discover") {
+                        InkShelf2DiscoverScreen(
                         searchSession = discoverSearchSession,
                         discover = discover,
                         curatedShelves = curatedShelves,
@@ -1222,7 +1249,9 @@ class InkShelf2Activity : AppCompatActivity() {
                             home = engine.loadHome(enabledSourceIds)
                         },
                     )
-                    tab == InkShelf2Tab.GUIDES -> InkShelf2GuidesScreen(
+                    }
+                    tab == InkShelf2Tab.GUIDES -> pageState.SaveableStateProvider("events:$libraryGuideId") {
+                        InkShelf2GuidesScreen(
                         padding = padding,
                         onMetronSettings = {
                             openTab(InkShelf2Tab.ACCOUNT)
@@ -1232,7 +1261,12 @@ class InkShelf2Activity : AppCompatActivity() {
                         readingError = guideReadError,
                         refreshEpoch = refreshEpoch,
                         initialGuideId = libraryGuideId,
-                        onCloseInitialGuide = { openTab(InkShelf2Tab.LIBRARY) },
+                        onCloseInitialGuide = {
+                            pageState.removeState("events:$libraryGuideId")
+                            libraryGuideId = null
+                            if (tabTrail.endsWith("|GUIDES")) tabTrail = tabTrail.substringBeforeLast('|')
+                            tab = InkShelf2Tab.LIBRARY
+                        },
                         savedGuideIds = savedGuideIds,
                         onSaveGuide = { guideId, save ->
                             savedGuideIds = InkShelf2GuidesData.setSaved(applicationContext, guideId, save)
@@ -1271,7 +1305,9 @@ class InkShelf2Activity : AppCompatActivity() {
                         // is no user-facing collection/source search stage.
                         onFindCollection = { },
                     )
-                    tab == InkShelf2Tab.LIBRARY -> InkShelf2LibraryScreen(
+                    }
+                    tab == InkShelf2Tab.LIBRARY -> pageState.SaveableStateProvider("library") {
+                        InkShelf2LibraryScreen(
                         library = library,
                         savedGuides = InkShelf2PersonalEvents.catalogue(applicationContext).filter { it.id in savedGuideIds }
                             .map { it.copy(imageUrl = InkShelf2GuidesData.cachedEventCover(applicationContext, it)) },
@@ -1288,12 +1324,13 @@ class InkShelf2Activity : AppCompatActivity() {
                             manageComic(manga, removeFromLibrary, deleteDownloads)
                         },
                     )
-                    tab == InkShelf2Tab.ACCOUNT && settingsOpen -> InkShelf2AdvancedSettingsScreen(
+                    }
+                    tab == InkShelf2Tab.ACCOUNT && settingsOpen && !themesOpen && !downloadsOpen && !backupOpen -> InkShelf2AdvancedSettingsScreen(
                         padding = padding,
                         onBack = { settingsOpen = false },
-                        onThemes = { settingsOpen = false; themesOpen = true },
-                        onDownloads = { settingsOpen = false; downloadsOpen = true },
-                        onBackup = { settingsOpen = false; backupOpen = true },
+                        onThemes = { themesOpen = true },
+                        onDownloads = { downloadsOpen = true },
+                        onBackup = { backupOpen = true },
                     )
                     tab == InkShelf2Tab.ACCOUNT && importOpen -> InkShelf2LocalImportScreen(
                         padding = padding,

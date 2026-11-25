@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -116,16 +117,19 @@ internal fun InkShelf2GuidesScreen(
             newlyAdded = InkShelf2GuidesData.newlyAddedGuideIds(context, installed)
         }
     }
+    val eventListState = rememberLazyListState()
     var timeline by rememberSaveable { mutableStateOf(InkShelf2GuidesData.timelineEnabled(context)) }
     var shelf by rememberSaveable { mutableStateOf<String?>(null) }
     var shown by rememberSaveable { mutableStateOf(8) }
-    var chosen by remember(initialGuideId) { mutableStateOf(installed.firstOrNull { it.id == initialGuideId }) }
-    var relatedBackStack by remember(initialGuideId) { mutableStateOf<List<InkShelf2Guide>>(emptyList()) }
+    var chosenId by rememberSaveable(initialGuideId) { mutableStateOf(initialGuideId) }
+    var relatedBackStack by rememberSaveable(initialGuideId) { mutableStateOf("") }
+    val chosen = installed.firstOrNull { it.id == chosenId }
     fun closeGuide() {
-        if (relatedBackStack.isNotEmpty()) {
-            chosen = relatedBackStack.last()
-            relatedBackStack = relatedBackStack.dropLast(1)
-        } else if (initialGuideId != null) onCloseInitialGuide() else chosen = null
+        val previous = relatedBackStack.substringAfterLast('|').toIntOrNull()
+        if (previous != null) {
+            chosenId = previous
+            relatedBackStack = relatedBackStack.substringBeforeLast('|', "")
+        } else if (initialGuideId != null) onCloseInitialGuide() else chosenId = null
     }
     var started by remember { mutableStateOf(InkShelf2GuidesData.startedGuides(context)) }
     var guideRevision by remember { mutableStateOf(0) }
@@ -198,15 +202,16 @@ internal fun InkShelf2GuidesScreen(
             readingError = readingError,
             relatedEvents = InkShelf2EventTimeline.related(selected, catalogue),
             onRelatedEvent = { related ->
-                relatedBackStack = (relatedBackStack + selected).takeLast(16)
+                relatedBackStack = (relatedBackStack.split('|').filter { it.isNotBlank() } + selected.id.toString())
+                    .takeLast(16).joinToString("|")
                 guideRevision++
-                chosen = related
+                chosenId = related.id
             },
             newEventIds = newlyAdded,
         )
         return
     }
-    val openGuide: (InkShelf2Guide) -> Unit = { item -> chosen = item }
+    val openGuide: (InkShelf2Guide) -> Unit = { item -> chosenId = item.id }
     val inProgress = catalogue.filter { guide ->
         if (guide.id !in verifiedStarted) false else {
             val issues = InkShelf2PersonalEvents.order(context, guide)
@@ -250,6 +255,7 @@ internal fun InkShelf2GuidesScreen(
     LaunchedEffect(finding, activeFilter, shelf, timeline) { shown = 8 }
 
     LazyColumn(
+        state = eventListState,
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = PaddingValues(
             top = padding.calculateTopPadding() + 6.dp,

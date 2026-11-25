@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,18 +89,22 @@ internal fun InkShelf2SourceHub(
     val manager: ExtensionManager = remember { Injekt.get() }
     val prefs: PreferencesHelper = remember { Injekt.get() }
     val scope = rememberCoroutineScope()
+    val catalogueState = rememberSaveableStateHolder()
+    var tab by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
+    var hubTrail by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
+    var search by rememberSaveable { mutableStateOf("") }
+    var repoUrl by rememberSaveable(initialRepoUrl) { mutableStateOf(initialRepoUrl) }
     if (selectedSourceId != null) {
+        catalogueState.SaveableStateProvider("catalogue:$selectedSourceId") {
         InkShelf2CatalogueScreen(
             source = sources.firstOrNull { it.id == selectedSourceId },
             padding = padding,
             onBack = { onSourceSelected(null) },
             onOpenComic = onOpenComic,
         )
+        }
         return
     }
-
-    var tab by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
-    var hubTrail by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
     fun openHubTab(target: String) {
         if (target != tab) {
             hubTrail = (hubTrail.split('|').takeLast(10) + target).joinToString("|")
@@ -108,12 +113,13 @@ internal fun InkShelf2SourceHub(
     }
     // A user who navigates Sources → Extensions → Repositories expects
     // Android Back to retrace those inner screens before leaving Discover.
-    BackHandler(enabled = hubTrail.contains('|')) {
-        hubTrail = hubTrail.substringBeforeLast('|')
-        tab = hubTrail.substringAfterLast('|')
+    fun backHub() {
+        if (hubTrail.contains('|')) {
+            hubTrail = hubTrail.substringBeforeLast('|')
+            tab = hubTrail.substringAfterLast('|')
+        } else onClose()
     }
-    var search by rememberSaveable { mutableStateOf("") }
-    var repoUrl by rememberSaveable(initialRepoUrl) { mutableStateOf(initialRepoUrl) }
+    BackHandler(enabled = true) { backHub() }
     var info by remember { mutableStateOf<String?>(null) }
     var repoBusy by remember { mutableStateOf(false) }
     var revision by remember { mutableIntStateOf(0) }
@@ -366,7 +372,7 @@ internal fun InkShelf2SourceHub(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onClose) {
+                IconButton(onClick = { backHub() }) {
                     Icon(Icons.Outlined.ArrowBack, "Back to Discover", tint = InkShelf2Colors.Text)
                 }
                 InkShelf2PageHeading("Sources & Extensions", Modifier.weight(1f))

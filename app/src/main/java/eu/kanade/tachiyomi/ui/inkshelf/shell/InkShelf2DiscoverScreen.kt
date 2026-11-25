@@ -110,8 +110,10 @@ internal fun InkShelf2DiscoverScreen(
     var refreshingPicks by remember { mutableStateOf(false) }
     var picksMessage by remember { mutableStateOf<String?>(null) }
     var autoAttempted by remember { mutableStateOf(false) }
-    var activeSpotlight by remember { mutableStateOf<InkShelf2Spotlight.Event?>(null) }
+    var activeSpotlightId by rememberSaveable { mutableStateOf<String?>(null) }
     var spotlightEvents by remember { mutableStateOf(InkShelf2Spotlight.starter()) }
+    val activeSpotlight = spotlightEvents.firstOrNull { it.id == activeSpotlightId }
+    var appliedSearchRequest by rememberSaveable { mutableStateOf<String?>(null) }
     var showOtherGuideEditions by remember(guideIssueTarget?.id) { mutableStateOf(false) }
     var attemptedAutoGuideMatch by remember(guideIssueTarget?.id) { mutableStateOf<String?>(null) }
     var foundQuery by remember { mutableStateOf("") }
@@ -120,18 +122,25 @@ internal fun InkShelf2DiscoverScreen(
         spotlightEvents = InkShelf2Spotlight.load(context)
     }
 
-    BackHandler(enabled = query.isNotBlank() && activeSpotlight == null) {
-        query = ""
-        activeQuery = ""
-        found = null
-        error = null
-        keyboard?.hide()
+    BackHandler(enabled = activeSpotlightId != null || query.isNotBlank()) {
+        if (activeSpotlightId != null) {
+            activeSpotlightId = null
+        } else {
+            query = ""
+            activeQuery = ""
+            found = null
+            error = null
+            keyboard?.hide()
+        }
     }
 
     val sourceIds = sources.map { it.id }
     LaunchedEffect(searchSession, searchFocusToken, guideIssueTarget?.id) {
-        // Both manual searches and guide searches start clean on a new
-        // Discover visit. Never restore a prior search when coming back.
+        // Only a genuinely new navigation/search request resets the page.
+        // Returning from Details restores the saved parent state.
+        val request = "$searchSession:$searchFocusToken"
+        if (appliedSearchRequest == request) return@LaunchedEffect
+        appliedSearchRequest = request
         query = if (searchFocusToken > 0) initialSearchQuery else ""
         activeQuery = ""
         found = null
@@ -140,7 +149,7 @@ internal fun InkShelf2DiscoverScreen(
         searching = false
         showOtherGuideEditions = false
         attemptedAutoGuideMatch = null
-        activeSpotlight = null
+        activeSpotlightId = null
         focusManager.clearFocus(force = true)
         keyboard?.hide()
         if (searchFocusToken > 0 && guideIssueTarget == null) {
@@ -306,7 +315,7 @@ internal fun InkShelf2DiscoverScreen(
             event = event,
             sources = sources,
             padding = padding,
-            onBack = { activeSpotlight = null },
+            onBack = { activeSpotlightId = null },
             onOpen = onOpenSearchResult,
         )
         return
@@ -608,7 +617,7 @@ internal fun InkShelf2DiscoverScreen(
                                 Alignment.CenterEnd else Alignment.Center,
                             onArtworkError = { if (heroImage != null) failedArt = failedArt + heroImage },
                             onOpen = {
-                                activeSpotlight = feature
+                                activeSpotlightId = feature.id
                                 focusManager.clearFocus(force = true)
                                 keyboard?.hide()
                             },
