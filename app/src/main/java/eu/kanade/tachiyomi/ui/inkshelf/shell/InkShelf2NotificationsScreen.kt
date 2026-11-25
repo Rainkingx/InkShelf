@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +44,11 @@ internal fun InkShelf2NotificationsScreen(
     updates: List<Pair<Extension.Installed, Extension.Available>>,
     checking: Boolean,
     hasRepositories: Boolean,
+    appUpdatesEnabled: Boolean,
+    availableAppUpdate: String?,
+    checkingAppUpdate: Boolean,
+    onAppUpdate: () -> Unit,
+    onCheckAppUpdate: () -> Unit,
     onBack: () -> Unit,
     onExtensions: () -> Unit,
     onRefresh: () -> Unit,
@@ -66,6 +72,41 @@ internal fun InkShelf2NotificationsScreen(
                 InkShelf2PageHeading("Notifications")
             }
         }
+        if (appUpdatesEnabled) {
+            item(key = "app-update") {
+                val shape = RoundedCornerShape(14.dp)
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)
+                        .clip(shape).background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.8f))
+                        .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.6f), shape)
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.SystemUpdate, null,
+                            modifier = Modifier.size(26.dp), tint = InkShelf2Colors.AccentLight)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(if (availableAppUpdate != null) "InkShelf update available" else "InkShelf updates",
+                                color = InkShelf2Colors.Text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text(availableAppUpdate?.let { "New version: $it" }
+                                ?: "Installed: " + eu.kanade.tachiyomi.BuildConfig.VERSION_NAME,
+                                color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                        }
+                    }
+                    InkShelf2ActionButton(
+                        label = when {
+                            checkingAppUpdate -> "Checking…"
+                            availableAppUpdate != null -> "View Update & Install"
+                            else -> "Check for App Updates"
+                        },
+                        enabled = !checkingAppUpdate,
+                        onClick = if (availableAppUpdate != null) onAppUpdate else onCheckAppUpdate,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
         item(key = "summary") {
             Column(Modifier.padding(horizontal = 17.dp)) {
                 Text(
@@ -74,7 +115,7 @@ internal fun InkShelf2NotificationsScreen(
                         updates.isNotEmpty() -> updates.size.toString() + " extension update" +
                             (if (updates.size == 1) "" else "s") + " available"
                         !hasRepositories -> "No extension repositories configured"
-                        else -> "You're all caught up"
+                        else -> "No extension updates"
                     },
                     color = InkShelf2Colors.Text,
                     fontSize = 16.sp,
@@ -164,7 +205,7 @@ internal fun InkShelf2NotificationsScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 InkShelf2ActionButton(
-                    label = if (checking) "Checking…" else "Check for Updates",
+                    label = if (checking) "Checking…" else "Check for Extension Updates",
                     onClick = onRefresh,
                     outlined = true,
                     enabled = hasRepositories && !checking,

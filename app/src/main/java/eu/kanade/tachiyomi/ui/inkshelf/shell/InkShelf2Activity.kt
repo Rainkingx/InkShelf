@@ -336,6 +336,17 @@ class InkShelf2Activity : AppCompatActivity() {
             var updateAllExtensionsRequested by remember { mutableStateOf(false) }
             var externalRepoDraft by rememberSaveable { mutableStateOf("") }
             var updateNotes by remember { mutableStateOf<Pair<String, String>?>(null) }
+            val appNoticePrefs = remember {
+                applicationContext.getSharedPreferences("inkshelf_app_update_notice_${BuildConfig.VERSION_CODE}", android.content.Context.MODE_PRIVATE)
+            }
+            var availableAppUpdate by remember {
+                mutableStateOf(appNoticePrefs.getString("version", null))
+            }
+            fun savedAppUpdateNotes(): Pair<String, String>? {
+                val notes = appNoticePrefs.getString("notes", null) ?: return null
+                val url = appNoticePrefs.getString("url", null) ?: return null
+                return notes to url
+            }
             var checkingAppUpdate by remember { mutableStateOf(false) }
             val updateScope = rememberCoroutineScope()
             val appUpdateChecker = remember { AppUpdateChecker() }
@@ -357,8 +368,13 @@ class InkShelf2Activity : AppCompatActivity() {
                                 uri.path?.startsWith("/Rainkingx/InkShelf/releases/download/") == true &&
                                 uri.path?.endsWith("/InkShelf.apk") == true
                             ) {
-                                updateNotes = ("New version: " + release.version + "\n\n" +
+                                val notice = ("New version: " + release.version + "\n\n" +
                                     release.info).take(12_000) to release.downloadLink
+                                availableAppUpdate = release.version
+                                appNoticePrefs.edit().putString("version", release.version)
+                                    .putString("notes", notice.first).putString("url", notice.second).apply()
+                                // Automatic checks leave a persistent bell notice instead of interrupting reading.
+                                if (manual) updateNotes = notice
                                 AppUpdateNotifier.releasePageUrl = release.releaseLink
                                 // Keep the foreground dialog useful even when Android
                                 // notification permission is disabled.
@@ -367,6 +383,8 @@ class InkShelf2Activity : AppCompatActivity() {
                                 Toast.makeText(this@InkShelf2Activity, "No verified update APK found", Toast.LENGTH_LONG).show()
                             }
                         } else if (manual) {
+                            availableAppUpdate = null
+                            appNoticePrefs.edit().clear().apply()
                             Toast.makeText(this@InkShelf2Activity, "You're up to date", Toast.LENGTH_SHORT).show()
                         }
                     } catch (cancel: CancellationException) {
@@ -1092,7 +1110,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 guidesActive = tab == InkShelf2Tab.GUIDES,
                 pulseActive = pulseExpanded,
                 pulseHasNewStories = pulseHasNewStories,
-                notificationCount = extensionUpdates.size,
+                notificationCount = extensionUpdates.size + if (BuildConfig.INCLUDE_UPDATER && availableAppUpdate != null) 1 else 0,
             ) { padding ->
                 val comic = selected
                 val curatedShelves = remember(discover, library, enabledSourceIds) {
@@ -1263,6 +1281,15 @@ class InkShelf2Activity : AppCompatActivity() {
                         updates = extensionUpdates,
                         checking = checkingExtensionUpdates,
                         hasRepositories = preferences.extensionRepos().get().isNotEmpty(),
+                        appUpdatesEnabled = BuildConfig.INCLUDE_UPDATER,
+                        availableAppUpdate = availableAppUpdate,
+                        checkingAppUpdate = checkingAppUpdate,
+                        onAppUpdate = {
+                            val notice = savedAppUpdateNotes()
+                            if (notice != null) updateNotes = notice
+                            else checkAppUpdate(manual = true)
+                        },
+                        onCheckAppUpdate = { checkAppUpdate(manual = true) },
                         onBack = { notificationsOpen = false },
                         onExtensions = {
                             openTab(InkShelf2Tab.ACCOUNT)
