@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -638,6 +639,7 @@ internal fun InkShelf2DetailPage(
     padding: PaddingValues,
     onBack: () -> Unit,
     topActions: @Composable () -> Unit = {},
+    compactComicHero: Boolean = false,
     content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     LazyColumn(
@@ -646,54 +648,81 @@ internal fun InkShelf2DetailPage(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Box(modifier = Modifier.fillMaxWidth().height(285.dp)) {
+            val backdrop = InkShelf2Colors.Background
+            Box(modifier = Modifier.fillMaxWidth()) {
                 AsyncImage(
                     model = imageModel,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.matchParentSize(),
                     contentScale = ContentScale.Crop,
-                    alpha = 0.65f,
+                    alpha = if (compactComicHero) 0.72f else 0.65f,
                 )
                 Box(
-                    modifier = Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(listOf(Color.Transparent, InkShelf2Colors.Background)),
+                    modifier = Modifier.matchParentSize().background(
+                        if (compactComicHero) Brush.verticalGradient(
+                            0f to backdrop,
+                            0.18f to backdrop.copy(alpha = 0.25f),
+                            0.38f to Color.Transparent,
+                            0.62f to backdrop.copy(alpha = 0.48f),
+                            1f to backdrop,
+                        ) else Brush.verticalGradient(listOf(Color.Transparent, backdrop)),
                     ),
                 )
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                        .heightIn(min = if (compactComicHero) 212.dp else 285.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Icon(Icons.Outlined.ArrowBack, "Back", tint = Color.White)
-                }
-                Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) { topActions() }
-                Row(
-                    modifier = Modifier.align(Alignment.BottomStart).padding(16.dp),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    AsyncImage(
-                        model = imageModel,
-                        contentDescription = "Cover of $title",
-                        modifier = Modifier.size(100.dp, 140.dp).clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop,
-                    )
-                    Column(modifier = Modifier.padding(start = 14.dp)) {
-                        Text(
-                            title,
-                            color = Color.White,
-                            fontSize = 25.sp,
-                            lineHeight = 28.sp,
-                            fontWeight = FontWeight.Bold,
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = if (compactComicHero) 10.dp else 12.dp,
+                                vertical = if (compactComicHero) 0.dp else 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Outlined.ArrowBack, "Back", tint = Color.White)
+                        }
+                        Box { topActions() }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp,
+                                top = if (compactComicHero) 4.dp else 12.dp,
+                                bottom = if (compactComicHero) 12.dp else 16.dp),
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        AsyncImage(
+                            model = imageModel,
+                            contentDescription = "Cover of $title",
+                            modifier = Modifier.size(
+                                if (compactComicHero) 94.dp else 100.dp,
+                                if (compactComicHero) 132.dp else 140.dp,
+                            ).clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop,
                         )
-                        Text(
-                            subtitle,
-                            color = InkShelf2Colors.Muted,
-                            fontSize = 11.sp,
-                        )
-                        Text(
-                            text = attribution,
-                            color = InkShelf2Colors.AccentLight,
-                            fontSize = 11.sp,
-                        )
+                        Column(
+                            modifier = Modifier.weight(1f).padding(start = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (compactComicHero) 4.dp else 0.dp),
+                        ) {
+                            Text(
+                                title,
+                                color = Color.White,
+                                fontSize = if (compactComicHero) 22.sp else 25.sp,
+                                lineHeight = if (compactComicHero) 26.sp else 28.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            if (subtitle.isNotBlank()) Text(
+                                subtitle,
+                                color = InkShelf2Colors.Muted,
+                                fontSize = 11.sp,
+                            )
+                            if (attribution.isNotBlank()) Text(
+                                text = attribution,
+                                color = InkShelf2Colors.AccentLight,
+                                fontSize = 11.sp,
+                            )
+                        }
                     }
                 }
             }
@@ -935,6 +964,7 @@ internal fun InkShelf2DetailsScreen(
         title = manga.title,
         subtitle = manga.getGenres()?.take(3)?.joinToString(" • ").orEmpty(),
         attribution = if (sourceName.isNullOrBlank()) "Source not installed" else "Source: $sourceName",
+        compactComicHero = true,
         padding = padding,
         onBack = onBack,
         topActions = {
@@ -993,7 +1023,7 @@ internal fun InkShelf2DetailsScreen(
                         enabled = !manga.favorite,
                     )
                 }
-                Spacer(Modifier.height(15.dp))
+                Spacer(Modifier.height(4.dp))
                 if (queuedChapterIds.isNotEmpty()) {
                     if (waitingForWifi) {
                         Text(
@@ -1036,7 +1066,7 @@ internal fun InkShelf2DetailsScreen(
                         fontSize = 12.sp,
                     )
                 }
-                Spacer(Modifier.height(17.dp))
+                Spacer(Modifier.height(8.dp))
                 InkShelf2PageHeading("Synopsis")
                 Spacer(Modifier.height(8.dp))
                 Text(

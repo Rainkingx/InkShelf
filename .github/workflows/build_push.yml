@@ -50,7 +50,24 @@ jobs:
           chmod 600 ~/.android/debug.keystore
 
       - name: Build InkShelf
-        run: ./gradlew :app:assembleDevDebug -x :app:formatKotlinMain
+        shell: bash
+        run: |
+          # Retry only the intermittent Kotlin DSL plugin download failure.
+          # Real compile/test errors must fail immediately, not be hidden.
+          for attempt in 1 2 3; do
+            set +e
+            ./gradlew :app:assembleDevDebug -x :app:formatKotlinMain 2>&1 | tee "$RUNNER_TEMP/inkshelf-build.log"
+            result=${PIPESTATUS[0]}
+            set -e
+            if [ "$result" -eq 0 ]; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ] || ! grep -Fq "Plugin [id: 'org.gradle.kotlin.kotlin-dsl'" "$RUNNER_TEMP/inkshelf-build.log"; then
+              exit "$result"
+            fi
+            echo "::warning::Kotlin DSL plugin resolution failed; retrying ($attempt/3)"
+            sleep $((attempt * 20))
+          done
 
       - name: Test InkShelf 2.0 news and BatCave reading guides
         run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' -x :app:formatKotlinMain
