@@ -247,9 +247,9 @@ private fun InkShelf2Header(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
-            // Load the PNG foreground instead of the adaptive-icon XML: painterResource
+            // Load the standalone emblem instead of the adaptive-icon XML: painterResource
             // cannot inflate adaptive icons on Android 26+ (including Android 17).
-            painter = painterResource(id = if (skin != null) R.drawable.inkshelf_doom_rune else R.mipmap.ic_launcher_foreground),
+            painter = painterResource(id = if (skin != null) R.drawable.inkshelf_doom_rune else R.drawable.inkshelf_brand_emblem),
             contentDescription = "InkShelf logo",
             modifier = Modifier.size(40.dp),
         )
