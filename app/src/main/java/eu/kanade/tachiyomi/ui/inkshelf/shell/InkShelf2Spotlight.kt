@@ -31,6 +31,8 @@ internal object InkShelf2Spotlight {
         val tagline: String,
         val issues: String? = null,
         val aliases: List<String> = emptyList(),
+        val alternateYears: List<Int> = emptyList(),
+        val artworkUrl: String? = null,
     ) {
         val editionTitle: String get() = title + " (" + year + ")"
         val searchTerms: List<String> get() = (listOf(title) + aliases).distinct()
@@ -87,9 +89,10 @@ internal object InkShelf2Spotlight {
         val allowedTitles = series.searchTerms.map(InkShelf2GuideEdition::titleKey)
         val acceptsMarvelShortTitle = target == "the ultimates" && actual == "ultimates"
         if (actual !in allowedTitles && !acceptsMarvelShortTitle) return Edition.DIFFERENT
-        return when (InkShelf2GuideEdition.year(sourceTitle)) {
-            series.year -> Edition.VERIFIED
-            null -> Edition.CHECK_YEAR
+        val year = InkShelf2GuideEdition.year(sourceTitle)
+        return when {
+            year == series.year -> Edition.VERIFIED
+            year == null || year in series.alternateYears -> Edition.CHECK_YEAR
             else -> Edition.DIFFERENT
         }
     }
@@ -243,9 +246,24 @@ internal object InkShelf2Spotlight {
                                 if (candidate.length in 3..100) add(candidate)
                             }
                         }
+                        val year = element.optInt("year")
+                        val alternativeYears = element.optJSONArray("alternate_years") ?: JSONArray()
+                        val years = buildList {
+                            for (a in 0 until minOf(alternativeYears.length(), 2)) {
+                                val candidate = alternativeYears.optInt(a, 0)
+                                if (candidate in 1900..2099 && kotlin.math.abs(candidate - year) == 1) add(candidate)
+                            }
+                        }.distinct()
+                        val cover = element.optString("artwork_url").takeIf { candidate ->
+                            candidate.length in 10..2048 && runCatching {
+                                val uri = URI(candidate)
+                                val host = if (item.optString("publisher") == "Marvel") "cdn.marvel.com" else "static.dc.com"
+                                uri.scheme == "https" && uri.host == host && uri.userInfo == null
+                            }.getOrDefault(false)
+                        }
                         val s = Series(element.optString("id"), element.optString("title"),
-                            element.optInt("year"), element.optString("tagline"),
-                            element.optString("issues").takeIf { it.isNotBlank() }, aliases)
+                            year, element.optString("tagline"),
+                            element.optString("issues").takeIf { it.isNotBlank() }, aliases, years, cover)
                         if (s.id.length in 2..65 && s.title.length in 3..100 &&
                             s.year in 1900..2099 && s.tagline.length in 5..200 &&
                             (s.issues == null || s.issues.length <= 80)) add(s)

@@ -170,13 +170,18 @@
         {
           "id": "civil-war",
           "title": "What If? Civil War",
-          "year": 2007,
+          "year": 2008,
           "aliases": [
             "What If: Civil War",
-            "What If? Civil War"
+            "What If? Civil War",
+            "What If...? Civil War",
+            "What If Civil War"
           ],
-          "tagline": "Discover alternate outcomes for the superhero conflict.",
-          "issues": "#1"
+          "tagline": "Alternate outcomes for the superhero conflict. Released December 2007; cover-dated February 2008.",
+          "issues": "#1",
+          "alternate_years": [
+            2007
+          ]
         },
         {
           "id": "planet-hulk",

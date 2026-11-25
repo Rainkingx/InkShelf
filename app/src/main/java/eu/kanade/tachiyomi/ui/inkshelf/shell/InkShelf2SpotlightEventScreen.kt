@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -83,7 +84,7 @@ internal fun InkShelf2SpotlightEventScreen(
     val matches = remember(event.id) { mutableStateMapOf<String, InkShelf2Spotlight.Match>() }
     val artwork = remember(event.id) { mutableStateMapOf<String, String>() }
 
-    LaunchedEffect(event.id, preferred?.id, sourceIds, tryOtherSources) {
+    LaunchedEffect(event.id, event.series, preferred?.id, sourceIds, tryOtherSources) {
         matches.clear()
         if (preferred == null) {
             lookingUp = false
@@ -128,14 +129,22 @@ internal fun InkShelf2SpotlightEventScreen(
         }
     }
 
-    LaunchedEffect(event.id) {
+    LaunchedEffect(event.id, event.series) {
+        artwork.clear()
         supervisorScope {
-            val limiter = Semaphore(3)
+            val limiter = Semaphore(2)
             event.series.map { series ->
                 async {
                     limiter.withPermit {
-                        InkShelf2HeroArtwork.findCover(context, InkShelf2Spotlight.metronTitle(series))
-                            ?.let { artwork[series.id] = it }
+                        val titles = (listOf(InkShelf2Spotlight.metronTitle(series)) +
+                            series.aliases.map { "$it (${series.year})" }).distinct()
+                        for (title in titles) {
+                            val cover = InkShelf2HeroArtwork.findCover(context, title)
+                            if (cover != null) {
+                                artwork[series.id] = cover
+                                break
+                            }
+                        }
                     }
                 }
             }.awaitAll()
@@ -176,16 +185,18 @@ internal fun InkShelf2SpotlightEventScreen(
                 }
                 Spacer(Modifier.height(8.dp))
                 val lead = event.leadSeries
-                val leadCover = artwork[lead.id] ?: matches[lead.id]?.manga?.thumbnail_url
-                var officialFailed by remember(event.id, event.artworkUrl) { mutableStateOf(false) }
-                val bannerArt = if (!officialFailed && event.artworkUrl != null)
-                    event.artworkUrl else leadCover
+                val bannerCandidates = listOfNotNull<Any>(
+                    event.artworkUrl, lead.artworkUrl, artwork[lead.id],
+                    matches[lead.id]?.manga?.takeIf { !it.thumbnail_url.isNullOrBlank() },
+                ).distinct()
+                var failedBanners by remember(event.id, bannerCandidates) { mutableStateOf(emptySet<Any>()) }
+                val bannerArt = bannerCandidates.firstOrNull { it !in failedBanners }
                 Box(
                     modifier = Modifier.fillMaxWidth().height(224.dp)
                         .clip(RoundedCornerShape(17.dp))
                         .background(InkShelf2Colors.SurfaceRaised),
                 ) {
-                    if (!bannerArt.isNullOrBlank()) {
+                    if (bannerArt != null) {
                         AsyncImage(
                             model = bannerArt,
                             contentDescription = null,
@@ -194,9 +205,7 @@ internal fun InkShelf2SpotlightEventScreen(
                                 .fillMaxWidth(if (event.id == "dc-absolute") 0.88f else 0.66f),
                             contentScale = ContentScale.Fit,
                             alignment = Alignment.CenterEnd,
-                            onError = {
-                                if (!officialFailed && event.artworkUrl != null) officialFailed = true
-                            },
+                            onError = { failedBanners = failedBanners + bannerArt },
                         )
                     }
                     Box(
@@ -268,7 +277,14 @@ internal fun InkShelf2SpotlightEventScreen(
         items(event.series, key = { it.id }) { series ->
             val readingNumber = event.series.indexOfFirst { it.id == series.id } + 1
             val resolved = matches[series.id]
-            val coverUrl = artwork[series.id] ?: resolved?.manga?.thumbnail_url
+            val coverCandidates = listOfNotNull<Any>(
+                series.artworkUrl,
+                artwork[series.id],
+                // The registered Manga fetcher uses the real source's client, headers and cover cache.
+                resolved?.manga?.takeIf { !it.thumbnail_url.isNullOrBlank() },
+            ).distinct()
+            var failedCovers by remember(series, coverCandidates) { mutableStateOf(emptySet<Any>()) }
+            val coverModel = coverCandidates.firstOrNull { it !in failedCovers }
             Column(
                 modifier = Modifier.fillMaxWidth()
                     .padding(horizontal = 16.dp)
@@ -298,11 +314,23 @@ internal fun InkShelf2SpotlightEventScreen(
                     Box(modifier = Modifier.width(100.dp).height(143.dp)
                         .clip(RoundedCornerShape(9.dp))
                         .background(InkShelf2Colors.Background)) {
-                        if (!coverUrl.isNullOrBlank()) {
-                            AsyncImage(model = coverUrl,
+                        Column(
+                            modifier = Modifier.align(Alignment.Center).padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(Icons.Outlined.AutoStories, null,
+                                tint = InkShelf2Colors.AccentLight,
+                                modifier = Modifier.size(26.dp))
+                            Spacer(Modifier.height(6.dp))
+                            Text("Cover unavailable", color = InkShelf2Colors.Muted,
+                                fontSize = 10.sp, maxLines = 2)
+                        }
+                        if (coverModel != null) {
+                            AsyncImage(model = coverModel,
                                 contentDescription = "Cover for " + series.title,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize())
+                                modifier = Modifier.fillMaxSize(),
+                                onError = { failedCovers = failedCovers + coverModel })
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
