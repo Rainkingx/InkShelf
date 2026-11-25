@@ -1,12 +1,12 @@
-# InkShelf 2.0 — Public Beta 7
+# InkShelf 2.0 — Public Beta 8
 
-- Built-in HD cinematic splash artwork: Iron Man, Superman, Spider-Man, Flash, then the InkShelf logo. No manual import is required.
-- Existing custom splash artwork is retained and can still be selected in Appearance.
-- The updater now uses InkShelf's native theme, fonts and progress display.
-- Original artwork is retained outside the packaged assets to avoid duplicating image files in the APK.
+- Discover now checks for editorial Spotlight updates every 15 minutes while the screen is open.
+- Pull to refresh or tap the Spotlight refresh icon to request the latest editorial content immediately, bypassing the local cache.
+- Saved Spotlight content remains available if GitHub cannot be reached.
+- Marvel What If...? is available in the remote editorial catalogue; Doctor Doom remains scheduled for 1 December 2026.
 
 ## Updating
 
-From Beta 6, open Menu > Check for updates and install Beta 7. Back up your library first. After installing, fully close and reopen InkShelf to see the cinematic splash if enabled. The new updater design will appear on the next update check when a newer release is available.
+In Public Beta 7, open Menu > Settings > Check for updates, then Download & Install. Back up your library first. After updating, open Discover and pull down to refresh the Spotlight catalogue. The installed public package identity and signing key remain unchanged.
 
-This is a prerelease. The public package identity and signing key remain unchanged. InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders.
+This is a prerelease. InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders.
