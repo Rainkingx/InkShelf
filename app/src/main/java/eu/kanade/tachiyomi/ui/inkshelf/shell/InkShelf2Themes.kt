@@ -30,6 +30,7 @@ internal data class InkShelf2Preset(
 )
 
 internal object InkShelf2Themes {
+    const val DOOM_ID = "doom_latveria"
     private const val PREFS = "inkshelf_2_theme_v1"
     private const val SELECTED = "selected"
     private const val CUSTOM_PRIMARY = "custom_primary"
@@ -78,6 +79,10 @@ internal object InkShelf2Themes {
         preset(
             "spider_man", "Spider-Man", "Web-slinger red & blue",
             0xFF090F20, 0xFF151B32, 0xFF1D2B49, 0xFFE84B51, 0xFF5394FF, 0xFF6B527F,
+        ),
+        preset(
+            DOOM_ID, "Doom — Reign of Latveria", "December special · Emerald runes & cinematic opening",
+            0xFF080D0B, 0xFF102219, 0xFF193527, 0xFF36C97C, 0xFF90F5BA, 0xFF42684D,
         ),
         preset(
             "amoled", "AMOLED Black", "Pure black & electric violet",

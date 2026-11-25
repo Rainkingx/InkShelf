@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Color
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -72,8 +73,18 @@ internal class InkShelf2CinematicSplash(
     private val logo = BitmapFactory.decodeResource(resources, R.drawable.inkshelf_cinematic_logo)
     private val colors = intArrayOf(0xFF6CE1FF.toInt(), 0xFFFFC35D.toInt(),
         0xFFE76E62.toInt(), 0xFFF44465.toInt(), 0xFFBD73FF.toInt())
-    private val emblems = Array(4) { index ->
-        InkShelf2SplashArtwork.load(context, index) ?: renderEmblem(index)
+    // Theme restoration happens before this View is created in InkShelf2Activity.
+    private val doomRune = if (InkShelf2Themes.selectedId == InkShelf2Themes.DOOM_ID)
+        BitmapFactory.decodeResource(resources, R.drawable.inkshelf_doom_rune)
+    else null
+    private val doomLogoFilter = ColorMatrixColorFilter(floatArrayOf(
+        0f, 1f, 0f, 0f, 0f,
+        0f, 0f, 1f, 0f, 0f,
+        0.35f, 0.65f, 0f, 0f, 0f,
+        0f, 0f, 0f, 1f, 0f,
+    ))
+    private val emblems by lazy {
+        Array(4) { index -> InkShelf2SplashArtwork.load(context, index) ?: renderEmblem(index) }
     }
     private val durationMillis = durationSeconds(context) * 1000L
     private var firstFrame = 0L
@@ -84,7 +95,7 @@ internal class InkShelf2CinematicSplash(
         isClickable = true
         isFocusable = true
         contentDescription = "InkShelf opening animation. Tap to skip."
-        setBackgroundColor(Color.rgb(5, 4, 9))
+        setBackgroundColor(if (doomRune != null) Color.rgb(3, 10, 7) else Color.rgb(5, 4, 9))
     }
 
     override fun performClick(): Boolean {
@@ -124,6 +135,12 @@ internal class InkShelf2CinematicSplash(
                 post { dismiss() }
                 return
             }
+        }
+
+        doomRune?.let { rune ->
+            drawDoom(canvas, rune, elapsed)
+            scheduleFrame(elapsed)
+            return
         }
 
         val cx = width / 2f
@@ -197,9 +214,68 @@ internal class InkShelf2CinematicSplash(
                 canvas.restore()
             }
         }
+        scheduleFrame(elapsed)
+    }
+
+    private fun scheduleFrame(elapsed: Long) {
         // Hold the final artwork, without repeating the sequence, while Home loads.
         if (elapsed < FINISH || fadeStarted != 0L) postInvalidateOnAnimation()
         else postInvalidateDelayed(60L)
+    }
+
+    private fun drawDoom(canvas: Canvas, rune: Bitmap, elapsed: Long) {
+        val cx = width / 2f
+        val cy = height / 2f
+        val size = min(width, height).toFloat()
+        if (size <= 0f) return
+        val green = 0xFF36E88A.toInt()
+        val phase = elapsed.toFloat() / FINISH
+        val appear = ease(elapsed / 620f)
+        val transition = ease((elapsed - 1680L) / 650f)
+        val pulse = (0.5 + 0.5 * sin(phase * 2.0 * PI)).toFloat()
+        paint.style = Paint.Style.FILL
+        paint.color = Color.WHITE
+        paint.alpha = 255
+        paint.shader = RadialGradient(cx, cy, size * 0.88f,
+            intArrayOf(tint(green, (26 + 30 * pulse).toInt()), tint(green, 9), Color.TRANSPARENT),
+            floatArrayOf(0f, 0.48f, 1f), Shader.TileMode.CLAMP)
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        paint.shader = null
+
+        // Sparse emerald motes drift around the rune and its final reveal.
+        for (i in 0 until 24) {
+            val angle = i * 2.399963 + phase * 0.55
+            val distance = size * (0.30f + ((i * 37) % 100) / 100f * 0.46f)
+            paint.color = tint(green, (appear * (20 + (i * 13) % 75)).toInt())
+            canvas.drawCircle(cx + cos(angle).toFloat() * distance,
+                cy + sin(angle).toFloat() * distance * 0.95f,
+                (0.5f + i % 2) * resources.displayMetrics.density, paint)
+        }
+
+        if (transition < 1f) {
+            val half = size * 0.47f * (0.86f + 0.14f * appear) * (1f - 0.14f * transition)
+            canvas.save()
+            canvas.translate(cx, cy)
+            canvas.rotate(-9f * (1f - appear) + 7f * transition)
+            canvas.scale(1f - 0.94f * transition, 1f)
+            paint.color = Color.WHITE
+            paint.alpha = (255 * appear * (1f - transition)).toInt()
+            canvas.drawBitmap(rune, null, RectF(-half, -half, half, half), paint)
+            paint.alpha = 255
+            canvas.restore()
+        }
+
+        if (transition > 0f) {
+            val w = min(width * 0.97f, height * 1.30f) * (0.90f + 0.10f * transition)
+            val h = w * logo.height / logo.width
+            paint.color = Color.WHITE
+            paint.alpha = (255 * transition).toInt()
+            // Preserve neutral steel and recolour the purple lighting emerald.
+            paint.colorFilter = doomLogoFilter
+            canvas.drawBitmap(logo, null, RectF(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2), paint)
+            paint.colorFilter = null
+            paint.alpha = 255
+        }
     }
 
     private fun renderEmblem(index: Int): Bitmap {

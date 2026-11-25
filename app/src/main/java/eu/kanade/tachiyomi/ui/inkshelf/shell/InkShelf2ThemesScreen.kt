@@ -262,7 +262,7 @@ internal fun InkShelf2ThemesScreen(
                 letterSpacing = 1.3.sp,
             )
         }
-        items(InkShelf2Themes.presets, key = { it.id }) { preset ->
+        items(InkShelf2Themes.presets.filterNot { it.id == InkShelf2Themes.DOOM_ID }, key = { it.id }) { preset ->
             val selected = !editingCustom && savedThemeId == preset.id
             InkShelfPresetRow(
                 preset,
@@ -275,6 +275,27 @@ internal fun InkShelf2ThemesScreen(
                     background = preset.colors.background
                 },
             )
+        }
+        item(key = "doom-edition") {
+            Text("LIMITED EDITION THEMES", modifier = Modifier.padding(horizontal = 19.dp),
+                color = InkShelf2Colors.AccentLight, fontSize = 12.sp,
+                fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+            Spacer(Modifier.height(10.dp))
+            val doom = InkShelf2Themes.presets.first { it.id == InkShelf2Themes.DOOM_ID }
+            InkShelfPresetRow(
+                doom,
+                !editingCustom && savedThemeId == doom.id,
+                onClick = {
+                    InkShelf2Themes.select(context, doom.id)
+                    editingCustom = false
+                    primary = doom.colors.accent
+                    secondary = doom.colors.highlight
+                    background = doom.colors.background
+                },
+            )
+            Text("The special rune opening plays on the next cold launch when cinematic opening is enabled. Your four custom images stay saved.",
+                modifier = Modifier.padding(horizontal = 19.dp, vertical = 8.dp),
+                color = InkShelf2Colors.Muted, fontSize = 12.sp, lineHeight = 17.sp)
         }
         if (InkShelf2Themes.hasSavedCustom(context)) {
             item(key = "saved-custom") {
