@@ -1,11 +1,13 @@
-# InkShelf 2.0 — Public Beta 9
+# InkShelf 2.0 — Public Beta 10
 
-- Available app updates now have a persistent notice in the notification centre, with release information and a shortcut to the update installer.
-- Improved Spotlight artwork fallback and source-aware loading.
-- Corrected Civil War publication metadata and improved identification of the 2004 What If anthology.
+- Discover now supports six active Spotlights instead of four.
+- The modern Marvel Ultimate Universe collection returns with its seven original series.
+- A Very Comic Christmas launches on 1 December and runs through 31 December, featuring four Marvel, four DC and four independent comics.
+- Seasonal collections can contain multiple publisher groups. Doctor Doom remains the lead feature from 1 December through 28 February.
+- Existing daily themes, including Indie Tuesday, are unchanged.
 
 ## Updating
 
-From Public Beta 8, open Menu > Settings > Check for updates, then Download & Install. Back up your library first. The public package identity and signing key remain unchanged. Once updated, check the notification centre and refresh Discover to verify the changes.
+From Beta 9, use the app's update notification or Menu > Settings > Check for updates. Back up your library before installing. The package identity and release signing key remain unchanged. Refresh Discover after updating. Availability and artwork depend on enabled sources and metadata services.
 
 This is a prerelease. InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders.
