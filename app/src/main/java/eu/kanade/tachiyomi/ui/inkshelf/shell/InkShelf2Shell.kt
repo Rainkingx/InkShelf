@@ -252,7 +252,8 @@ private fun InkShelf2Header(
             // cannot inflate adaptive icons on Android 26+ (including Android 17).
             painter = painterResource(id = if (skin != null) R.drawable.inkshelf_doom_rune else R.drawable.inkshelf_brand_emblem),
             contentDescription = "InkShelf logo",
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(40.dp)
+                .offset(y = if (skin == null) (-3).dp else 0.dp),
         )
         if (skin == null) {
             Box(
@@ -262,7 +263,9 @@ private fun InkShelf2Header(
                 Image(
                     painter = painterResource(R.drawable.inkshelf_header_wordmark),
                     contentDescription = "InkShelf",
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    // Optical alignment: the reflection adds height below the lettering.
+                    // Keep the visible wordmark level with the emblem, inside the header.
+                    modifier = Modifier.fillMaxWidth().height(42.dp).offset(y = 7.dp),
                     alignment = Alignment.CenterStart,
                     contentScale = ContentScale.Fit,
                 )
