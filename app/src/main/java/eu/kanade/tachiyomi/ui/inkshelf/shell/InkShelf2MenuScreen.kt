@@ -161,8 +161,7 @@ internal fun InkShelf2MenuScreen(
         }
         item {
             Text(
-                "Downloads, Reading History, Backup, Import, and core Reader/Download/Library settings now use InkShelf 2.0. " +
-                    "Additional specialised settings and old notification routes are still being migrated.",
+                "InkShelf $appVersion · " + if (appUpdateEnabled) "Public update channel" else "Development build",
                 modifier = Modifier.padding(horizontal = 18.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 11.sp,
