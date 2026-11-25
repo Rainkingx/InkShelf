@@ -1,6 +1,10 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import androidx.compose.foundation.background
+import android.widget.Toast
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -118,8 +122,35 @@ internal fun InkShelf2DiscoverScreen(
     var attemptedAutoGuideMatch by remember(guideIssueTarget?.id) { mutableStateOf<String?>(null) }
     var foundQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
+    var refreshingSpotlight by remember { mutableStateOf(false) }
+    suspend fun refreshSpotlight(manual: Boolean) {
+        if (refreshingSpotlight) return
+        refreshingSpotlight = true
+        try {
+            val result = InkShelf2Spotlight.loadWithStatus(context, force = manual)
+            spotlightEvents = result.events
+            if (manual) {
+                Toast.makeText(context,
+                    if (result.fetched) "Spotlights refreshed" else "Could not refresh Spotlights. Keeping saved content.",
+                    Toast.LENGTH_SHORT).show()
+            }
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            if (manual) Toast.makeText(context, "Could not refresh Spotlights", Toast.LENGTH_SHORT).show()
+        } finally {
+            refreshingSpotlight = false
+        }
+    }
+    val spotlightPullRefresh = rememberPullRefreshState(
+        refreshing = refreshingSpotlight,
+        onRefresh = { scope.launch { refreshSpotlight(manual = true) } },
+    )
     LaunchedEffect(Unit) {
-        spotlightEvents = InkShelf2Spotlight.load(context)
+        while (true) {
+            refreshSpotlight(manual = false)
+            delay(InkShelf2Spotlight.TTL_MS)
+        }
     }
 
     BackHandler(enabled = activeSpotlightId != null || query.isNotBlank()) {
@@ -321,6 +352,10 @@ internal fun InkShelf2DiscoverScreen(
         return
     }
 
+    Box(
+        modifier = Modifier.fillMaxSize()
+            .pullRefresh(spotlightPullRefresh, enabled = query.isBlank() && guideIssueTarget == null),
+    ) {
     LazyColumn(
         state = scroll,
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
@@ -339,6 +374,15 @@ internal fun InkShelf2DiscoverScreen(
                         if (guideIssueTarget == null) "Discover Comics" else "Find Guide Issue",
                         modifier = Modifier.weight(1f),
                     )
+                    if (query.isBlank() && guideIssueTarget == null) {
+                        IconButton(
+                            enabled = !refreshingSpotlight,
+                            onClick = { scope.launch { refreshSpotlight(manual = true) } },
+                        ) {
+                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh Spotlights",
+                                tint = InkShelf2Colors.AccentLight, modifier = Modifier.size(23.dp))
+                        }
+                    }
                     IconButton(onClick = onManageSources) {
                         Icon(
                             Icons.Outlined.AutoStories,
@@ -794,6 +838,16 @@ internal fun InkShelf2DiscoverScreen(
             }
         }
         item { Spacer(Modifier.height(6.dp)) }
+    }
+        if (query.isBlank() && guideIssueTarget == null) {
+            PullRefreshIndicator(
+                refreshing = refreshingSpotlight,
+                state = spotlightPullRefresh,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = padding.calculateTopPadding()),
+                backgroundColor = InkShelf2Colors.SurfaceRaised,
+                contentColor = InkShelf2Colors.AccentLight,
+            )
+        }
     }
 }
 

@@ -4,6 +4,8 @@ import android.content.Context
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.data.database.models.Manga
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -59,7 +61,8 @@ internal object InkShelf2Spotlight {
     private const val URL =
         "https://raw.githubusercontent.com/Rainkingx/InkShelf/inkshelf-2.0/editorial/spotlight.json"
     private const val CACHE = "inkshelf2_editorial_events_v3"
-    private const val TTL_MS = 6L * 60L * 60L * 1000L
+    const val TTL_MS = 15L * 60L * 1000L
+    private val refreshMutex = Mutex()
     private val client = OkHttpClient.Builder()
         .connectTimeout(6, TimeUnit.SECONDS)
         .readTimeout(8, TimeUnit.SECONDS)
@@ -184,30 +187,42 @@ internal object InkShelf2Spotlight {
 
     fun starter(): List<Event> = active(fallback())
 
-    suspend fun load(context: Context): List<Event> = withContext(Dispatchers.IO) {
-        val prefs = context.applicationContext.getSharedPreferences(CACHE, Context.MODE_PRIVATE)
-        val saved = prefs.getString("manifest", null)
-        val now = System.currentTimeMillis()
-        if (saved != null && now - prefs.getLong("checked", 0L) in 0 until TTL_MS) {
-            val entries = parse(saved)
-            if (entries.isNotEmpty()) return@withContext active(entries)
-        }
-        val remote = runCatching {
-            client.newCall(Request.Builder().url(URL).get()
-                .header("User-Agent", "InkShelf/2.0 (editorial events)")
-                .header("Accept", "application/json").build()).execute().use { response ->
-                if (response.code != 200) return@use null
-                response.body?.string()?.takeIf { it.length in 30..65_000 }
+    data class LoadResult(val events: List<Event>, val fetched: Boolean)
+
+    suspend fun load(context: Context): List<Event> = loadWithStatus(context).events
+
+    suspend fun loadWithStatus(context: Context, force: Boolean = false): LoadResult =
+        withContext(Dispatchers.IO) {
+            refreshMutex.withLock {
+                val prefs = context.applicationContext.getSharedPreferences(CACHE, Context.MODE_PRIVATE)
+                val saved = prefs.getString("manifest", null)
+                val now = System.currentTimeMillis()
+                val cached = saved?.let(::parse).orEmpty()
+                if (!force && cached.isNotEmpty() && now - prefs.getLong("checked", 0L) in 0 until TTL_MS) {
+                    return@withLock LoadResult(active(cached), false)
+                }
+                // Explicit user refresh bypasses both the app TTL and CDN cache.
+                val address = if (force) "$URL?refresh=$now" else URL
+                val remote = runCatching {
+                    val request = Request.Builder().url(address)
+                        .header("User-Agent", "InkShelf/2.0 (editorial events)")
+                        .header("Accept", "application/json")
+                    if (force) request.header("Cache-Control", "no-cache")
+                    client.newCall(request.get().build()).execute().use { response ->
+                        if (response.code != 200) return@use null
+                        response.body?.string()?.takeIf { it.length in 30..65_000 }
+                    }
+                }.getOrNull()
+                val updated = remote?.let(::parse).orEmpty()
+                if (updated.isNotEmpty()) {
+                    prefs.edit().putString("manifest", remote)
+                        .putLong("checked", System.currentTimeMillis()).apply()
+                    return@withLock LoadResult(active(updated), true)
+                }
+                // Keep the last valid manifest on offline/server errors.
+                LoadResult(active(cached.ifEmpty { fallback() }), false)
             }
-        }.getOrNull()
-        val updated = remote?.let(::parse).orEmpty()
-        if (updated.isNotEmpty()) {
-            prefs.edit().putString("manifest", remote)
-                .putLong("checked", now).apply()
-            return@withContext active(updated)
         }
-        active(saved?.let(::parse).orEmpty().ifEmpty { fallback() })
-    }
 
     private fun parse(raw: String): List<Event> = runCatching {
         val root = JSONObject(raw)
