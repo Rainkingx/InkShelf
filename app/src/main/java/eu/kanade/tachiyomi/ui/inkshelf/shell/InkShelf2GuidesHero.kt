@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -199,7 +201,10 @@ private fun InkShelf2FeaturedGuideSlide(
             }
         }
     }
-    val shape = RoundedCornerShape(20.dp)
+    val eventSkin = InkShelf2Themes.eventSkin
+    val shape = RoundedCornerShape(if (eventSkin != null) 10.dp else 20.dp)
+    val backdrop = InkShelf2Colors.Background
+    val trim = eventSkin?.gold ?: InkShelf2Colors.AccentLight
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -208,10 +213,10 @@ private fun InkShelf2FeaturedGuideSlide(
             .clip(shape)
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0xFF451469), Color(0xFF1D103A), Color(0xFF10101D)),
+                    listOf(backdrop, InkShelf2Colors.Surface, InkShelf2Colors.SurfaceRaised),
                 ),
             )
-            .border(1.dp, InkShelf2Colors.AccentLight.copy(alpha = 0.55f), shape)
+            .border(1.dp, trim.copy(alpha = 0.65f), shape)
             .clickable { onOpen() },
     ) {
         // Genuine Metron image, clipped to the right so the left headline
@@ -222,7 +227,14 @@ private fun InkShelf2FeaturedGuideSlide(
                 contentDescription = "Artwork for " + item.guide.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.align(Alignment.CenterEnd)
-                    .fillMaxWidth(0.75f).fillMaxHeight(),
+                    .fillMaxWidth(0.64f).fillMaxHeight(),
+                // Same restrained midtone lift as Discover; no heavy black tint.
+                colorFilter = ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
+                    1.035f, 0f, 0f, 0f, 9f,
+                    0f, 1.035f, 0f, 0f, 9f,
+                    0f, 0f, 1.035f, 0f, 9f,
+                    0f, 0f, 0f, 1f, 0f,
+                ))),
             )
         } else {
             Canvas(Modifier.fillMaxSize()) {
@@ -238,29 +250,25 @@ private fun InkShelf2FeaturedGuideSlide(
             modifier = Modifier.fillMaxSize().background(
                 Brush.horizontalGradient(
                     colorStops = arrayOf(
-                        0f to Color(0xFF11091E),
-                        0.47f to Color(0xFF11091E).copy(alpha = 0.94f),
-                        0.72f to Color(0xFF11091E).copy(alpha = 0.37f),
-                        1f to Color(0xFF11091E).copy(alpha = 0.16f),
+                        0f to backdrop,
+                        0.36f to backdrop,
+                        0.47f to backdrop.copy(alpha = 0.60f),
+                        0.65f to Color.Transparent,
+                        1f to Color.Transparent,
                     ),
                 ),
             ),
         )
-        Box(
-            modifier = Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    listOf(Color.Transparent, Color(0xFF0C0718).copy(alpha = 0.65f)),
-                ),
-            ),
-        )
+        // The button sits entirely on the dark left side. Leave the right
+        // image clear all the way to the bottom rather than dimming the art.
         Column(
             modifier = Modifier.fillMaxSize().padding(17.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
-                    "FEATURED READING GUIDE",
-                    color = InkShelf2Colors.AccentLight,
+                    "FEATURED EVENT",
+                    color = trim,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 1.sp,
@@ -275,7 +283,7 @@ private fun InkShelf2FeaturedGuideSlide(
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth(0.77f),
+                    modifier = Modifier.fillMaxWidth(0.58f),
                 )
                 Text(
                     if (item.guide.publisher.equals("marvel", true)) "Marvel crossover reading order"
@@ -285,11 +293,11 @@ private fun InkShelf2FeaturedGuideSlide(
                     fontSize = 12.sp,
                     lineHeight = 15.sp,
                     maxLines = 2,
-                    modifier = Modifier.fillMaxWidth(0.79f),
+                    modifier = Modifier.fillMaxWidth(0.55f),
                 )
             }
             InkShelf2ActionButton(
-                label = if (isStarted) "Resume Guide" else "Open Guide",
+                label = if (isStarted) "Resume Event" else "Open Event",
                 modifier = Modifier.width(153.dp),
                 onClick = onOpen,
             )
