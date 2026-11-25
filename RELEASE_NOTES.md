@@ -1,14 +1,16 @@
-# InkShelf 2.0 — Public Beta 4
+# InkShelf 2.0 — Public Beta 5
 
-A small update to verify the public in-app update process from Beta 3.
+## Changes
 
-- Menu now displays the installed app version and update channel instead of the old migration notice.
-- Existing storage permission fixes and all core reader, library and download functionality are retained.
+- Manual updates now display download progress, check Android installation permissions and open the system installer when the APK is ready.
+- Update errors are shown directly in the app.
+- Event artwork is prefetched after startup, with priority for featured and recent events.
+- Event artwork loading continues while navigating between screens and uses the existing cache and metadata service rate limits.
 
-## Updating
+## Installation
 
-In Public Beta 3, open **Menu > Settings > Check for updates**, then follow the download and installation prompt. Android may ask for permission to install apps. After installation, the version shown in Menu should be **2.0.0-b04**. Back up your library first. The public signing key and package ID remain unchanged.
+If updating from Beta 4, download and install this signed **InkShelf.apk** manually if the old in-app download button does not respond. Keep your existing public installation and back up your library. The package ID and release signing key are unchanged.
 
-This is a prerelease. If the in-app update fails, report the error and device details. The signed InkShelf.apk remains available on GitHub.
+Beta 5's corrected updater can be tested with the next public release. Initial uncached event artwork may still take time to retrieve. Development APKs remain separate.
 
-InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders. See the README and Apache-2.0 licence.
+This is a prerelease. InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders. See the README and Apache-2.0 licence.
