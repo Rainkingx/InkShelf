@@ -139,7 +139,7 @@ class InkShelfSetupDialog(
 
         binding.batCaveRow.isVisible = showWestern
         binding.readComicsOnlineRow.isVisible = showWestern
-        binding.xoxoComicsRow.isVisible = showWestern
+        binding.comicHubFreeRow.isVisible = showWestern
 
         binding.mangaDexRow.isVisible = showManga
         binding.comixRow.isVisible = showManga
@@ -150,7 +150,7 @@ class InkShelfSetupDialog(
         if (showWestern) {
             binding.batCaveCheck.isChecked = true
             binding.readComicsOnlineCheck.isChecked = true
-            binding.xoxoComicsCheck.isChecked = true
+            binding.comicHubFreeCheck.isChecked = true
         }
         if (showManga) {
             binding.mangaDexCheck.isChecked = true
@@ -672,8 +672,8 @@ class InkShelfSetupDialog(
     private fun selectedSourceNames(): List<String> =
         buildList {
             if (binding.batCaveRow.isVisible && binding.batCaveCheck.isChecked) add("BatCave")
-            if (binding.readComicsOnlineRow.isVisible && binding.readComicsOnlineCheck.isChecked) add("Read Comics Online")
-            if (binding.xoxoComicsRow.isVisible && binding.xoxoComicsCheck.isChecked) add("XOXO Comics")
+            if (binding.readComicsOnlineRow.isVisible && binding.readComicsOnlineCheck.isChecked) add("ReadComicsOnline.lol")
+            if (binding.comicHubFreeRow.isVisible && binding.comicHubFreeCheck.isChecked) add("ComicHubFree")
 
             if (binding.mangaDexRow.isVisible && binding.mangaDexCheck.isChecked) add("MangaDex")
             if (binding.comixRow.isVisible && binding.comixCheck.isChecked) add("Comix")
@@ -812,7 +812,7 @@ class InkShelfSetupDialog(
             )
 
         private val WESTERN_SOURCE_NAMES =
-            listOf("BatCave", "Read Comics Online", "XOXO Comics")
+            listOf("BatCave", "ReadComicsOnline.lol", "ComicHubFree")
 
         private val MANGA_SOURCE_NAMES =
             listOf("MangaDex", "Comix", "MangaFire")
@@ -820,15 +820,15 @@ class InkShelfSetupDialog(
         private val SOURCE_PACKAGES =
             mapOf(
                 "BatCave" to "eu.kanade.tachiyomi.extension.en.batcave",
-                "Read Comics Online" to "eu.kanade.tachiyomi.extension.en.readcomicsonline",
-                "XOXO Comics" to "eu.kanade.tachiyomi.extension.en.xoxocomics",
+                "ReadComicsOnline.lol" to "eu.kanade.tachiyomi.extension.en.readcomicsonlinelol",
+                "ComicHubFree" to "eu.kanade.tachiyomi.extension.en.comichubfree",
             )
 
         private val SOURCE_ALIASES =
             mapOf(
                 "BatCave" to setOf("batcave"),
-                "Read Comics Online" to setOf("readcomicsonline", "readcomiconline"),
-                "XOXO Comics" to setOf("xoxocomics", "xoxo"),
+                "ReadComicsOnline.lol" to setOf("readcomicsonlinelol"),
+                "ComicHubFree" to setOf("comichubfree"),
                 "MangaDex" to setOf("mangadex"),
                 "Comix" to setOf("comix"),
                 "MangaFire" to setOf("mangafire"),

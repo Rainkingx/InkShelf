@@ -1,4 +1,4 @@
-# InkShelf
+# InkShelf 2.0
 [![Download InkShelf](https://img.shields.io/badge/Download-InkShelf_APK-7C4DFF?style=for-the-badge&logo=android)](https://github.com/Rainkingx/InkShelf/releases)
 
 **InkShelf** is an Android comic and manga reader built as a custom fork of [TachiyomiJ2K](https://github.com/Jays2Kings/tachiyomiJ2K).
@@ -7,21 +7,28 @@ The project keeps the proven J2K reader, library, source/extension, download, ba
 
 > InkShelf is under active development. Some features are intentionally marked **BETA**.
 
-## Highlights
+## What's new in 2.0
 
-- **Comic-focused Library** with reading-status tabs, pinned search and Continue Reading.
-- **Discover** with recommendations, trending titles, new releases and background caching.
-- **Your Reading Universe** with real reading-history and library statistics.
-- **Panel Flow &mdash; BETA**: optional guided reading for Western/LTR comics.
-  - Uses on-device OCR.
-  - Moves through recognised dialogue while keeping artwork context visible.
-  - Groups busy dialogue areas into readable stops.
-  - Shows the full page before page transitions so artwork is not skipped.
-- Multiple reader modes and reading directions.
-- Downloads and offline reading.
-- Local backups and restore.
-- Source/extension support inherited from the Tachiyomi/Mihon ecosystem.
-- Tablet, foldable and landscape support.
+InkShelf 2.0 introduces a rebuilt Android interface with a shared header, bottom navigation and a comic-focused visual identity, while retaining the existing reader and library foundations.
+
+- **Home:** daily themed picks, continue reading and personalised discovery.
+- **Discover:** editorial spotlights, curated collections, new releases, recommendations and multi-source search.
+- **Library:** saved comics, reading history and saved events.
+- **Events:** curated crossover reading orders, Essential and Complete modes, and custom events with editable issue order and artwork.
+- **The Pulse:** comic news, reviews and videos, linked to their original publishers.
+- **Comic details:** issue covers, reading and download controls, related comics and source information.
+- **Appearance:** selectable colour themes, limited-event themes and customisable cinematic startup.
+- **Reader:** multiple reading modes and optional on-device Panel Flow (beta).
+- **Setup:** optional metadata enrichment through Metron and guided source installation.
+- **Offline reading:** downloads, local comic import, backup and restore.
+
+## Installation and updates
+
+The public APK is available from [GitHub Releases](https://github.com/Rainkingx/InkShelf/releases). Check the release notes for the version and whether it is a prerelease.
+
+Before switching from an existing installation, export a backup. Development builds and public releases use different Android package IDs; a development APK cannot be upgraded in place by the public APK. Restore a backup in the new installation and check your library before removing the old app. Downloaded files and extension settings may need separate migration.
+
+Only install extensions you trust and use sources for which you have lawful access. Extensions are separate Android packages and are not bundled with the APK.
 
 ## Panel Flow &mdash; BETA
 
@@ -47,17 +54,17 @@ Sources/extensions are separate from the app. Requests or problems relating to t
 
 ### Requirements
 
-- JDK 17
+- JDK 21
 - Android SDK / Android Studio
 - Git
 
 ### Windows
 
 ```powershell
-git clone <your-repository-url>
+git clone https://github.com/Rainkingx/InkShelf.git
 cd InkShelf
 
-$env:JAVA_HOME="PATH_TO_JDK_17"
+$env:JAVA_HOME="PATH_TO_JDK_21"
 .\gradlew.bat :app:assembleDevDebug -x :app:formatKotlinMain
 ```
 
@@ -90,7 +97,7 @@ For InkShelf-specific bugs, include:
 
 ## Upstream and attribution
 
-InkShelf is a derivative work based on **TachiyomiJ2K** by Jays2Kings, which itself descends from the original **Tachiyomi** project by Javier TomÃ¡s and contributors.
+InkShelf is a derivative work based on **TachiyomiJ2K** by Jays2Kings, which itself descends from the original **Tachiyomi** project by Javier Tomás and contributors.
 
 The wider Tachiyomi ecosystem is now continued by projects including [Mihon](https://github.com/mihonapp/mihon).
 
@@ -109,27 +116,5 @@ Users are responsible for complying with the laws and terms applicable to the co
 <!-- INKSHELF_SCREENSHOTS_START -->
 ## Screenshots
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="screenshots/library.jpg" width="320" alt="InkShelf Library"><br>
-      <b>Library</b>
-    </td>
-    <td align="center">
-      <img src="screenshots/discover.jpg" width="320" alt="InkShelf Discover"><br>
-      <b>Discover</b>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="screenshots/reading-universe.jpg" width="320" alt="InkShelf Reading Universe"><br>
-      <b>Reading Universe</b>
-    </td>
-    <td align="center">
-      <img src="screenshots/more.jpg" width="320" alt="InkShelf More screen"><br>
-      <b>More</b>
-    </td>
-  </tr>
-</table>
+Updated InkShelf 2.0 screenshots will be added before the public beta.
 <!-- INKSHELF_SCREENSHOTS_END -->
-

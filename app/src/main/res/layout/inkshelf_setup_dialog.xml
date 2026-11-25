@@ -283,20 +283,20 @@
             style="@style/InkShelfSetupSourceRow">
             <TextView
                 style="@style/InkShelfSetupSourceText"
-                android:text="Read Comics Online" />
+                android:text="ReadComicsOnline.lol" />
             <com.google.android.material.checkbox.MaterialCheckBox
                 android:id="@+id/read_comics_online_check"
                 style="@style/InkShelfSetupSourceCheck" />
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/xoxo_comics_row"
+            android:id="@+id/comic_hub_free_row"
             style="@style/InkShelfSetupSourceRow">
             <TextView
                 style="@style/InkShelfSetupSourceText"
-                android:text="XOXO Comics" />
+                android:text="ComicHubFree" />
             <com.google.android.material.checkbox.MaterialCheckBox
-                android:id="@+id/xoxo_comics_check"
+                android:id="@+id/comic_hub_free_check"
                 style="@style/InkShelfSetupSourceCheck" />
         </LinearLayout>
 

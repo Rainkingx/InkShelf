@@ -124,7 +124,7 @@ internal fun InkShelf2RecommendedSourcesSetup(
         )
         Text(
             "The Keiyoushi extension repository is added automatically. These three sources " +
-                "are preselected instead of XOXO; uncheck any you don't want.",
+                "are preselected; uncheck any you don't want.",
             color = InkShelf2Colors.Muted,
             fontSize = 12.sp,
             lineHeight = 17.sp,
