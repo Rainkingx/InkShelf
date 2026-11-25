@@ -1,6 +1,16 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.graphics.Color as AndroidColor
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -58,6 +68,27 @@ internal fun InkShelf2ThemesScreen(
 ) {
     val context = LocalContext.current
     var cinematicEnabled by remember(context) { mutableStateOf(InkShelf2CinematicSplash.enabled(context)) }
+    var artworkOpen by rememberSaveable { mutableStateOf(false) }
+    var pendingArtwork by rememberSaveable { mutableStateOf(-1) }
+    var artworkEpoch by remember { mutableStateOf(0) }
+    var importingArtwork by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val index = pendingArtwork
+        pendingArtwork = -1
+        if (uri != null && index in InkShelf2SplashArtwork.slots.indices) {
+            importingArtwork = true
+            scope.launch {
+                try {
+                    val ok = withContext(Dispatchers.IO) { InkShelf2SplashArtwork.importImage(context, index, uri) }
+                    artworkEpoch += 1
+                    Toast.makeText(context, if (ok) "Artwork saved for next cold launch" else "Could not read this image", Toast.LENGTH_SHORT).show()
+                } finally {
+                    importingArtwork = false
+                }
+            }
+        }
+    }
     val storedCustom = remember(context) { InkShelf2Themes.savedCustom(context) }
     val startingPalette = if (InkShelf2Themes.selectedId == "custom") storedCustom
         else InkShelf2Themes.current
@@ -158,6 +189,40 @@ internal fun InkShelf2ThemesScreen(
                     cinematicEnabled = it
                     InkShelf2CinematicSplash.setEnabled(context, it)
                 })
+            }
+        }
+        item {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
+                TextButton(onClick = { artworkOpen = !artworkOpen }) {
+                    Text(if (artworkOpen) "Hide splash artwork" else "Custom splash artwork",
+                        color = InkShelf2Colors.AccentLight)
+                }
+                if (artworkOpen) {
+                    Text("Use your own permitted PNG, JPEG or WebP artwork. Transparent, isolated images work best. Files stay on this device.",
+                        color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                    InkShelf2SplashArtwork.slots.forEachIndexed { index, slot ->
+                        val imported = remember(artworkEpoch, index) { InkShelf2SplashArtwork.has(context, index) }
+                        Spacer(Modifier.height(12.dp))
+                        Text(slot.title, color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
+                        Text(if (imported) "Custom image saved" else "Built-in emblem",
+                            color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(enabled = !importingArtwork, onClick = {
+                                pendingArtwork = index
+                                picker.launch("image/*")
+                            }) { Text(if (imported) "Replace" else "Choose image") }
+                            TextButton(onClick = {
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(slot.reference))) }
+                            }) { Text("Reference") }
+                            if (imported) {
+                                TextButton(enabled = !importingArtwork, onClick = {
+                                    InkShelf2SplashArtwork.reset(context, index)
+                                    artworkEpoch += 1
+                                }) { Text("Reset") }
+                            }
+                        }
+                    }
+                }
             }
         }
         item {

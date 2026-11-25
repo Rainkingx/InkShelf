@@ -58,7 +58,9 @@ internal class InkShelf2CinematicSplash(
     private val logo = BitmapFactory.decodeResource(resources, R.drawable.inkshelf_cinematic_logo)
     private val colors = intArrayOf(0xFF6CE1FF.toInt(), 0xFFFFC35D.toInt(),
         0xFFE76E62.toInt(), 0xFFF44465.toInt(), 0xFFBD73FF.toInt())
-    private val emblems = Array(4) { index -> renderEmblem(index) }
+    private val emblems = Array(4) { index ->
+        InkShelf2SplashArtwork.load(context, index) ?: renderEmblem(index)
+    }
     private var firstFrame = 0L
     private var finished = false
     private var fadeStarted = 0L
