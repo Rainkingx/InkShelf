@@ -7,6 +7,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * InkShelf 2.0 appearance is independent from the legacy J2K theme.
@@ -42,6 +46,29 @@ internal object InkShelf2Themes {
     )
     private const val PREFS = "inkshelf_2_theme_v1"
     private const val SELECTED = "selected"
+    private const val DOOM_ACTIVATED = "doom_december_2026_auto_activated"
+    private const val DOOM_START = "2026-12-01"
+    private const val DOOM_END = "2026-12-31"
+
+    private fun todayUtc(): String = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }.format(Date())
+
+    var limitedThemesVisible by mutableStateOf(false)
+        private set
+
+    // One automatic activation per installation during December. Later user
+    // selections remain respected, and the edition stays available afterwards.
+    fun refreshScheduledEvent(context: Context) {
+        val today = todayUtc()
+        limitedThemesVisible = today >= DOOM_START
+        val prefs = preferences(context)
+        if (today < DOOM_START || today > DOOM_END || prefs.getBoolean(DOOM_ACTIVATED, false)) return
+        val doom = presets.first { it.id == DOOM_ID }
+        prefs.edit().putString(SELECTED, DOOM_ID).putBoolean(DOOM_ACTIVATED, true).apply()
+        selectedId = DOOM_ID
+        current = doom.colors
+    }
     private const val CUSTOM_PRIMARY = "custom_primary"
     private const val CUSTOM_HIGHLIGHT = "custom_highlight"
     private const val CUSTOM_BACKGROUND = "custom_background"
@@ -136,6 +163,7 @@ internal object InkShelf2Themes {
         )
 
     fun restore(context: Context) {
+        refreshScheduledEvent(context)
         val requested = preferences(context).getString(SELECTED, "original").orEmpty()
         val chosen = if (requested == "custom") savedCustom(context)
             else presets.firstOrNull { it.id == requested }?.colors ?: original
@@ -147,6 +175,7 @@ internal object InkShelf2Themes {
         preferences(context).contains(CUSTOM_PRIMARY)
 
     fun select(context: Context, id: String) {
+        if (id == DOOM_ID && !limitedThemesVisible) return
         if (id == "custom") {
             if (!hasSavedCustom(context)) return
             preferences(context).edit().putString(SELECTED, "custom").apply()

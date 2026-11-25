@@ -1399,6 +1399,7 @@ class InkShelf2Activity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        InkShelf2Themes.refreshScheduledEvent(this)
         SecureActivityDelegate.promptLockIfNeeded(this)
         refreshEpoch += 1
     }

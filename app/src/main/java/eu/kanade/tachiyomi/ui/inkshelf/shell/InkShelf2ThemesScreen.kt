@@ -231,7 +231,9 @@ internal fun InkShelf2ThemesScreen(
                     Text("Use your own permitted PNG, JPEG or WebP artwork up to 1600px. Reimport older images for improved quality. Files stay on this device.",
                         color = InkShelf2Colors.Muted, fontSize = 12.sp)
                     InkShelf2SplashArtwork.allSlots.forEachIndexed { index, slot ->
-                        if (index == InkShelf2SplashArtwork.DOOM_RUNE_INDEX) {
+                        if (index == InkShelf2SplashArtwork.DOOM_RUNE_INDEX && !InkShelf2Themes.limitedThemesVisible) return@forEachIndexed
+                        if (index == InkShelf2SplashArtwork.DOOM_RUNE_INDEX ||
+                            (index == InkShelf2SplashArtwork.LOGO_INDEX && !InkShelf2Themes.limitedThemesVisible)) {
                             Spacer(Modifier.height(16.dp))
                             Text("OPTIONAL HD SPLASH UPGRADES", color = InkShelf2Colors.Trim, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
@@ -280,7 +282,7 @@ internal fun InkShelf2ThemesScreen(
                 },
             )
         }
-        item(key = "doom-edition") {
+        if (InkShelf2Themes.limitedThemesVisible) item(key = "doom-edition") {
             Text("LIMITED EDITION THEMES", modifier = Modifier.padding(horizontal = 19.dp),
                 color = InkShelf2Colors.AccentLight, fontSize = 12.sp,
                 fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
