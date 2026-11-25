@@ -23,6 +23,26 @@ class InkShelf2EventTimelineTest {
     }
 
     @Test
+    fun spotlightIsLimitedToThreeEditorialEvents() {
+        val custom = events.first().copy(id = Int.MIN_VALUE, type = "CUSTOM", batcaveSlug = null)
+        val spotlight = InkShelf2EventTimeline.spotlight(events.reversed() + custom)
+        assertEquals(3, spotlight.size)
+        assertTrue(spotlight.none { it.type == "CUSTOM" })
+        assertEquals(listOf("dc-k-o", "absolute-power", "blood-hunt"), spotlight.map { it.batcaveSlug })
+    }
+
+    @Test
+    fun newBadgeExpiresAfterExactlySevenDaysAndExcludesPersonalEvents() {
+        val guide = events.first()
+        val added = 1_000L
+        val week = 7L * 24 * 60 * 60 * 1000
+        assertTrue(InkShelf2GuidesData.isNewGuide(guide, added, added + week - 1))
+        assertTrue(!InkShelf2GuidesData.isNewGuide(guide, added, added + week))
+        assertTrue(!InkShelf2GuidesData.isNewGuide(guide.copy(type = "CUSTOM"), added, added))
+        assertTrue(!InkShelf2GuidesData.isNewGuide(guide, 0L, added))
+    }
+
+    @Test
     fun verifiedCatalogueUsesPublicationOrder() {
         val sorted = InkShelf2EventTimeline.ordered(events.reversed())
         assertEquals(events.map { it.id }.toSet(), sorted.map { it.id }.toSet())

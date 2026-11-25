@@ -263,7 +263,7 @@ internal object InkShelf2GuidesData {
         guide.batcaveSlug?.let { verifiedEventArt[it]?.second }
 
     /** The existing catalogue is a baseline, not falsely advertised as new.
-     * Later additions receive a local badge for fourteen days.
+     * Later editorial additions receive a local badge for seven days.
      */
     fun newlyAddedGuideIds(context: Context, guides: List<InkShelf2Guide>): Set<Int> {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -277,11 +277,14 @@ internal object InkShelf2GuidesData {
         }.map { it.id.toString() }.toSet() else seen
         (current - baseline).forEach { edit.putLong("catalogue_added_" + it, now) }
         edit.putStringSet(key, seen.orEmpty() + current).apply()
-        val duration = 14L * 24 * 60 * 60 * 1000
         return guides.filter { guide ->
-            val added = prefs.getLong("catalogue_added_" + guide.id, 0L)
-            added > 0L && now - added in 0L until duration
+            isNewGuide(guide, prefs.getLong("catalogue_added_" + guide.id, 0L), now)
         }.map { it.id }.toSet()
+    }
+
+    internal fun isNewGuide(guide: InkShelf2Guide, added: Long, now: Long): Boolean {
+        val duration = 7L * 24 * 60 * 60 * 1000
+        return guide.type != "CUSTOM" && added > 0L && now - added in 0L until duration
     }
 
     fun timelineEnabled(context: Context): Boolean =

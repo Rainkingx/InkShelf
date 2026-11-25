@@ -58,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -106,7 +107,15 @@ internal fun InkShelf2GuidesScreen(
         createEvent = false
         catalogueRevision++
     })
-    val newlyAdded = remember(context, installed) { InkShelf2GuidesData.newlyAddedGuideIds(context, installed) }
+    var newlyAdded by remember(context, installed, refreshEpoch) {
+        mutableStateOf(InkShelf2GuidesData.newlyAddedGuideIds(context, installed))
+    }
+    LaunchedEffect(installed, refreshEpoch) {
+        while (true) {
+            delay(60_000)
+            newlyAdded = InkShelf2GuidesData.newlyAddedGuideIds(context, installed)
+        }
+    }
     var timeline by rememberSaveable { mutableStateOf(InkShelf2GuidesData.timelineEnabled(context)) }
     var shelf by rememberSaveable { mutableStateOf<String?>(null) }
     var shown by rememberSaveable { mutableStateOf(8) }
@@ -232,6 +241,7 @@ internal fun InkShelf2GuidesScreen(
     ).filter { it.second.isNotEmpty() }
     val shelfItems = shelves.firstOrNull { it.first == shelf }?.second.orEmpty()
     val gridItems = if (shelf != null) shelfItems else matching
+    val spotlight = InkShelf2EventTimeline.spotlight(catalogue)
     val showShelves = !browsing && !timeline && shelf == null
     LaunchedEffect(finding, activeFilter, shelf, timeline) { shown = 8 }
 
@@ -259,10 +269,10 @@ internal fun InkShelf2GuidesScreen(
                 }
             }
         }
-        if (!browsing && shelf == null && catalogue.isNotEmpty()) {
+        if (!browsing && shelf == null && spotlight.isNotEmpty()) {
             item(key = "guides-hero") {
                 InkShelf2FeaturedGuidesHero(
-                    featured = catalogue.map { InkShelf2FeaturedGuide(it.name, it) },
+                    featured = spotlight.map { InkShelf2FeaturedGuide(it.name, it) },
                     started = inProgress.map { it.id }.toSet(),
                     onOpenGuide = openGuide,
                 )
@@ -1002,8 +1012,15 @@ private fun InkShelf2EventTimelineRow(
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(guide.name, color = InkShelf2Colors.Text, fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(guide.publisher + " · " + order.size + " issues" + if (isNew) " · NEW" else "",
+                Text(guide.publisher + " · " + order.size + " issues",
                     color = InkShelf2Colors.Muted, fontSize = 11.sp)
+                if (isNew) {
+                    val accent = InkShelf2Colors.Accent.copy(alpha = 1f)
+                    Text("NEW", modifier = Modifier.background(accent, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                        color = if (accent.luminance() > 0.179f) Color.Black else Color.White,
+                        fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                }
                 if (completed > 0 && path.isNotEmpty()) {
                     Text("$completed of ${path.size} read", color = InkShelf2Colors.AccentLight, fontSize = 11.sp)
                 }

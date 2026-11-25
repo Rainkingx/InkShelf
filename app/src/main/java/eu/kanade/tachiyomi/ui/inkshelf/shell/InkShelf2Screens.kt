@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -1292,14 +1293,17 @@ internal fun InkShelf2CoverCard(
                 contentScale = ContentScale.Crop,
             )
             if (!badgeText.isNullOrBlank()) {
+                val isNewBadge = badgeText == "NEW"
+                val badgeBackground = if (isNewBadge) InkShelf2Colors.Accent.copy(alpha = 1f)
+                    else InkShelf2Colors.Background.copy(alpha = 0.90f)
                 Text(
                     text = badgeText,
                     modifier = Modifier.align(Alignment.TopEnd)
                         .padding(6.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(InkShelf2Colors.Background.copy(alpha = 0.90f))
+                        .background(badgeBackground)
                         .padding(horizontal = 7.dp, vertical = 4.dp),
-                    color = Color.White,
+                    color = if (isNewBadge && badgeBackground.luminance() > 0.179f) Color.Black else Color.White,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                 )
