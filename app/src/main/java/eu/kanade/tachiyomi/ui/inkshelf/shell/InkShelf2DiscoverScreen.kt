@@ -57,6 +57,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
@@ -583,79 +585,111 @@ internal fun InkShelf2DiscoverScreen(
                     ) { index ->
                         val feature = heroSpotlight[index]
                         val metronArt = highQualityHeroArt[feature.id]
-                        var officialFailed by remember(feature.id, feature.artworkUrl) {
-                            mutableStateOf(false)
+                        // The DC publisher montage is very wide and the Midnight
+                        // announcement is predominantly type. Prefer their verified
+                        // lead-series covers when available; publisher art is the
+                        // offline-configured fallback. Other spotlights keep their
+                        // official art first. Never substitute a different event.
+                        val artCandidates = remember(feature.id, feature.artworkUrl, metronArt) {
+                            (if (feature.id in setOf("dc-absolute", "marvel-midnight"))
+                                listOfNotNull(metronArt, feature.artworkUrl)
+                            else listOfNotNull(feature.artworkUrl, metronArt)).distinct()
                         }
-                        var fallbackFailed by remember(feature.id, metronArt) {
-                            mutableStateOf(false)
+                        var failedArt by remember(feature.id, artCandidates) {
+                            mutableStateOf(emptySet<String>())
                         }
-                        val heroImage = if (!officialFailed && feature.artworkUrl != null)
-                            feature.artworkUrl else metronArt
+                        val heroImage = artCandidates.firstOrNull { it !in failedArt }
+                        val eventSkin = InkShelf2Themes.eventSkin
+                        val accent = eventSkin?.gold ?: when (feature.id) {
+                            "dc-absolute" -> Color(0xFFFF9C9A)
+                            "marvel-midnight" -> Color(0xFFE2C688)
+                            "marvel-ultimate" -> Color(0xFF9FC9FF)
+                            "doom-essential" -> Color(0xFF8FE7AF)
+                            else -> InkShelf2Colors.AccentLight
+                        }
+                        val backdrop = InkShelf2Colors.Background
+                        val shape = RoundedCornerShape(if (eventSkin != null) 10.dp else 17.dp)
                         Box(
-                            modifier = Modifier.fillMaxWidth().height(194.dp)
-                                .clip(RoundedCornerShape(17.dp))
-                                .background(InkShelf2Colors.SurfaceRaised)
+                            modifier = Modifier.fillMaxWidth().height(208.dp)
+                                .clip(shape)
+                                .background(backdrop)
+                                .border(1.dp, (eventSkin?.gold ?: InkShelf2Colors.Border).copy(alpha = 0.55f), shape)
                                 .clickable {
                                     activeSpotlight = feature
                                     focusManager.clearFocus(force = true)
                                     keyboard?.hide()
                                 },
                         ) {
-                            // Show official publisher event art without cropping its characters
-                            // or wordmarks. Metron remains a safe image fallback.
-                            if (heroImage != null && !(officialFailed && fallbackFailed)) {
-                                AsyncImage(
-                                    model = heroImage,
-                                    contentDescription = null,
-                                    modifier = Modifier.align(Alignment.CenterEnd)
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(if (feature.id == "dc-absolute") 0.87f else 0.61f),
-                                    alignment = Alignment.CenterEnd,
-                                    contentScale = ContentScale.Fit,
-                                    onError = {
-                                        if (!officialFailed && feature.artworkUrl != null)
-                                            officialFailed = true
-                                        else fallbackFailed = true
-                                    },
-                                )
-                            }
+                            // Identical portrait artwork viewport for every event.
+                            // Crop fills the window instead of letterboxing wide images.
+                            // The soft edge is confined to the artwork's left edge;
+                            // the rest of the artwork has no dark overlay.
                             Box(
-                                modifier = Modifier.fillMaxSize().background(
-                                    Brush.horizontalGradient(
-                                        listOf(
-                                            // Keep the left-hand title readable while allowing
-                                            // much more of the comic artwork to show through.
-                                            InkShelf2Colors.Background.copy(alpha = 0.95f),
-                                            InkShelf2Colors.Background.copy(alpha = 0.84f),
-                                            InkShelf2Colors.Background.copy(alpha = 0.12f),
-                                        ),
-                                    ),
-                                ),
-                            )
-                            Column(
-                                modifier = Modifier.align(Alignment.BottomStart)
-                                    .fillMaxWidth(0.78f)
-                                    .padding(16.dp),
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                                    .fillMaxHeight().fillMaxWidth(0.50f)
+                                    .background(InkShelf2Colors.SurfaceRaised),
                             ) {
-                                Text(feature.publisher.uppercase() + " · " + feature.label,
-                                    color = InkShelf2Colors.AccentLight,
-                                    fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                Spacer(Modifier.height(8.dp))
+                                if (heroImage != null) {
+                                    AsyncImage(
+                                        model = heroImage,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        alignment = if (feature.id == "dc-absolute" && heroImage == feature.artworkUrl)
+                                            Alignment.CenterEnd else Alignment.Center,
+                                        contentScale = ContentScale.Crop,
+                                        colorFilter = ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
+                                            1.035f, 0f, 0f, 0f, 9f,
+                                            0f, 1.035f, 0f, 0f, 9f,
+                                            0f, 0f, 1.035f, 0f, 9f,
+                                            0f, 0f, 0f, 1f, 0f,
+                                        ))),
+                                        onError = { failedArt = failedArt + heroImage },
+                                    )
+                                }
+                                Box(Modifier.fillMaxSize().background(
+                                    Brush.horizontalGradient(
+                                        0f to backdrop,
+                                        0.10f to backdrop.copy(alpha = 0.55f),
+                                        0.27f to Color.Transparent,
+                                        1f to Color.Transparent,
+                                    ),
+                                ))
+                            }
+                            Column(
+                                modifier = Modifier.align(Alignment.CenterStart)
+                                    .fillMaxWidth(0.54f)
+                                    .padding(start = 14.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    feature.publisher.uppercase() + " · " + feature.label,
+                                    color = accent, fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp, lineHeight = 13.sp, maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Spacer(Modifier.height(9.dp))
                                 Text(
                                     feature.title,
                                     color = Color.White,
-                                    fontSize = 22.sp,
-                                    lineHeight = 24.sp,
+                                    fontSize = 21.sp,
+                                    lineHeight = 23.sp,
                                     fontWeight = FontWeight.Black,
                                     maxLines = 3,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Spacer(Modifier.height(5.dp))
-                                Text(if (feature.id == "doom-essential")
-                                    feature.series.size.toString() + " ESSENTIAL READS · START HERE"
-                                    else feature.series.size.toString() + " SERIES · EXPLORE THE UNIVERSE",
-                                    color = InkShelf2Colors.AccentLight, fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    if (feature.id == "doom-essential")
+                                        "${feature.series.size} ESSENTIAL READS"
+                                    else "${feature.series.size} SERIES",
+                                    color = accent, fontSize = 11.sp, lineHeight = 14.sp,
+                                    fontWeight = FontWeight.Bold, maxLines = 1,
+                                )
+                                Text(
+                                    if (feature.id == "doom-essential") "START READING ›" else "EXPLORE ›",
+                                    color = InkShelf2Colors.Text, fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold, maxLines = 1,
+                                )
                             }
                         }
                     }
