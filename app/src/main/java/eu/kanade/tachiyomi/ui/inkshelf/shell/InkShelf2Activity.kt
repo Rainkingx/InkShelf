@@ -87,6 +87,8 @@ class InkShelf2Activity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        cinematicSplash?.dismiss()
+        cinematicSplash = null
         pendingEntryIntent = intent
     }
     private val engine by lazy { InkShelf2Engine(applicationContext) }
@@ -103,11 +105,17 @@ class InkShelf2Activity : AppCompatActivity() {
     // Read from Android's native splash condition on the UI thread. The splash
     // remains until the initial Home, Library and Discover snapshot is ready.
     @Volatile private var initialShellReady = false
+    private var cinematicSplash: InkShelf2CinematicSplash? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initialShellReady = false
         val splashStartedAt = SystemClock.elapsedRealtime()
+        val firstProcessLaunch = InkShelf2CinematicSplash.claimColdStart()
+        val motionAllowed = android.os.Build.VERSION.SDK_INT < 26 || android.animation.ValueAnimator.areAnimatorsEnabled()
+        val cinematic = firstProcessLaunch && savedInstanceState == null &&
+            intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_LAUNCHER) &&
+            motionAllowed && InkShelf2CinematicSplash.enabled(this)
         // Prevent the first Activity draw until initial Home content is
         // hydrated. On Android 12+ the system launch splash remains visible;
         // older Android keeps its normal starting window. No extra library or
@@ -116,7 +124,7 @@ class InkShelf2Activity : AppCompatActivity() {
         splashRoot.viewTreeObserver.addOnPreDrawListener(
             object : ViewTreeObserver.OnPreDrawListener {
                 override fun onPreDraw(): Boolean {
-                    val keepSplash = !initialShellReady &&
+                    val keepSplash = !cinematic && !initialShellReady &&
                         SystemClock.elapsedRealtime() - splashStartedAt < 8_000L
                     if (keepSplash) return false
                     if (splashRoot.viewTreeObserver.isAlive) {
@@ -735,6 +743,10 @@ class InkShelf2Activity : AppCompatActivity() {
             // than immediately finishing the preview Activity on those tabs.
             BackHandler(enabled = true) {
                 when {
+                    cinematicSplash?.parent != null -> {
+                        cinematicSplash?.dismiss()
+                        cinematicSplash = null
+                    }
                     selected != null -> backFromComicDetails()
                     pulseExpanded -> closePulse()
                     notificationsOpen -> notificationsOpen = false
@@ -1372,6 +1384,17 @@ class InkShelf2Activity : AppCompatActivity() {
                 }
             }
         }
+        if (cinematic) {
+            val splash = InkShelf2CinematicSplash(this, { initialShellReady }, splashStartedAt)
+            cinematicSplash = splash
+            addContentView(splash, android.view.ViewGroup.LayoutParams(-1, -1))
+        }
+    }
+
+    override fun onDestroy() {
+        cinematicSplash?.dismiss()
+        cinematicSplash = null
+        super.onDestroy()
     }
 
     override fun onResume() {

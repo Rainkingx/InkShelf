@@ -57,6 +57,7 @@ internal fun InkShelf2ThemesScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    var cinematicEnabled by remember(context) { mutableStateOf(InkShelf2CinematicSplash.enabled(context)) }
     val storedCustom = remember(context) { InkShelf2Themes.savedCustom(context) }
     val startingPalette = if (InkShelf2Themes.selectedId == "custom") storedCustom
         else InkShelf2Themes.current
@@ -143,6 +144,21 @@ internal fun InkShelf2ThemesScreen(
         }
         item {
             InkShelfThemePreview(preview)
+        }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Cinematic opening", color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
+                    Text("Play the hero-symbol sequence on cold startup", color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                }
+                androidx.compose.material3.Switch(checked = cinematicEnabled, onCheckedChange = {
+                    cinematicEnabled = it
+                    InkShelf2CinematicSplash.setEnabled(context, it)
+                })
+            }
         }
         item {
             Text(
