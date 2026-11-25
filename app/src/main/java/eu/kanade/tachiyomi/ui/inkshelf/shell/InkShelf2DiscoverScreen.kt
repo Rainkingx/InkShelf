@@ -687,8 +687,8 @@ internal fun InkShelf2DiscoverScreen(
                 ) {
                     val shortcuts = listOf(
                         Triple("Trending", Icons.Outlined.LocalFireDepartment, 6 + (if (acclaimed != null) 1 else 0) + (if (hiddenGems != null) 1 else 0)),
-                        Triple("New This Week", Icons.Outlined.NewReleases, 5 + (if (acclaimed != null) 1 else 0) + (if (hiddenGems != null) 1 else 0)),
-                        Triple("Top Picks", Icons.Outlined.AutoAwesome, 4 + (if (acclaimed != null) 1 else 0) + (if (hiddenGems != null) 1 else 0)),
+                        Triple("New This Week", Icons.Outlined.NewReleases, 4),
+                        Triple("Top Picks", Icons.Outlined.AutoAwesome, 5),
                         Triple("Collections", Icons.Outlined.AutoStories, 3),
                     )
                     shortcuts.forEach { (label, image, index) ->
@@ -759,29 +759,10 @@ internal fun InkShelf2DiscoverScreen(
                     }
                 }
             }
-            if (acclaimed != null) {
-                item(key = "critically-acclaimed") {
-                    DiscoverSeeAllHeading("Critically Acclaimed", onClick = { onSeeAll("Critically Acclaimed") })
-                    Text(
-                        acclaimed.description,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
-                        color = InkShelf2Colors.Muted,
-                        fontSize = 11.sp,
-                    )
-                    DiscoverShelf(acclaimed.comics.take(12), onOpen)
-                }
-            }
-            if (hiddenGems != null) {
-                item(key = "hidden-gems") {
-                    DiscoverSeeAllHeading("Hidden Gems", onClick = { onSeeAll("Hidden Gems") })
-                    Text(
-                        hiddenGems.description,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
-                        color = InkShelf2Colors.Muted,
-                        fontSize = 11.sp,
-                    )
-                    DiscoverShelf(hiddenGems.comics.take(12), onOpen)
-                }
+            item(key = "new") {
+                DiscoverSeeAllHeading("New This Week", onClick = { onSeeAll("New This Week") })
+                Spacer(Modifier.height(7.dp))
+                DiscoverShelf(newest.take(20), onOpen)
             }
             item(key = "recommended") {
                 DiscoverSeeAllHeading("Recommended for You", onClick = { onSeeAll("Recommended for You") })
@@ -829,10 +810,29 @@ internal fun InkShelf2DiscoverScreen(
                     DiscoverPersonalShelf(personalPicks.take(9), onOpen)
                 }
             }
-            item(key = "new") {
-                DiscoverSeeAllHeading("New This Week", onClick = { onSeeAll("New This Week") })
-                Spacer(Modifier.height(7.dp))
-                DiscoverShelf(newest.take(20), onOpen)
+            if (acclaimed != null) {
+                item(key = "critically-acclaimed") {
+                    DiscoverSeeAllHeading("Critically Acclaimed", onClick = { onSeeAll("Critically Acclaimed") })
+                    Text(
+                        acclaimed.description,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                    )
+                    DiscoverShelf(acclaimed.comics.take(12), onOpen)
+                }
+            }
+            if (hiddenGems != null) {
+                item(key = "hidden-gems") {
+                    DiscoverSeeAllHeading("Hidden Gems", onClick = { onSeeAll("Hidden Gems") })
+                    Text(
+                        hiddenGems.description,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
+                        color = InkShelf2Colors.Muted,
+                        fontSize = 11.sp,
+                    )
+                    DiscoverShelf(hiddenGems.comics.take(12), onOpen)
+                }
             }
             item(key = "trending-shelf") {
                 DiscoverSeeAllHeading("Popular in Your Sources", onClick = { onSeeAll("Trending Right Now") })
