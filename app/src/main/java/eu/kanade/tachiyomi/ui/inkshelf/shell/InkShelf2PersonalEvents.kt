@@ -123,7 +123,8 @@ internal object InkShelf2PersonalEvents {
         require(guide.batcaveSlug != null)
         val original = InkShelf2BundledEventOrders.get(guide.batcaveSlug, 1)?.issues.orEmpty()
         val restoredIds = original.map { it.id }.toSet()
-        val replacedIds = order(context, guide).filter { it.id in restoredIds && it.explicitSource != null }.map { it.id }.toSet()
+        val replacedIds = (order(context, guide).filter { it.id in restoredIds && it.explicitSource != null }.map { it.id } +
+            original.filter { it.sourceUnavailable && InkShelf2GuidesData.matchedChapter(context, guide.id, it.id) != null }.map { it.id }).toSet()
         InkShelf2GuidesData.clearReplacementMarks(context, guide.id, replacedIds)
         check(prefs(context).edit().remove("order_" + guide.id).commit())
     }

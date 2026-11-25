@@ -1002,7 +1002,7 @@ private fun InkShelf2EventTimelineRow(
                 Text(guide.publisher + " · " + order.size + " issues",
                     color = InkShelf2Colors.Muted, fontSize = 11.sp)
                 if (isNew) {
-                    Box(Modifier.size(7.dp).clip(RoundedCornerShape(50)).background(InkShelf2Colors.Accent))
+                    Box(Modifier.size(7.dp).background(InkShelf2Colors.Accent, RoundedCornerShape(50)))
                 }
                 if (completed > 0 && path.isNotEmpty()) {
                     Text("$completed of ${path.size} read", color = InkShelf2Colors.AccentLight, fontSize = 11.sp)

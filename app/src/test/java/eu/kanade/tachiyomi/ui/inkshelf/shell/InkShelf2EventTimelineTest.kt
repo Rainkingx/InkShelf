@@ -34,6 +34,11 @@ class InkShelf2EventTimelineTest {
     }
 
     @Test
+    fun everyEditorialEventHasASynopsis() {
+        assertTrue(events.all { !InkShelf2EventSynopses.get(it.batcaveSlug).isNullOrBlank() })
+    }
+
+    @Test
     fun newBadgeExpiresAfterExactlySevenDaysAndExcludesPersonalEvents() {
         val guide = events.first()
         val added = 1_000L
