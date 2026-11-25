@@ -1,6 +1,8 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -69,6 +71,8 @@ import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.ui.manga.InkShelfMetronCovers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import eu.kanade.tachiyomi.data.download.DownloadManager
@@ -190,6 +194,21 @@ internal fun InkShelf2GuidesScreen(
             },
             progressReady = progressReady,
             onProgressChanged = { guideRevision++ },
+            onEventChanged = { catalogueRevision++ },
+            onDeleteEvent = {
+                if (selected.type == "CUSTOM") {
+                    try {
+                        InkShelf2PersonalEvents.delete(context, selected.id)
+                        onSaveGuide(selected.id, false)
+                        catalogueRevision++
+                        guideRevision++
+                        closeGuide()
+                        Toast.makeText(context, "Event deleted", Toast.LENGTH_SHORT).show()
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "Could not delete event", Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
             saved = selected.id in savedGuideIds,
             onSave = { onSaveGuide(selected.id, selected.id !in savedGuideIds) },
             enabledSourceIds = enabledSourceIds,
@@ -478,6 +497,8 @@ private fun InkShelf2GuideDetails(
     progress: InkShelf2GuideProgress.EventState,
     progressReady: Boolean,
     onProgressChanged: () -> Unit,
+    onEventChanged: () -> Unit,
+    onDeleteEvent: () -> Unit,
     refreshEpoch: Int,
     openingIssueId: Int?,
     readingError: String?,
@@ -506,6 +527,48 @@ private fun InkShelf2GuideDetails(
     })
     var manualRevision by remember(guide.id) { mutableStateOf(0) }
     var optionsOpen by remember(guide.id) { mutableStateOf(false) }
+    var editInfo by remember(guide.id) { mutableStateOf(false) }
+    var confirmDelete by remember(guide.id) { mutableStateOf(false) }
+    var changingArtwork by remember(guide.id) { mutableStateOf(false) }
+    val artworkPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null && guide.type == "CUSTOM") {
+            changingArtwork = true
+            scope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        val input = context.contentResolver.openInputStream(uri)
+                            ?: error("Image unavailable")
+                        input.use { InkShelf2PersonalEvents.setCover(context, guide.id, it) }
+                    }
+                    onEventChanged()
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Could not change artwork", Toast.LENGTH_LONG).show()
+                } finally {
+                    changingArtwork = false
+                }
+            }
+        }
+    }
+    if (editInfo) InkShelf2EditEventInfoDialog(
+        guide = guide,
+        onDismiss = { editInfo = false },
+        onChanged = { editInfo = false; onEventChanged() },
+    )
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete event?") },
+            text = { Text("Delete \"" + guide.name + "\" and its custom reading order? Your comics, downloads and comic reading progress will be kept.") },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; onDeleteEvent() }) {
+                    Text("Delete", color = Color(0xFFFF7777))
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+        )
+    }
     var relatedExpanded by remember(guide.id) { mutableStateOf(true) }
     var confirmReset by remember(guide.id) { mutableStateOf(false) }
     var resetting by remember(guide.id) { mutableStateOf(false) }
@@ -664,6 +727,22 @@ private fun InkShelf2GuideDetails(
                 Icon(Icons.Outlined.MoreVert, "Event options", tint = Color.White)
             }
             DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }) {
+                if (guide.type == "CUSTOM") {
+                    DropdownMenuItem(
+                        text = { Text("Edit event") },
+                        onClick = { optionsOpen = false; editInfo = true },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Change artwork") },
+                        enabled = !changingArtwork,
+                        onClick = { optionsOpen = false; artworkPicker.launch("image/*") },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete event", color = Color(0xFFFF7777)) },
+                        enabled = !changingArtwork && !preparingDownloads && !currentlyOpening && !resetting,
+                        onClick = { optionsOpen = false; confirmDelete = true },
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(if (hideRead) "Show completed issues" else "Hide completed issues") },
                     onClick = {

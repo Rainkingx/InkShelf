@@ -36,6 +36,36 @@ internal object InkShelf2PersonalEvents {
         return custom(context).first { it.id == id }
     }
 
+    @Synchronized
+    fun update(context: Context, id: Int, name: String, description: String) {
+        require(name.isNotBlank() && name.length <= 100 && description.length <= 1500)
+        val p = prefs(context)
+        val events = array(p.getString("events", null))
+        val event = objects(events).firstOrNull { it.optInt("id") == id }
+            ?: error("Personal event not found")
+        event.put("name", name.trim()).put("description", description.trim())
+        check(p.edit().putString("events", events.toString()).commit())
+    }
+
+    /** Remove only a locally created event and its private overlay; never touch comics. */
+    @Synchronized
+    fun delete(context: Context, id: Int) {
+        val p = prefs(context)
+        val events = objects(array(p.getString("events", null)))
+        require(events.any { it.optInt("id") == id })
+        val remaining = JSONArray()
+        events.filterNot { it.optInt("id") == id }.forEach { remaining.put(it) }
+        val artwork = p.getString("cover_" + id, null)
+        check(p.edit().putString("events", remaining.toString())
+            .remove("order_" + id).remove("next_issue_" + id).remove("cover_" + id).commit())
+        // Event-local metadata only. The actual Manga and Chapter rows,
+        // reading history and downloaded files are intentionally untouched.
+        InkShelf2GuidesData.setSaved(context, id, false)
+        if (artwork != null && artwork.matches(Regex("event_-?[0-9]+_[0-9]+[.]img"))) {
+            File(context.filesDir, "event_covers/" + artwork).delete()
+        }
+    }
+
     fun order(context: Context, guide: InkShelf2Guide): List<InkShelf2GuideIssue> {
         val raw = prefs(context).getString("order_" + guide.id, null)
         if (raw == null) return guide.batcaveSlug?.let { InkShelf2BundledEventOrders.get(it, 1)?.issues }.orEmpty()

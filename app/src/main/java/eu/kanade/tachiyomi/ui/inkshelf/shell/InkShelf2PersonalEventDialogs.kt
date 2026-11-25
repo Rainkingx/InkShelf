@@ -191,3 +191,37 @@ internal fun InkShelf2EditEventDialog(guide: InkShelf2Guide, onDismiss: () -> Un
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })
 }
+
+
+@Composable
+internal fun InkShelf2EditEventInfoDialog(
+    guide: InkShelf2Guide,
+    onDismiss: () -> Unit,
+    onChanged: () -> Unit,
+) {
+    val context = LocalContext.current
+    var name by remember(guide.id) { mutableStateOf(guide.name) }
+    var description by remember(guide.id) { mutableStateOf(guide.description) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Event") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(name, { name = it.take(100) }, label = { Text("Event name") }, singleLine = true)
+                OutlinedTextField(description, { description = it.take(1500) },
+                    label = { Text("Description (optional)") }, maxLines = 4)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = name.isNotBlank(), onClick = {
+                try {
+                    InkShelf2PersonalEvents.update(context, guide.id, name, description)
+                    onChanged()
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Could not update event", Toast.LENGTH_LONG).show()
+                }
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
