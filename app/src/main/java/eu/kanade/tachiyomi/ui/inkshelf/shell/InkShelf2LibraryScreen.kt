@@ -153,7 +153,7 @@ internal fun InkShelf2LibraryScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            InkShelf2PageHeading("My Library", modifier = Modifier.weight(1f))
+            InkShelf2PageHeading(if (InkShelf2Themes.eventSkin != null) "Latverian Archive" else "My Library", modifier = Modifier.weight(1f))
             // Compact single segmented switch, as in the approved four-screen mock-up.
             Row(
                 modifier = Modifier

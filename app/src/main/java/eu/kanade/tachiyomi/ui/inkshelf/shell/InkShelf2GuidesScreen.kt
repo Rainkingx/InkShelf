@@ -241,7 +241,11 @@ internal fun InkShelf2GuidesScreen(
     ).filter { it.second.isNotEmpty() }
     val shelfItems = shelves.firstOrNull { it.first == shelf }?.second.orEmpty()
     val gridItems = if (shelf != null) shelfItems else matching
-    val spotlight = InkShelf2EventTimeline.spotlight(catalogue)
+    val regularSpotlight = InkShelf2EventTimeline.spotlight(catalogue)
+    val spotlight = if (InkShelf2Themes.eventSkin != null) {
+        (catalogue.filter { it.name.contains("Secret Wars", ignoreCase = true) }.take(1) +
+            regularSpotlight).distinctBy { it.id }.take(regularSpotlight.size.coerceAtLeast(1))
+    } else regularSpotlight
     val showShelves = !browsing && !timeline && shelf == null
     LaunchedEffect(finding, activeFilter, shelf, timeline) { shown = 8 }
 
@@ -255,7 +259,7 @@ internal fun InkShelf2GuidesScreen(
     ) {
         item(key = "guides-page-heading") {
             Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) { InkShelf2PageHeading(shelf ?: "Reading Guides") }
+                Box(Modifier.weight(1f)) { InkShelf2PageHeading(shelf ?: "The Main Event") }
                 if (shelf == null) TextButton(onClick = { createEvent = true }) {
                     Text("+ Create Event", color = InkShelf2Colors.AccentLight)
                 }
@@ -265,7 +269,7 @@ internal fun InkShelf2GuidesScreen(
             item(key = "shelf-back") {
                 TextButton(onClick = { shelf = null; shown = 8 }, modifier = Modifier.padding(horizontal = 12.dp)) {
                     Icon(Icons.Outlined.ArrowBack, contentDescription = null)
-                    Text("  All reading guides", color = InkShelf2Colors.AccentLight)
+                    Text("  All events", color = InkShelf2Colors.AccentLight)
                 }
             }
         }

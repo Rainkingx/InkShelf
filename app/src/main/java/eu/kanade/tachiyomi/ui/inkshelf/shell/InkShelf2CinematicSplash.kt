@@ -70,12 +70,14 @@ internal class InkShelf2CinematicSplash(
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val art = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val logo = BitmapFactory.decodeResource(resources, R.drawable.inkshelf_cinematic_logo)
+    private val logo = InkShelf2SplashArtwork.load(context, InkShelf2SplashArtwork.LOGO_INDEX)
+        ?: BitmapFactory.decodeResource(resources, R.drawable.inkshelf_cinematic_logo)
     private val colors = intArrayOf(0xFF6CE1FF.toInt(), 0xFFFFC35D.toInt(),
         0xFFE76E62.toInt(), 0xFFF44465.toInt(), 0xFFBD73FF.toInt())
     // Theme restoration happens before this View is created in InkShelf2Activity.
     private val doomRune = if (InkShelf2Themes.selectedId == InkShelf2Themes.DOOM_ID)
-        BitmapFactory.decodeResource(resources, R.drawable.inkshelf_doom_rune)
+        InkShelf2SplashArtwork.load(context, InkShelf2SplashArtwork.DOOM_RUNE_INDEX)
+            ?: BitmapFactory.decodeResource(resources, R.drawable.inkshelf_doom_rune)
     else null
     private val doomLogoFilter = ColorMatrixColorFilter(floatArrayOf(
         0f, 1f, 0f, 0f, 0f,
@@ -149,6 +151,7 @@ internal class InkShelf2CinematicSplash(
         val step = (elapsed / BEAT).toInt().coerceAtMost(4)
         val color = colors[step]
         val ambient = if (step < 4) 40 else 64
+        paint.color = Color.WHITE
         paint.style = Paint.Style.FILL
         paint.shader = RadialGradient(cx, cy, (size * 1.75f).coerceAtLeast(1f),
             intArrayOf(tint(color, ambient), tint(color, 11), Color.TRANSPARENT),
@@ -169,32 +172,14 @@ internal class InkShelf2CinematicSplash(
 
         if (step < 4) {
             val fraction = (elapsed % BEAT) / BEAT.toFloat()
-            val opening = ease(fraction / 0.25f)
-            val closing = ease((1f - fraction) / 0.28f)
-            val face = min(opening, closing)
-            val flip = 0.035f + 0.965f * face
-            val zoom = 0.91f + face * 0.10f
-            val half = size * zoom
-            canvas.save()
-            canvas.translate(cx, cy)
-            canvas.rotate((1f - face) * if (fraction < 0.5f) -8f else 8f)
-            canvas.scale(flip, 1f)
-            paint.color = Color.WHITE
-            paint.alpha = (255 * (0.25f + 0.75f * face)).toInt()
-            canvas.drawBitmap(emblems[step], null, RectF(-half, -half, half, half), paint)
-            paint.alpha = 255
-            canvas.restore()
-
-            // Light travels across the rotation axis as the emblem changes.
-            val edge = 1f - face
-            paint.shader = RadialGradient(cx, cy, (size * 0.72f).coerceAtLeast(1f),
-                intArrayOf(tint(color, (edge * 94).toInt()), Color.TRANSPARENT),
-                null, Shader.TileMode.CLAMP)
-            canvas.drawCircle(cx, cy, size * 0.72f, paint)
-            paint.shader = null
+            val blend = ease(fraction / 0.28f)
+            if (step > 0) drawUpright(canvas, emblems[step - 1], cx, cy, size * 1.03f, 1f - blend)
+            drawUpright(canvas, emblems[step], cx, cy, size * (0.96f + 0.07f * ease(fraction)), blend)
         } else {
+            val outgoing = 1f - ease((elapsed - REVEAL) / 360f)
+            if (outgoing > 0f) drawUpright(canvas, emblems[3], cx, cy, size * 1.03f, outgoing)
             val reveal = ease((elapsed - REVEAL) / 410f)
-            val w = min(width * 0.99f, height * 1.34f) * (0.88f + 0.12f * reveal)
+            val w = min(width * 0.99f, height * 0.86f * logo.width / logo.height) * (0.96f + 0.04f * reveal)
             val h = w * logo.height / logo.width
             val bounds = RectF(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
             paint.color = Color.WHITE
@@ -215,6 +200,17 @@ internal class InkShelf2CinematicSplash(
             }
         }
         scheduleFrame(elapsed)
+    }
+
+    private fun drawUpright(canvas: Canvas, image: Bitmap, cx: Float, cy: Float, half: Float, opacity: Float) {
+        if (opacity <= 0f) return
+        val ratio = min(half * 2f / image.width, half * 2f / image.height)
+        val w = image.width * ratio
+        val h = image.height * ratio
+        paint.color = Color.WHITE
+        paint.alpha = (opacity.coerceIn(0f, 1f) * 255f).toInt()
+        canvas.drawBitmap(image, null, RectF(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f), paint)
+        paint.alpha = 255
     }
 
     private fun scheduleFrame(elapsed: Long) {
@@ -253,20 +249,13 @@ internal class InkShelf2CinematicSplash(
         }
 
         if (transition < 1f) {
-            val half = size * 0.47f * (0.86f + 0.14f * appear) * (1f - 0.14f * transition)
-            canvas.save()
-            canvas.translate(cx, cy)
-            canvas.rotate(-9f * (1f - appear) + 7f * transition)
-            canvas.scale(1f - 0.94f * transition, 1f)
-            paint.color = Color.WHITE
-            paint.alpha = (255 * appear * (1f - transition)).toInt()
-            canvas.drawBitmap(rune, null, RectF(-half, -half, half, half), paint)
-            paint.alpha = 255
-            canvas.restore()
+            // Keep the rune upright: gentle push-in followed by a dissolve.
+            val half = size * 0.47f * (0.95f + 0.05f * appear + 0.025f * transition)
+            drawUpright(canvas, rune, cx, cy, half, appear * (1f - transition))
         }
 
         if (transition > 0f) {
-            val w = min(width * 0.97f, height * 1.30f) * (0.90f + 0.10f * transition)
+            val w = min(width * 0.97f, height * 0.86f * logo.width / logo.height) * (0.96f + 0.04f * transition)
             val h = w * logo.height / logo.width
             paint.color = Color.WHITE
             paint.alpha = (255 * transition).toInt()
@@ -279,10 +268,10 @@ internal class InkShelf2CinematicSplash(
     }
 
     private fun renderEmblem(index: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888)
+        val bitmap = Bitmap.createBitmap(1024, 1024, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        canvas.translate(256f, 256f)
-        canvas.scale(2.32f, 2.32f)
+        canvas.translate(512f, 512f)
+        canvas.scale(4.64f, 4.64f)
         when (index) {
             0 -> reactor(canvas)
             1 -> bat(canvas)

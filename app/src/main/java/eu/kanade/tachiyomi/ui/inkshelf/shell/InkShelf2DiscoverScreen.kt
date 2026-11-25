@@ -36,7 +36,6 @@ import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -404,7 +403,7 @@ internal fun InkShelf2DiscoverScreen(
                             color = InkShelf2Colors.Muted, fontSize = 13.sp,
                         )
                         searching -> Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(
+                            InkShelf2LoadingIndicator(
                                 modifier = Modifier.size(17.dp),
                                 color = InkShelf2Colors.AccentLight,
                                 strokeWidth = 2.dp,

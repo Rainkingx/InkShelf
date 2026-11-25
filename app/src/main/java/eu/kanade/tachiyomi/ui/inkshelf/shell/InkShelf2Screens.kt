@@ -215,7 +215,7 @@ internal fun InkShelf2HomeScreen(
                 InkShelf2PageHeading("Home")
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = if (name == null) greeting else "$greeting, $name",
+                    text = if (InkShelf2Themes.eventSkin != null) "Doom welcomes you" else if (name == null) greeting else "$greeting, $name",
                     color = InkShelf2Colors.AccentLight,
                     fontSize = 18.sp,
                     lineHeight = 23.sp,
@@ -226,6 +226,28 @@ internal fun InkShelf2HomeScreen(
             }
         }
         item {
+            if (InkShelf2Themes.eventSkin != null) {
+                val shape = RoundedCornerShape(10.dp)
+                val target = Calendar.getInstance().apply {
+                    clear()
+                    set(2026, Calendar.DECEMBER, 18)
+                }.timeInMillis
+                val days = kotlin.math.ceil((target - System.currentTimeMillis()) / 86_400_000.0).toInt()
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                    .clip(shape).background(Brush.horizontalGradient(listOf(
+                        InkShelf2Colors.SurfaceRaised, InkShelf2Colors.Background)))
+                    .border(1.dp, InkShelf2Colors.Trim, shape).padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("REIGN OF LATVERIA", color = InkShelf2Colors.Trim,
+                            fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(if (days > 0) "$days days until Doomsday" else "Doom December · Limited Event",
+                            color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                    }
+                    Text("◆", color = InkShelf2Colors.AccentLight, fontSize = 22.sp)
+                }
+                Spacer(Modifier.height(12.dp))
+            }
             if (slides.isNotEmpty()) {
                 HorizontalPager(
                     state = pager,
@@ -238,7 +260,7 @@ internal fun InkShelf2HomeScreen(
                 ) { index ->
                     val day = slides[index]
                     val pick = day.picks.firstOrNull()
-                    val heroShape = RoundedCornerShape(20.dp)
+                    val heroShape = RoundedCornerShape(if (InkShelf2Themes.eventSkin != null) 10.dp else 20.dp)
                     Box(
                         modifier = Modifier.fillMaxWidth()
                             .height(316.dp)
@@ -255,7 +277,8 @@ internal fun InkShelf2HomeScreen(
                             .background(InkShelf2Colors.Surface)
                             .border(
                                 1.dp,
-                                InkShelf2Colors.AccentLight.copy(alpha = 0.30f),
+                                if (InkShelf2Themes.eventSkin != null) InkShelf2Colors.Trim.copy(alpha = 0.85f)
+                                else InkShelf2Colors.AccentLight.copy(alpha = 0.30f),
                                 heroShape,
                             )
                             // Tapping the hero opens all daily picks; nested
@@ -321,8 +344,8 @@ internal fun InkShelf2HomeScreen(
                                 .padding(horizontal = 18.dp, vertical = 19.dp),
                         ) {
                             Text(
-                                text = "TODAY'S FEATURE",
-                                color = InkShelf2Colors.AccentLight,
+                                text = if (InkShelf2Themes.eventSkin != null) "DOOM’S DAILY DECREE" else "TODAY'S FEATURE",
+                                color = InkShelf2Colors.Trim,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.2.sp,

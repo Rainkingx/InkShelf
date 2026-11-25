@@ -29,8 +29,17 @@ internal data class InkShelf2Preset(
     val colors: InkShelf2Palette,
 )
 
+internal data class InkShelf2EventSkin(
+    val metal: Color, val metalLight: Color, val gold: Color,
+    val text: Color, val muted: Color, val energy: Color, val pulseTitle: String,
+)
+
 internal object InkShelf2Themes {
     const val DOOM_ID = "doom_latveria"
+    private val doomSkin = InkShelf2EventSkin(
+        Color(0xFF20252B), Color(0xFF353C43), Color(0xFFC2A66D),
+        Color(0xFFE5E8EB), Color(0xFFB4BDC4), Color(0xFF36E88A), "The Latverian Times",
+    )
     private const val PREFS = "inkshelf_2_theme_v1"
     private const val SELECTED = "selected"
     private const val CUSTOM_PRIMARY = "custom_primary"
@@ -82,7 +91,7 @@ internal object InkShelf2Themes {
         ),
         preset(
             DOOM_ID, "Doom — Reign of Latveria", "December special · Emerald runes & cinematic opening",
-            0xFF080D0B, 0xFF102219, 0xFF193527, 0xFF36C97C, 0xFF90F5BA, 0xFF42684D,
+            0xFF090C10, 0xFF1A2025, 0xFF30373F, 0xFF37CB7B, 0xFF80F3B3, 0xFF68747D,
         ),
         preset(
             "amoled", "AMOLED Black", "Pure black & electric violet",
@@ -97,6 +106,10 @@ internal object InkShelf2Themes {
 
     var selectedId by mutableStateOf("original")
         private set
+
+    val eventSkin: InkShelf2EventSkin?
+        get() = if (selectedId == DOOM_ID && current == presets.first { it.id == DOOM_ID }.colors)
+            doomSkin else null
 
     private fun preferences(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

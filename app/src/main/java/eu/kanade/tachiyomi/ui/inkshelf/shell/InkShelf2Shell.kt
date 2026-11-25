@@ -3,6 +3,9 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -76,8 +79,10 @@ object InkShelf2Colors {
     val SurfaceRaised: Color get() = InkShelf2Themes.current.surfaceRaised
     val Accent: Color get() = InkShelf2Themes.current.accent
     val AccentLight: Color get() = InkShelf2Themes.current.highlight
-    val Text = Color(0xFFFBF8FF)
-    val Muted = Color(0xFFBCB1C7)
+    val Text: Color get() = InkShelf2Themes.eventSkin?.text ?: Color(0xFFFBF8FF)
+    val Muted: Color get() = InkShelf2Themes.eventSkin?.muted ?: Color(0xFFBCB1C7)
+    val Trim: Color get() = InkShelf2Themes.eventSkin?.gold ?: AccentLight
+    val PulseTitle: String get() = InkShelf2Themes.eventSkin?.pulseTitle ?: "The Pulse"
     val Border: Color get() = InkShelf2Themes.current.border
     val AccentGradient: Brush
         get() = Brush.horizontalGradient(listOf(Accent, AccentLight))
@@ -87,7 +92,7 @@ enum class InkShelf2Tab(val title: String, val icon: ImageVector) {
     HOME("Home", Icons.Outlined.Home),
     DISCOVER("Discover", Icons.Outlined.Search),
     LIBRARY("Library", Icons.Outlined.LibraryBooks),
-    GUIDES("Guides", Icons.Outlined.AutoStories),
+    GUIDES("Events", Icons.Outlined.AutoStories),
     ACCOUNT("Menu", Icons.Outlined.Menu),
 }
 
@@ -224,10 +229,18 @@ private fun InkShelf2Header(
     pulseHasNewStories: Boolean,
     notificationCount: Int,
 ) {
+    val skin = InkShelf2Themes.eventSkin
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(InkShelf2Colors.Background)
+            .background(Brush.verticalGradient(if (skin != null)
+                listOf(skin.metal, InkShelf2Colors.Background)
+                else listOf(InkShelf2Colors.Background, InkShelf2Colors.Background)))
+            .drawBehind {
+                if (skin != null) drawLine(skin.gold.copy(alpha = 0.70f),
+                    Offset(0f, size.height - 1.dp.toPx()),
+                    Offset(size.width, size.height - 1.dp.toPx()), 1.dp.toPx())
+            }
             .statusBarsPadding()
             .height(56.dp)
             .padding(start = 16.dp, end = 10.dp),
@@ -236,7 +249,7 @@ private fun InkShelf2Header(
         Image(
             // Load the PNG foreground instead of the adaptive-icon XML: painterResource
             // cannot inflate adaptive icons on Android 26+ (including Android 17).
-            painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+            painter = painterResource(id = if (skin != null) R.drawable.inkshelf_doom_rune else R.mipmap.ic_launcher_foreground),
             contentDescription = "InkShelf logo",
             modifier = Modifier.size(40.dp),
         )
@@ -255,7 +268,7 @@ private fun InkShelf2Header(
             )
             Text(
                 text = "SHELF",
-                color = InkShelf2Colors.AccentLight,
+                color = InkShelf2Colors.Trim,
                 fontFamily = InkShelf2FontFamily,
                 fontSize = 21.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -337,18 +350,21 @@ private fun InkShelf2BottomNavigation(
     currentTab: InkShelf2Tab,
     onTabSelected: (InkShelf2Tab) -> Unit,
 ) {
-    val barShape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
+    val skin = InkShelf2Themes.eventSkin
+    val barShape = if (skin != null) RoundedCornerShape(topStart = 9.dp, topEnd = 9.dp)
+        else RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(barShape)
             .background(
                 Brush.verticalGradient(
-                    listOf(InkShelf2Colors.SurfaceRaised, InkShelf2Colors.Background),
+                    if (skin != null) listOf(skin.metalLight, skin.metal, InkShelf2Colors.Background)
+                    else listOf(InkShelf2Colors.SurfaceRaised, InkShelf2Colors.Background),
                 ),
             ),
     ) {
-        HorizontalDivider(thickness = 1.dp, color = InkShelf2Colors.Border.copy(alpha = 0.7f))
+        HorizontalDivider(thickness = 1.dp, color = if (skin != null) skin.gold else InkShelf2Colors.Border.copy(alpha = 0.7f))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -360,8 +376,10 @@ private fun InkShelf2BottomNavigation(
         ) {
             visibleInkShelf2Tabs.forEach { tab ->
                 val selected = tab == currentTab
+                val selectedShape = RoundedCornerShape(if (skin != null) 8.dp else 25.dp)
                 val selectedBrush = Brush.verticalGradient(
-                    listOf(
+                    if (skin != null) listOf(skin.metalLight, skin.metal, skin.energy.copy(alpha = 0.18f))
+                    else listOf(
                         InkShelf2Colors.Accent.copy(alpha = 0.36f),
                         InkShelf2Colors.SurfaceRaised.copy(alpha = 0.95f),
                         InkShelf2Colors.Surface.copy(alpha = 0.92f),
@@ -374,8 +392,9 @@ private fun InkShelf2BottomNavigation(
                         .background(
                             brush = if (selected) selectedBrush
                             else Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent)),
-                            shape = RoundedCornerShape(25.dp),
+                            shape = selectedShape,
                         )
+                        .then(if (selected && skin != null) Modifier.border(1.dp, skin.gold.copy(alpha = 0.72f), selectedShape) else Modifier)
                         .selectable(
                             selected = selected,
                             role = Role.Tab,

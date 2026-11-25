@@ -76,7 +76,7 @@ internal fun InkShelf2ThemesScreen(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         val index = pendingArtwork
         pendingArtwork = -1
-        if (uri != null && index in InkShelf2SplashArtwork.slots.indices) {
+        if (uri != null && index in InkShelf2SplashArtwork.allSlots.indices) {
             importingArtwork = true
             scope.launch {
                 try {
@@ -228,9 +228,13 @@ internal fun InkShelf2ThemesScreen(
                         color = InkShelf2Colors.AccentLight)
                 }
                 if (artworkOpen) {
-                    Text("Use your own permitted PNG, JPEG or WebP artwork. Transparent, isolated images work best. Files stay on this device.",
+                    Text("Use your own permitted PNG, JPEG or WebP artwork up to 1600px. Reimport older images for improved quality. Files stay on this device.",
                         color = InkShelf2Colors.Muted, fontSize = 12.sp)
-                    InkShelf2SplashArtwork.slots.forEachIndexed { index, slot ->
+                    InkShelf2SplashArtwork.allSlots.forEachIndexed { index, slot ->
+                        if (index == InkShelf2SplashArtwork.DOOM_RUNE_INDEX) {
+                            Spacer(Modifier.height(16.dp))
+                            Text("OPTIONAL HD SPLASH UPGRADES", color = InkShelf2Colors.Trim, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
                         val imported = remember(artworkEpoch, index) { InkShelf2SplashArtwork.has(context, index) }
                         Spacer(Modifier.height(12.dp))
                         Text(slot, color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)

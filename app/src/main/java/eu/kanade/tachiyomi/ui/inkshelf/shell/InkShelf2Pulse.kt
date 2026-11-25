@@ -689,7 +689,7 @@ internal fun InkShelf2PulsePreview(
     val news = InkShelf2PulseTopics.promoteOfficialNews(
         articles.filterNot { it.isVideo },
     ).take(2)
-    InkShelf2SectionHeading("The Pulse", onClick = null)
+    InkShelf2SectionHeading(InkShelf2Colors.PulseTitle, onClick = null)
     Text(
         "Comic-book news, reviews & videos",
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
@@ -848,13 +848,31 @@ private fun InkShelf2PulseNewsHero(onBack: () -> Unit) {
                 )
             }
             Text(
-                "The Pulse",
-                color = InkShelf2Colors.Text,
+                InkShelf2Colors.PulseTitle,
+                color = InkShelf2Colors.Trim,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
-        Image(
+        if (InkShelf2Themes.eventSkin != null) {
+            val frame = RoundedCornerShape(8.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth().clip(frame)
+                    .background(Brush.verticalGradient(listOf(InkShelf2Colors.SurfaceRaised, InkShelf2Colors.Surface)))
+                    .border(1.dp, InkShelf2Colors.Trim, frame).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Image(painter = painterResource(eu.kanade.tachiyomi.R.drawable.inkshelf_doom_rune),
+                    contentDescription = null, modifier = Modifier.size(74.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("THE LATVERIAN TIMES", color = InkShelf2Colors.Trim,
+                        fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text("News from across the comic multiverse", color = InkShelf2Colors.Text,
+                        fontSize = 12.sp)
+                }
+            }
+        } else Image(
             painter = painterResource(eu.kanade.tachiyomi.R.drawable.inkshelf_pulse_newspaper),
             contentDescription = "Comic newspaper artwork with the headline Publisher Saves City",
             modifier = Modifier.fillMaxWidth()

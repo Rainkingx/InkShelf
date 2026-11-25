@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -32,7 +34,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +68,34 @@ internal object InkShelf2Metrics {
 internal fun Modifier.inkShelf2Atmosphere(): Modifier = this
     .background(InkShelf2Colors.Background)
     .drawBehind {
+        val skin = InkShelf2Themes.eventSkin
+        if (skin != null && size.width > 0f && size.height > 0f) {
+            drawRect(Brush.verticalGradient(listOf(skin.metal.copy(alpha = 0.48f),
+                InkShelf2Colors.Background, skin.metal.copy(alpha = 0.20f))))
+            val cx = size.width * 0.82f
+            val cy = size.width * 0.38f
+            val r = size.width * 0.38f
+            val rune = Path().apply {
+                moveTo(cx, cy-r); lineTo(cx+r*0.86f, cy-r*0.5f)
+                lineTo(cx+r*0.86f, cy+r*0.5f); lineTo(cx, cy+r)
+                lineTo(cx-r*0.86f, cy+r*0.5f); lineTo(cx-r*0.86f, cy-r*0.5f); close()
+                moveTo(cx, cy-r*0.63f); lineTo(cx+r*0.63f,cy)
+                lineTo(cx,cy+r*0.63f); lineTo(cx-r*0.63f,cy); close()
+                moveTo(cx-r*0.86f,cy-r*0.5f); lineTo(cx+r*0.86f,cy+r*0.5f)
+                moveTo(cx+r*0.86f,cy-r*0.5f); lineTo(cx-r*0.86f,cy+r*0.5f)
+                moveTo(cx,cy-r); lineTo(cx,cy+r)
+            }
+            drawPath(rune, skin.gold.copy(alpha = 0.09f), style = Stroke(1.2.dp.toPx()))
+            drawCircle(Brush.radialGradient(listOf(skin.energy.copy(alpha = 0.11f), Color.Transparent),
+                center = Offset(cx, cy), radius = size.width * 0.8f),
+                radius = size.width * 0.8f, center = Offset(cx, cy))
+            repeat(12) { i ->
+                val y = size.height * i / 12f
+                drawLine(skin.muted.copy(alpha = 0.018f), Offset(0f,y),
+                    Offset(size.width,y+size.width*0.12f),1.dp.toPx())
+            }
+            return@drawBehind
+        }
         drawCircle(
             brush = Brush.radialGradient(
                 0f to InkShelf2Colors.Accent.copy(alpha = 0.22f),
@@ -91,8 +125,11 @@ internal fun InkShelf2ActionButton(
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
 ) {
-    val shape = InkShelf2Metrics.ButtonCorner
+    val skin = InkShelf2Themes.eventSkin
+    val shape = if (skin != null) RoundedCornerShape(8.dp) else InkShelf2Metrics.ButtonCorner
     val background = when {
+        skin != null && enabled && outlined -> Brush.verticalGradient(listOf(skin.metalLight, skin.metal, InkShelf2Colors.Background))
+        skin != null && enabled -> Brush.verticalGradient(listOf(Color(0xFF9BF4BF), InkShelf2Colors.Accent, Color(0xFF249F63)))
         !enabled -> Brush.horizontalGradient(listOf(InkShelf2Colors.Surface, InkShelf2Colors.Surface))
         outlined -> Brush.horizontalGradient(listOf(InkShelf2Colors.Surface, InkShelf2Colors.SurfaceRaised))
         else -> InkShelf2Colors.AccentGradient
@@ -112,6 +149,8 @@ internal fun InkShelf2ActionButton(
                 width = 1.dp,
                 color = when {
                     !enabled -> InkShelf2Colors.Border
+                    skin != null && outlined -> skin.gold
+                    skin != null -> skin.metalLight
                     outlined -> InkShelf2Colors.AccentLight
                     else -> InkShelf2Colors.AccentLight.copy(alpha = 0.75f)
                 },
@@ -127,7 +166,7 @@ internal fun InkShelf2ActionButton(
         ) {
             val fg = when {
                 !enabled -> InkShelf2Colors.Muted
-                outlined -> Color.White
+                outlined -> InkShelf2Colors.Text
                 else -> Color(0xFF08060D)
             }
             if (leadingIcon != null) {
@@ -152,13 +191,17 @@ internal fun InkShelf2ActionButton(
 
 @Composable
 internal fun InkShelf2PageHeading(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        modifier = modifier,
-        color = InkShelf2Colors.Text,
-        fontSize = 24.sp,
-        fontWeight = FontWeight.Bold,
-    )
+    val skin = InkShelf2Themes.eventSkin
+    if (skin != null) {
+        Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(width = 3.dp, height = 24.dp).background(skin.gold))
+            Spacer(Modifier.width(8.dp))
+            Text(text, color = skin.text, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
+    } else {
+        Text(text = text, modifier = modifier, color = InkShelf2Colors.Text,
+            fontSize = 24.sp, fontWeight = FontWeight.Bold)
+    }
 }
 
 @Composable
@@ -183,7 +226,7 @@ internal fun InkShelf2SectionHeading(
         Text(
             text = text,
             modifier = Modifier.weight(1f).padding(end = 8.dp),
-            color = InkShelf2Colors.Text,
+            color = InkShelf2Themes.eventSkin?.gold ?: InkShelf2Colors.Text,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
@@ -267,7 +310,7 @@ internal fun InkShelf2SearchField(
         keyboardActions = KeyboardActions(onSearch = { onSearch?.invoke() }),
         singleLine = true,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(if (InkShelf2Themes.eventSkin != null) 8.dp else 24.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = InkShelf2Colors.Text,
             unfocusedTextColor = InkShelf2Colors.Text,
@@ -303,5 +346,23 @@ internal fun InkShelf2StatusPill(label: String, modifier: Modifier = Modifier) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+
+/** Keep the normal loading indicator; add a rune to event-only loading states. */
+@Composable
+internal fun InkShelf2LoadingIndicator(modifier: Modifier = Modifier, color: Color = InkShelf2Colors.AccentLight, strokeWidth: Dp = 2.dp) {
+    if (InkShelf2Themes.eventSkin == null) {
+        CircularProgressIndicator(modifier = modifier, color = color, strokeWidth = strokeWidth)
+    } else {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(modifier = Modifier.matchParentSize(), color = color, strokeWidth = strokeWidth)
+            Image(
+                painter = painterResource(eu.kanade.tachiyomi.R.drawable.inkshelf_doom_rune),
+                contentDescription = null,
+                modifier = Modifier.matchParentSize().padding(4.dp),
+            )
+        }
     }
 }
