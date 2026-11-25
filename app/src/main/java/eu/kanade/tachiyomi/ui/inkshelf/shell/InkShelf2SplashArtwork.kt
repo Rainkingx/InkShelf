@@ -35,6 +35,16 @@ internal object InkShelf2SplashArtwork {
 
     fun has(context: Context, index: Int): Boolean = file(context, index).exists()
 
+    fun previewFile(context: Context, index: Int): File? =
+        file(context, index).takeIf { it.isFile }
+
+    fun dimensions(context: Context, index: Int): String? = runCatching {
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        AtomicFile(file(context, index)).openRead().use { BitmapFactory.decodeStream(it, null, options) }
+        if (options.outWidth > 0 && options.outHeight > 0)
+            "${options.outWidth} × ${options.outHeight} px" else null
+    }.getOrNull()
+
     fun reset(context: Context, index: Int) {
         AtomicFile(file(context, index)).delete()
     }
@@ -45,13 +55,16 @@ internal object InkShelf2SplashArtwork {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
         require(bounds.outWidth > 0 && bounds.outHeight > 0)
+        // Keep full-resolution logo artwork for modern high-density displays.
+        // Sample only while the next step still retains the target resolution.
+        val limit = if (index == LOGO_INDEX) 3072 else 1600
         var sample = 1
-        while (max(bounds.outWidth, bounds.outHeight) / sample > 3000) sample *= 2
+        while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= limit) sample *= 2
         val decoded = resolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
         } ?: error("Unreadable image")
         // Keep the aspect ratio and never enlarge smaller source images.
-        val ratio = minOf(1f, 1600f / max(decoded.width, decoded.height))
+        val ratio = minOf(1f, limit.toFloat() / max(decoded.width, decoded.height))
         val w = (decoded.width * ratio).toInt().coerceAtLeast(1)
         val h = (decoded.height * ratio).toInt().coerceAtLeast(1)
         val normalized = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)

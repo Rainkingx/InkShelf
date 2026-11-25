@@ -2,6 +2,10 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.graphics.Color as AndroidColor
 import android.widget.Toast
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.layout.ContentScale
+import eu.kanade.tachiyomi.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.rememberCoroutineScope
@@ -228,7 +232,7 @@ internal fun InkShelf2ThemesScreen(
                         color = InkShelf2Colors.AccentLight)
                 }
                 if (artworkOpen) {
-                    Text("Use your own permitted PNG, JPEG or WebP artwork up to 1600px. Reimport older images for improved quality. Files stay on this device.",
+                    Text("Use PNG, JPEG or WebP artwork. The final logo retains up to 3072px; other artwork up to 1600px. Files stay on this device.",
                         color = InkShelf2Colors.Muted, fontSize = 12.sp)
                     InkShelf2SplashArtwork.allSlots.forEachIndexed { index, slot ->
                         if (index == InkShelf2SplashArtwork.DOOM_RUNE_INDEX && !InkShelf2Themes.limitedThemesVisible) return@forEachIndexed
@@ -240,8 +244,27 @@ internal fun InkShelf2ThemesScreen(
                         val imported = remember(artworkEpoch, index) { InkShelf2SplashArtwork.has(context, index) }
                         Spacer(Modifier.height(12.dp))
                         Text(slot, color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
-                        Text(if (imported) "Custom image saved" else "Default image",
+                        val dimensions = remember(artworkEpoch, index) { InkShelf2SplashArtwork.dimensions(context, index) }
+                        Text(if (imported) "Custom image saved" + (dimensions?.let { " · $it" } ?: "") else "Default image",
                             color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                        if (index == InkShelf2SplashArtwork.LOGO_INDEX) {
+                            val preview = remember(artworkEpoch) {
+                                val model = InkShelf2SplashArtwork.previewFile(context, index) ?: R.drawable.inkshelf_cinematic_logo
+                                ImageRequest.Builder(context).data(model)
+                                    .memoryCacheKey("splash-logo-preview-$artworkEpoch-${(model as? java.io.File)?.lastModified() ?: 0}")
+                                    .diskCachePolicy(coil.request.CachePolicy.DISABLED)
+                                    .build()
+                            }
+                            AsyncImage(
+                                model = preview,
+                                contentDescription = "Active final splash logo",
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxWidth().height(132.dp)
+                                    .clip(RoundedCornerShape(12.dp)).background(InkShelf2Colors.Background),
+                            )
+                            Text("Preview of the final cinematic logo. Reopen InkShelf from a cold start to see it in the animation. The header wordmark is separate.",
+                                color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             TextButton(enabled = !importingArtwork, onClick = {
                                 pendingArtwork = index

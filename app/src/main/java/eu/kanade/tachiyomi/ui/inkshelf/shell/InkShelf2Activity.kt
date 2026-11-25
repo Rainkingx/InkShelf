@@ -1036,44 +1036,28 @@ class InkShelf2Activity : AppCompatActivity() {
                     },
                 )
             }
-            appUpdateProgress?.let { progress ->
-                AlertDialog(
-                    onDismissRequest = {},
-                    title = { Text("Downloading InkShelf update") },
-                    text = {
-                        Text(if (progress < 0) "Downloading APK… Keep InkShelf open."
-                            else "$progress% downloaded. Keep InkShelf open; Android will ask you to install when ready.")
-                    },
-                    confirmButton = {},
+            val progress = appUpdateProgress
+            if (progress != null) {
+                InkShelf2UpdateDialog(
+                    notes = "",
+                    progress = progress,
+                    onInstall = {},
+                    onDismiss = {},
                 )
-            }
-            updateNotes?.let { (notes, url) ->
-                val parsed = Uri.parse(url)
-                val isTrustedApk = parsed.scheme == "https" &&
-                    parsed.host.equals("github.com", ignoreCase = true) &&
-                    parsed.path?.startsWith("/Rainkingx/InkShelf/releases/download/") == true &&
-                    parsed.path?.endsWith(".apk", ignoreCase = true) == true
-                AlertDialog(
-                    onDismissRequest = { updateNotes = null },
-                    title = { Text("InkShelf Update") },
-                    text = {
-                        Text(
-                            if (notes.isBlank()) "A new version of InkShelf is available."
-                            else notes.take(2_500),
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(
-                            enabled = isTrustedApk,
-                            onClick = {
-                                installPublicUpdate(url) { updateNotes = null }
-                            },
-                        ) { Text("Download & Install") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { updateNotes = null }) { Text("Later") }
-                    },
-                )
+            } else {
+                updateNotes?.let { (notes, url) ->
+                    val parsed = Uri.parse(url)
+                    val isTrustedApk = parsed.scheme == "https" &&
+                        parsed.host.equals("github.com", ignoreCase = true) &&
+                        parsed.path?.startsWith("/Rainkingx/InkShelf/releases/download/") == true &&
+                        parsed.path?.endsWith("/InkShelf.apk") == true
+                    InkShelf2UpdateDialog(
+                        notes = notes,
+                        canInstall = isTrustedApk,
+                        onInstall = { installPublicUpdate(url) { updateNotes = null } },
+                        onDismiss = { updateNotes = null },
+                    )
+                }
             }
             fun leaveComicDetails() {
                 if (selected == null) return
