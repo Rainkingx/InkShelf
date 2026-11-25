@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -253,28 +254,43 @@ private fun InkShelf2Header(
             contentDescription = "InkShelf logo",
             modifier = Modifier.size(40.dp),
         )
-        Row(
-            modifier = Modifier.padding(start = 5.dp).weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "INK",
-                color = InkShelf2Colors.Text,
-                fontFamily = InkShelf2FontFamily,
-                fontSize = 21.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-0.7).sp,
-                maxLines = 1,
-            )
-            Text(
-                text = "SHELF",
-                color = InkShelf2Colors.Trim,
-                fontFamily = InkShelf2FontFamily,
-                fontSize = 21.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-0.7).sp,
-                maxLines = 1,
-            )
+        if (skin == null) {
+            Box(
+                modifier = Modifier.padding(start = 5.dp, end = 5.dp).weight(1f),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.inkshelf_header_wordmark),
+                    contentDescription = "InkShelf",
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    alignment = Alignment.CenterStart,
+                    contentScale = ContentScale.Fit,
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.padding(start = 5.dp).weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "INK",
+                    color = InkShelf2Colors.Text,
+                    fontFamily = InkShelf2FontFamily,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.7).sp,
+                    maxLines = 1,
+                )
+                Text(
+                    text = "SHELF",
+                    color = InkShelf2Colors.Trim,
+                    fontFamily = InkShelf2FontFamily,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.7).sp,
+                    maxLines = 1,
+                )
+            }
         }
         IconButton(
             onClick = onPulse,
