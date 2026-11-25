@@ -383,15 +383,7 @@ class Downloader(
      * @param download the chapter to be downloaded.
      */
     private suspend fun downloadChapter(download: Download) {
-        val mangaDir = provider.getMangaDir(download.manga, download.source)
-
-        val availSpace = DiskUtil.getAvailableStorageSpace(mangaDir)
         val chapName = download.chapter.preferredChapterName(context, download.manga, preferences)
-        if (availSpace != -1L && availSpace < MIN_DISK_SPACE) {
-            download.status = Download.State.ERROR
-            notifier.onError(context.getString(R.string.couldnt_download_low_space), chapName)
-            return
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
             !Environment.isExternalStorageManager()
         ) {
@@ -408,6 +400,14 @@ class Downloader(
                 download.manga.title,
                 intent,
             )
+            return
+        }
+        val mangaDir = provider.getMangaDir(download.manga, download.source)
+
+        val availSpace = DiskUtil.getAvailableStorageSpace(mangaDir)
+        if (availSpace != -1L && availSpace < MIN_DISK_SPACE) {
+            download.status = Download.State.ERROR
+            notifier.onError(context.getString(R.string.couldnt_download_low_space), chapName)
             return
         }
         val chapterDirname = provider.getChapterDirName(download.chapter)
