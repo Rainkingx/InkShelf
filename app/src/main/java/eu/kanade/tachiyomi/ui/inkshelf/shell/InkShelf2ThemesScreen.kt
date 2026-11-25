@@ -242,14 +242,23 @@ internal fun InkShelf2ThemesScreen(
                             Text("OPTIONAL HD SPLASH UPGRADES", color = InkShelf2Colors.Trim, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                         val imported = remember(artworkEpoch, index) { InkShelf2SplashArtwork.has(context, index) }
+                        val bundled = remember(artworkEpoch, index) { InkShelf2SplashArtwork.hasBundled(context, index) }
+                        val customActive = remember(artworkEpoch, index) { InkShelf2SplashArtwork.usesCustom(context, index) }
                         Spacer(Modifier.height(12.dp))
                         Text(slot, color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
                         val dimensions = remember(artworkEpoch, index) { InkShelf2SplashArtwork.dimensions(context, index) }
-                        Text(if (imported) "Custom image saved" + (dimensions?.let { " · $it" } ?: "") else "Default image",
+                        val artworkLabel = when {
+                            customActive -> "Custom image active"
+                            bundled -> "Built-in HD artwork"
+                            else -> "Default image"
+                        }
+                        Text(artworkLabel + (dimensions?.let { " · $it" } ?: ""),
                             color = InkShelf2Colors.Muted, fontSize = 12.sp)
                         if (index == InkShelf2SplashArtwork.LOGO_INDEX) {
                             val preview = remember(artworkEpoch) {
-                                val model = InkShelf2SplashArtwork.previewFile(context, index) ?: R.drawable.inkshelf_cinematic_logo
+                                val model = InkShelf2SplashArtwork.previewFile(context, index)
+                                    ?: InkShelf2SplashArtwork.bundledPreview(context, index)
+                                    ?: R.drawable.inkshelf_cinematic_logo
                                 ImageRequest.Builder(context).data(model)
                                     .memoryCacheKey("splash-logo-preview-$artworkEpoch-${(model as? java.io.File)?.lastModified() ?: 0}")
                                     .diskCachePolicy(coil.request.CachePolicy.DISABLED)
@@ -270,7 +279,12 @@ internal fun InkShelf2ThemesScreen(
                                 pendingArtwork = index
                                 picker.launch("image/*")
                             }) { Text(if (imported) "Replace" else "Choose image") }
-                            if (imported) {
+                            if (imported && bundled) {
+                                TextButton(enabled = !importingArtwork, onClick = {
+                                    InkShelf2SplashArtwork.selectCustom(context, index, !customActive)
+                                    artworkEpoch += 1
+                                }) { Text(if (customActive) "Use built-in HD" else "Use saved custom") }
+                            } else if (imported) {
                                 TextButton(enabled = !importingArtwork, onClick = {
                                     InkShelf2SplashArtwork.reset(context, index)
                                     artworkEpoch += 1

@@ -28,25 +28,69 @@ internal object InkShelf2SplashArtwork {
         return File(context.filesDir, "splash_artwork/$name")
     }
 
-    fun load(context: Context, index: Int): Bitmap? = runCatching {
-        val source = AtomicFile(file(context, index))
-        source.openRead().use { BitmapFactory.decodeStream(it) }
+    private val bundledNames = mapOf(
+        0 to "01_iron_man.webp",
+        1 to "02_superman.webp",
+        2 to "03_spider_man.webp",
+        3 to "04_flash.webp",
+        LOGO_INDEX to "05_inkshelf_logo.webp",
+    )
+
+    private fun assetPath(index: Int): String? =
+        bundledNames[index]?.let { "inkshelf/splash/$it" }
+
+    private fun preferences(context: Context) =
+        context.applicationContext.getSharedPreferences("inkshelf_splash_artwork", Context.MODE_PRIVATE)
+
+    fun hasBundled(context: Context, index: Int): Boolean =
+        assetPath(index)?.let { path -> runCatching {
+            context.assets.open(path).use { true }
+        }.getOrDefault(false) } ?: false
+
+    // Upgrading to the built-in HD pack must not leave old blurry overrides active.
+    // Keep those files intact; users can explicitly choose their saved artwork again.
+    fun usesCustom(context: Context, index: Int): Boolean =
+        has(context, index) && preferences(context)
+            .getBoolean("custom_$index", !hasBundled(context, index))
+
+    fun selectCustom(context: Context, index: Int, custom: Boolean) {
+        preferences(context).edit().putBoolean("custom_$index", custom).apply()
+    }
+
+    private fun loadCustom(context: Context, index: Int): Bitmap? = runCatching {
+        AtomicFile(file(context, index)).openRead().use { BitmapFactory.decodeStream(it) }
     }.getOrNull()
+
+    fun load(context: Context, index: Int): Bitmap? {
+        if (usesCustom(context, index)) loadCustom(context, index)?.let { return it }
+        return assetPath(index)?.let { path -> runCatching {
+            context.assets.open(path).use { BitmapFactory.decodeStream(it) }
+        }.getOrNull() }
+    }
 
     fun has(context: Context, index: Int): Boolean = file(context, index).exists()
 
     fun previewFile(context: Context, index: Int): File? =
-        file(context, index).takeIf { it.isFile }
+        file(context, index).takeIf { usesCustom(context, index) && it.isFile }
+
+    fun bundledPreview(context: Context, index: Int): String? =
+        assetPath(index)?.takeIf { hasBundled(context, index) }?.let { "file:///android_asset/$it" }
 
     fun dimensions(context: Context, index: Int): String? = runCatching {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        AtomicFile(file(context, index)).openRead().use { BitmapFactory.decodeStream(it, null, options) }
+        if (usesCustom(context, index)) {
+            AtomicFile(file(context, index)).openRead().use { BitmapFactory.decodeStream(it, null, options) }
+        } else {
+            val path = assetPath(index) ?: return@runCatching null
+            context.assets.open(path).use { BitmapFactory.decodeStream(it, null, options) }
+        }
         if (options.outWidth > 0 && options.outHeight > 0)
             "${options.outWidth} × ${options.outHeight} px" else null
     }.getOrNull()
 
     fun reset(context: Context, index: Int) {
         AtomicFile(file(context, index)).delete()
+        preferences(context).edit().remove("custom_$index").apply()
     }
 
     /** Decode bounds first, downsample large photos and preserve transparent artwork. */
@@ -86,6 +130,7 @@ internal object InkShelf2SplashArtwork {
             decoded.recycle()
             normalized.recycle()
         }
+        selectCustom(context, index, true)
         true
     }.getOrDefault(false)
 }
