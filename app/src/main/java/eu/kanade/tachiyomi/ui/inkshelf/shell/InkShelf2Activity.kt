@@ -745,9 +745,9 @@ class InkShelf2Activity : AppCompatActivity() {
                         cinematicSplash?.dismiss()
                         cinematicSplash = null
                     }
-                    selected != null -> backFromComicDetails()
                     pulseExpanded -> closePulse()
                     notificationsOpen -> notificationsOpen = false
+                    selected != null -> backFromComicDetails()
                     selectedDiscoverShelf != null -> selectedDiscoverShelf = null
                     selectedDay != null -> selectedDay = null
                     activeSourceId != null -> activeSourceId = null
@@ -827,26 +827,28 @@ class InkShelf2Activity : AppCompatActivity() {
                     },
                 )
             }
+            fun leaveComicDetails() {
+                if (selected == null) return
+                selected = null
+                comicBackStack = emptyList()
+                sourceLinkError = null
+                issuesError = null
+                loadingIssues = false
+            }
+
             InkShelf2Shell(
                 currentTab = tab,
-                showHeader = selected == null && !welcomeOpen,
+                showHeader = !welcomeOpen,
                 // Comic details keeps the same four-tab bar. The original
                 // full-screen reader still runs in its separate Activity.
                 showBottomNav = !welcomeOpen,
                 onTabSelected = { destination ->
-                    if (selected != null) {
-                        // A tab switch must dismiss the details route; merely
-                        // changing tab underneath would leave Details on top.
-                        selected = null
-                        comicBackStack = emptyList()
-                        sourceLinkError = null
-                        issuesError = null
-                        loadingIssues = false
-                    }
+                    leaveComicDetails()
                     if (destination == InkShelf2Tab.DISCOVER) guideIssueSearch = null
                     openTab(destination)
                 },
                 onSearch = {
+                    leaveComicDetails()
                     // Header search always starts a genuinely new search.
                     clearDiscoverSearch()
                     openTab(InkShelf2Tab.DISCOVER)
@@ -854,7 +856,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 },
                 onNotifications = { notificationsOpen = true },
                 onPulse = { openPulse() },
-                onGuides = { openTab(InkShelf2Tab.GUIDES) },
+                onGuides = { leaveComicDetails(); openTab(InkShelf2Tab.GUIDES) },
                 guidesActive = tab == InkShelf2Tab.GUIDES,
                 pulseActive = pulseExpanded,
                 pulseHasNewStories = pulseHasNewStories,
@@ -875,7 +877,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         .toMap()
                 }
                 when {
-                    comic != null -> key(detailsRevision, comic.source, comic.url) {
+                    comic != null && !pulseExpanded && !notificationsOpen -> key(detailsRevision, comic.source, comic.url) {
                         var downloadedIds by remember(comic.source, comic.url) {
                             mutableStateOf<Set<Long>>(emptySet())
                         }
