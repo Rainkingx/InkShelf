@@ -116,5 +116,24 @@ Users are responsible for complying with the laws and terms applicable to the co
 <!-- INKSHELF_SCREENSHOTS_START -->
 ## Screenshots
 
-Updated InkShelf 2.0 screenshots will be added separately.
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/2.0/home.webp" width="300" alt="InkShelf 2.0 Home"><br><b>Home</b></td>
+    <td align="center"><img src="screenshots/2.0/discover.webp" width="300" alt="InkShelf 2.0 Discover"><br><b>Discover</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/2.0/library.webp" width="300" alt="InkShelf 2.0 Library"><br><b>Library</b></td>
+    <td align="center"><img src="screenshots/2.0/events.webp" width="300" alt="InkShelf 2.0 Events"><br><b>Events</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/2.0/comic-details.webp" width="300" alt="InkShelf 2.0 Comic details"><br><b>Comic details</b></td>
+    <td align="center"><img src="screenshots/2.0/event-details.webp" width="300" alt="InkShelf 2.0 Event details"><br><b>Event details</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/2.0/pulse.webp" width="300" alt="InkShelf 2.0 The Pulse"><br><b>The Pulse</b></td>
+    <td align="center"><img src="screenshots/2.0/issues.webp" width="300" alt="InkShelf 2.0 Issues and recommendations"><br><b>Issues and recommendations</b></td>
+  </tr>
+</table>
+
+Screenshots demonstrate the app interface. Comic artwork and publisher branding belong to their respective rights holders.
 <!-- INKSHELF_SCREENSHOTS_END -->
