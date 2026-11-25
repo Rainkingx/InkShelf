@@ -127,20 +127,38 @@ jobs:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         shell: bash
         run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release already exists; leaving it untouched."
-            exit 0
-          fi
-          if [[ "$RELEASE_TAG" == "v2.0.0-b03" ]]; then
-            gh release create "$RELEASE_TAG" dist/InkShelf.apk \
-              --target "$GITHUB_SHA" \
-              --title "InkShelf 2.0 — Public Beta 3" \
-              --notes-file RELEASE_NOTES.md \
-              --prerelease
-          else
-            gh release create "$RELEASE_TAG" dist/InkShelf.apk \
-              --target "$GITHUB_SHA" \
-              --title "InkShelf $RELEASE_TAG" \
-              --generate-notes \
-              --prerelease
-          fi
+          set -euo pipefail
+          expected_size="$(stat -c%s dist/InkShelf.apk)"
+          for attempt in 1 2 3 4; do
+            if release_json="$(gh release view "$RELEASE_TAG" --json assets,isDraft 2>/dev/null)"; then
+              if jq -e --argjson size "$expected_size" '.isDraft == false and any(.assets[]; .name == "InkShelf.apk" and .state == "uploaded" and .size == $size)' <<< "$release_json" >/dev/null; then
+                echo "Release and complete APK already published."
+                exit 0
+              fi
+              if jq -e 'any(.assets[]; .name == "InkShelf.apk")' <<< "$release_json" >/dev/null; then
+                echo "Existing APK differs or is incomplete; refusing to overwrite it."
+                exit 1
+              fi
+              actual_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+              test "$actual_sha" = "$GITHUB_SHA"
+              if gh release upload "$RELEASE_TAG" dist/InkShelf.apk; then
+                continue
+              fi
+            else
+              if [[ "$RELEASE_TAG" == "v2.0.0-b03" ]]; then
+                gh release create "$RELEASE_TAG" dist/InkShelf.apk \
+                  --target "$GITHUB_SHA" \
+                  --title "InkShelf 2.0 — Public Beta 3" \
+                  --notes-file RELEASE_NOTES.md \
+                  --prerelease || true
+              else
+                gh release create "$RELEASE_TAG" dist/InkShelf.apk \
+                  --target "$GITHUB_SHA" \
+                  --title "InkShelf $RELEASE_TAG" \
+                  --generate-notes \
+                  --prerelease || true
+              fi
+            fi
+            if [[ "$attempt" -lt 4 ]]; then sleep $((attempt * 20)); fi
+          done
+          gh release view "$RELEASE_TAG" --json assets,isDraft | jq -e --argjson size "$expected_size" '.isDraft == false and any(.assets[]; .name == "InkShelf.apk" and .state == "uploaded" and .size == $size)'
