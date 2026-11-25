@@ -605,6 +605,42 @@ class InkShelf2Activity : AppCompatActivity() {
             // navigation state only; source URLs and reader data are untouched.
             var comicBackStack by remember { mutableStateOf<List<Manga>>(emptyList()) }
             var home by remember { mutableStateOf<InkShelf2Engine.Home?>(null) }
+            // Catalogue artwork belongs to the shell, not an individual event screen.
+            // Starting after Home is ready keeps the startup/splash independent.
+            var eventCoverUpdates by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+            val eventArtworkConnected = remember(refreshEpoch) { InkShelf2GuidesData.configured(applicationContext) }
+            LaunchedEffect(home != null, welcomeOpen, eventArtworkConnected) {
+                if (home == null || welcomeOpen || !eventArtworkConnected) return@LaunchedEffect
+                delay(800)
+                val events = InkShelf2BatCaveGuides.verified()
+                val recent = events.sortedWith(compareByDescending<InkShelf2Guide> {
+                    InkShelf2GuidesData.publicationYear(it) ?: 0
+                }.thenBy { it.name })
+                val saved = InkShelf2GuidesData.savedGuideIds(applicationContext)
+                val started = InkShelf2GuidesData.startedGuides(applicationContext)
+                val priority = (InkShelf2EventTimeline.spotlight(events) +
+                    recent.filter { it.id in saved || it.id in started } +
+                    recent.filter { it.publisher == "Marvel" }.take(4) +
+                    recent.filter { it.publisher == "DC" }.take(4) + recent).distinctBy { it.id }
+                // One pass at a time; keep the existing authenticated API throttling.
+                // Publish each result immediately and warm the actual image disk cache.
+                while (true) {
+                    priority.forEachIndexed { index, guide ->
+                        val cached = InkShelf2GuidesData.cachedEventCover(applicationContext, guide)
+                        val url = cached ?: InkShelf2GuidesData.coverUrl(applicationContext, guide)
+                        if (url != null && eventCoverUpdates[guide.id] != url) {
+                            eventCoverUpdates = eventCoverUpdates + (guide.id to url)
+                            if (cached == null || index < 12) {
+                                imageLoader.enqueue(ImageRequest.Builder(this@InkShelf2Activity)
+                                    .data(url).size(480).build())
+                            }
+                        }
+                    }
+                    // Revisit missing covers after a temporary network error or negative-cache expiry.
+                    if (priority.all { eventCoverUpdates.containsKey(it.id) }) break
+                    delay(10 * 60 * 1000L)
+                }
+            }
             var library by remember { mutableStateOf<List<InkShelf2LibraryItem>>(emptyList()) }
             var discover by remember { mutableStateOf<InkShelf2Engine.Discover?>(null) }
             var chapters by remember { mutableStateOf<List<Chapter>>(emptyList()) }
@@ -1474,6 +1510,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         openingIssueId = guideOpeningId,
                         readingError = guideReadError,
                         refreshEpoch = refreshEpoch,
+                        prefetchedEventCovers = eventCoverUpdates,
                         initialGuideId = libraryGuideId,
                         onCloseInitialGuide = {
                             pageState.removeState("events:$libraryGuideId")
@@ -1524,7 +1561,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         InkShelf2LibraryScreen(
                         library = library,
                         savedGuides = InkShelf2PersonalEvents.catalogue(applicationContext).filter { it.id in savedGuideIds }
-                            .map { it.copy(imageUrl = InkShelf2GuidesData.cachedEventCover(applicationContext, it)) },
+                            .map { it.copy(imageUrl = InkShelf2GuidesData.cachedEventCover(applicationContext, it) ?: eventCoverUpdates[it.id]) },
                         onOpenGuide = { guideId ->
                             openTab(InkShelf2Tab.GUIDES)
                             libraryGuideId = guideId

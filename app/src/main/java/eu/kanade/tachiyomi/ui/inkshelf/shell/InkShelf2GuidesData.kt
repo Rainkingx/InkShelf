@@ -557,6 +557,11 @@ internal object InkShelf2GuidesData {
         val prefixes = if (slug in eventCoverPositions) listOf("verified_event_cover_v4_")
             else listOf("verified_event_cover_v3_", "verified_event_cover_v2_", "verified_event_cover_v1_")
         return prefixes.firstNotNullOfOrNull { prefix -> imageUrl(prefs.getString(prefix + slug, null)) }
+            ?: eventCoverTarget(slug)?.let { target ->
+                target.number.toIntOrNull()?.let { number ->
+                    cachedIssueCover(context, IssueArtworkKey(target.title, target.year, number))
+                }
+            }
     }
 
     fun readIds(context: Context, guideId: Int): Set<String> =

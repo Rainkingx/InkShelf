@@ -97,15 +97,17 @@ internal fun InkShelf2GuidesScreen(
     enabledSourceIds: Set<Long> = emptySet(),
     onDownloadIssues: (Int, List<InkShelf2GuideIssue>) -> Unit = { _, _ -> },
     downloadingGuideId: Int? = null,
+    prefetchedEventCovers: Map<Int, String> = emptyMap(),
 ) {
     val context = LocalContext.current
     var catalogueRevision by remember { mutableStateOf(0) }
     val installed = remember(refreshEpoch, catalogueRevision) { InkShelf2PersonalEvents.catalogue(context) }
     var createEvent by remember { mutableStateOf(false) }
-    var eventCovers by remember(refreshEpoch, catalogueRevision) {
-        mutableStateOf(installed.mapNotNull { guide ->
-            InkShelf2GuidesData.cachedEventCover(context, guide)?.let { guide.id to it }
-        }.toMap())
+    val eventCovers = remember(refreshEpoch, catalogueRevision, prefetchedEventCovers, installed) {
+        installed.mapNotNull { guide ->
+            (InkShelf2GuidesData.cachedEventCover(context, guide) ?: prefetchedEventCovers[guide.id])
+                ?.let { guide.id to it }
+        }.toMap()
     }
     val catalogue = installed.map { guide -> guide.copy(imageUrl = eventCovers[guide.id]) }
     if (createEvent) InkShelf2CreateEventDialog(onDismiss = { createEvent = false }, onCreated = {
@@ -158,19 +160,7 @@ internal fun InkShelf2GuidesScreen(
     val verifiedStarted = (started + progress.filterValues { it.readIds.isNotEmpty() || it.partialIds.isNotEmpty() }.keys)
         .intersect(catalogue.map { it.id }.toSet())
     val connected = InkShelf2GuidesData.configured(context)
-    // Keep artwork loading independent of lazy cards and hero rotation. A
-    // single sequential coroutine completes all installed event covers.
-    LaunchedEffect(connected, installed, chosen?.id) {
-        if (connected) {
-            // Prioritise the opened event. Cancel unrelated hero lookups while reading.
-            val wanted = chosen?.let { current -> installed.filter { it.id == current.id } } ?: installed
-            for (guide in wanted) {
-                if (eventCovers.containsKey(guide.id)) continue
-                val url = InkShelf2GuidesData.coverUrl(context, guide)
-                if (url != null) eventCovers = eventCovers + (guide.id to url)
-            }
-        }
-    }
+    // Shell-owned prefetch continues while navigating through event details.
     BackHandler(enabled = chosen != null || shelf != null) {
         if (chosen != null) {
             guideRevision++
