@@ -174,6 +174,10 @@ class PagerPageHolder(
                 prepareSmartBubble()
                 if (viewer.shouldHoldSmartBubbleOverview(page)) {
                     showSmartBubbleOverview()
+                } else if (viewer.activity.preferences.panelFlowPanelBoundaries().get()) {
+                    // Image callbacks may happen more than once. Only fulfill an
+                    // explicit pending tap; never restart an already-read page.
+                    completePendingSmartBubble()
                 } else {
                     enterSmartBubble(viewer.smartBubbleForwardForCurrentPage())
                 }
@@ -332,15 +336,34 @@ class PagerPageHolder(
     }
 
     fun enterSmartBubble(forward: Boolean) {
-        if (!supportsSmartBubble()) return
+        // Remember the tap even if the first page's stream/image is still loading.
         smartBubblePendingDirection = if (forward) 1 else -1
+        if (!supportsSmartBubble()) return
         ensureSmartBubbleRegions()
-        smartBubbleRegions?.takeIf { it.isNotEmpty() }?.let { regions ->
-            smartBubbleIndex = if (forward) 0 else regions.lastIndex
-            focusSmartBubble(smartBubbleIndex)
-            smartBubblePendingDirection = null
-        }
+        completePendingSmartBubble()
     }
+
+    private fun completePendingSmartBubble() {
+        val direction = smartBubblePendingDirection ?: return
+        val regions = smartBubbleRegions ?: return
+        if (regions.isEmpty()) {
+            smartBubblePendingDirection = null
+            return
+        }
+        if (!viewer.isCurrentSmartBubblePage(page) || !smartBubbleImageReady()) return
+        val index = if (direction > 0) 0 else regions.lastIndex
+        smartBubbleIndex = index
+        smartBubblePendingDirection = null
+        focusSmartBubble(index)
+    }
+
+    private fun smartBubbleImageReady(): Boolean {
+        val view = pageView as? SubsamplingScaleImageView ?: return false
+        return view.isReady && view.sWidth > 0 && view.sHeight > 0 && view.width > 0 && view.height > 0
+    }
+
+    fun hasNoSmartBubbleTargets(): Boolean =
+        smartBubbleImageReady() && smartBubbleRegions?.isEmpty() == true
 
     fun exitSmartBubble() {
         smartBubblePendingDirection = null
@@ -361,7 +384,7 @@ class PagerPageHolder(
 
     fun smartBubbleNext(): SmartBubbleNavigationResult {
         if (!supportsSmartBubble()) return SmartBubbleNavigationResult.UNAVAILABLE
-        if (smartBubbleTransitionInProgress) return SmartBubbleNavigationResult.HANDLED
+        if (smartBubbleTransitionInProgress || !smartBubbleImageReady()) return SmartBubbleNavigationResult.HANDLED
         val regions = smartBubbleRegions
         if (regions == null) {
             smartBubblePendingDirection = 1
@@ -374,7 +397,7 @@ class PagerPageHolder(
         // the bubble nearest the current viewport instead of blindly continuing the old index.
         // This lets someone pan back to the top/right (or anywhere else) and naturally restart
         // from that part of the page.
-        if (reanchorSmartBubbleToViewport(regions)) return SmartBubbleNavigationResult.HANDLED
+        if (!viewer.activity.preferences.panelFlowPanelBoundaries().get() && reanchorSmartBubbleToViewport(regions)) return SmartBubbleNavigationResult.HANDLED
 
         val target = if (smartBubbleIndex < 0) 0 else smartBubbleIndex + 1
         if (target > regions.lastIndex) return SmartBubbleNavigationResult.PAGE_COMPLETE
@@ -386,7 +409,7 @@ class PagerPageHolder(
 
     fun smartBubblePrevious(): SmartBubbleNavigationResult {
         if (!supportsSmartBubble()) return SmartBubbleNavigationResult.UNAVAILABLE
-        if (smartBubbleTransitionInProgress) return SmartBubbleNavigationResult.HANDLED
+        if (smartBubbleTransitionInProgress || !smartBubbleImageReady()) return SmartBubbleNavigationResult.HANDLED
         val regions = smartBubbleRegions
         if (regions == null) {
             smartBubblePendingDirection = -1
@@ -395,7 +418,7 @@ class PagerPageHolder(
         }
         if (regions.isEmpty()) return SmartBubbleNavigationResult.PAGE_COMPLETE
 
-        if (reanchorSmartBubbleToViewport(regions)) return SmartBubbleNavigationResult.HANDLED
+        if (!viewer.activity.preferences.panelFlowPanelBoundaries().get() && reanchorSmartBubbleToViewport(regions)) return SmartBubbleNavigationResult.HANDLED
 
         val target = if (smartBubbleIndex < 0) regions.lastIndex else smartBubbleIndex - 1
         if (target < 0) return SmartBubbleNavigationResult.PAGE_COMPLETE
@@ -536,14 +559,9 @@ class PagerPageHolder(
                     smartBubbleRegions = regions
                     smartBubbleScanJob = null
 
-                    if (!viewer.isCurrentSmartBubblePage(page) || regions.isEmpty()) {
-                        return@withContext
+                    if (viewer.isCurrentSmartBubblePage(page)) {
+                        completePendingSmartBubble()
                     }
-
-                    val direction = smartBubblePendingDirection ?: return@withContext
-                    smartBubblePendingDirection = null
-                    smartBubbleIndex = if (direction > 0) 0 else regions.lastIndex
-                    focusSmartBubble(smartBubbleIndex)
                 }
             }
     }
@@ -597,7 +615,9 @@ class PagerPageHolder(
         centerX = centerX.coerceIn(halfViewportWidth, (sourceWidth - halfViewportWidth).coerceAtLeast(halfViewportWidth))
         centerY = centerY.coerceIn(halfViewportHeight, (sourceHeight - halfViewportHeight).coerceAtLeast(halfViewportHeight))
 
-        if (index == 0 && region.top <= SMART_BUBBLE_TOP_EDGE_REGION_THRESHOLD) {
+        if (!viewer.activity.preferences.panelFlowPanelBoundaries().get() &&
+            index == 0 && region.top <= SMART_BUBBLE_TOP_EDGE_REGION_THRESHOLD
+        ) {
             centerY = halfViewportHeight.coerceAtMost(sourceHeight / 2f)
         }
 
@@ -608,6 +628,14 @@ class PagerPageHolder(
                 (centerY / sourceHeight).coerceIn(0f, 1f),
             )
 
+        // A rapid tap during the first focus animation must not skip a stop.
+        if (viewer.activity.preferences.panelFlowPanelBoundaries().get()) {
+            val generation = smartBubbleTransitionGeneration
+            smartBubbleTransitionInProgress = true
+            view.postDelayed({
+                if (generation == smartBubbleTransitionGeneration) smartBubbleTransitionInProgress = false
+            }, SMART_BUBBLE_ANIMATION_MS)
+        }
         view
             .animateScaleAndCenter(targetScale, center)
             ?.withDuration(SMART_BUBBLE_ANIMATION_MS)

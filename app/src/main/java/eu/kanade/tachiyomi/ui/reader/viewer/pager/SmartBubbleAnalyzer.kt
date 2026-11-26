@@ -16,7 +16,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Panel Flow V3 experimental detector, retaining the V2 OCR path.
+ * Panel Flow V3.1: panel-first ordering and artwork-only stops, retaining V2.
  *
  * Primary path: bundled Google ML Kit OCR. We navigate to actual recognized dialogue/caption text
  * instead of guessing from white shapes, which removes the largest source of V1 false targets.
@@ -31,9 +31,13 @@ internal object SmartBubbleAnalyzer {
         return try {
             // V2: OCR is authoritative when it finds dialogue. It cannot confuse a plain white
             // shirt/cloud/window with a speech bubble because there must be recognized text.
-            val ocrRegions = runCatching { detectOcrTextRegions(bitmap, usePanelBoundaries) }.getOrDefault(emptyList())
-            if (ocrRegions.isNotEmpty()) {
+            val ocrRegions = runCatching { detectOcrTextRegions(bitmap, usePanelBoundaries) }.getOrNull()
+            if (!ocrRegions.isNullOrEmpty()) {
                 ocrRegions
+            } else if (usePanelBoundaries && ocrRegions != null) {
+                // A successful OCR scan with no useful dialogue is an artwork page.
+                // Do not invent lettering from white shapes on silent/splash pages.
+                refinePanelStops(bitmap, emptyList(), groupDialogue = false) ?: emptyList()
             } else {
                 // Keep V1.4 as a fallback for stylised lettering that OCR genuinely cannot read.
                 val fallbackBitmap = bitmap.forHeuristicFallback()
@@ -112,12 +116,13 @@ internal object SmartBubbleAnalyzer {
     /**
      * Preserve existing OCR reading beats, but never group dialogue across a
      * confidently identified gutter. Each silent panel gets an artwork stop.
-     * If even one text target cannot be assigned confidently, retain V2 for
-     * the entire page rather than risk missing dialogue.
+     * OCR boxes are padded for readability, so crossing a gutter slightly
+     * must not discard an otherwise reliable panel layout. Preserve every
+     * dialogue box; fall back only if ownership is genuinely ambiguous.
      */
     private fun refinePanelStops(bitmap: Bitmap, dialogue: List<RectF>, groupDialogue: Boolean): List<RectF>? =
         runCatching {
-            val scale = (480f / max(bitmap.width, bitmap.height)).coerceAtMost(1f)
+            val scale = (720f / max(bitmap.width, bitmap.height)).coerceAtMost(1f)
             val width = max(1, (bitmap.width * scale).toInt())
             val height = max(1, (bitmap.height * scale).toInt())
             val sample = if (width == bitmap.width && height == bitmap.height) bitmap
@@ -135,12 +140,16 @@ internal object SmartBubbleAnalyzer {
             for (target in dialogue) {
                 val area = target.width() * target.height()
                 if (area <= 0f) return null
-                val index = panels.indexOfFirst { panel ->
+                // Choose by greatest area, not an exact centre test: OCR padding and
+                // overlapping caption borders frequently straddle a panel edge.
+                val overlaps = panels.map { panel ->
                     val overlapWidth = (min(panel.right, target.right) - max(panel.left, target.left)).coerceAtLeast(0f)
                     val overlapHeight = (min(panel.bottom, target.bottom) - max(panel.top, target.top)).coerceAtLeast(0f)
-                    panel.contains(target.centerX(), target.centerY()) && overlapWidth * overlapHeight / area >= 0.80f
+                    overlapWidth * overlapHeight / area
                 }
-                if (index < 0) return null
+                val index = overlaps.indices.maxByOrNull { overlaps[it] } ?: return null
+                val second = overlaps.indices.filter { it != index }.maxOfOrNull { overlaps[it] } ?: 0f
+                if (overlaps[index] < 0.48f || overlaps[index] - second < 0.08f) return null
                 assigned[index] += target
             }
             val stops = panels.flatMapIndexed { index, panel ->
@@ -151,14 +160,18 @@ internal object SmartBubbleAnalyzer {
                     listOf(panel)
                 } else {
                     val groups = if (groupDialogue) groupDialogueIntoPanelStops(targets) else targets
-                    if (groups.any {
+                    // Never let an unusually large dialogue union undo all the
+                    // panel ordering. Keep the original dialogue beats instead.
+                    val safeGroups = if (groups.any {
                             it.width() !in OCR_MIN_FINAL_WIDTH_RATIO..PANEL_STOP_MAX_FINAL_WIDTH_RATIO ||
                                 it.height() !in OCR_MIN_FINAL_HEIGHT_RATIO..PANEL_STOP_MAX_FINAL_HEIGHT_RATIO
-                        }) return null
-                    readingOrder(groups)
+                        }) targets else groups
+                    readingOrder(safeGroups)
                 }
             }
-            stops.takeIf { it.size in 2..MAX_PANEL_STOPS_PER_PAGE }
+            // Busy pages may legitimately have more than 18 dialogue stops.
+            // Do not abandon panel order or silently truncate them.
+            stops.takeIf { it.size >= 2 }
         }.getOrNull()
 
     /**

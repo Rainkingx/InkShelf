@@ -7,7 +7,7 @@ import kotlin.math.min
  * Experimental, conservative Western-comic gutter detector.
  *
  * Pure pixel geometry, no ML dependency. Only split at narrow, nearly solid
- * white or black bands that span the current rectangle and have artwork on
+ * white or black bands that span almost all of the current rectangle and have artwork on
  * both sides. Horizontal cuts take precedence over vertical cuts so rows
  * read left to right. Return null when a reliable multi-panel layout cannot
  * be established; the original dialogue detector remains authoritative.
@@ -118,8 +118,8 @@ internal object PanelBoundaryDetector {
         }
         val count = end - start
         return when {
-            white * 100 >= count * 98 -> 1
-            black * 100 >= count * 98 -> -1
+            white * 100 >= count * 93 -> 1
+            black * 100 >= count * 93 -> -1
             else -> 0
         }
     }

@@ -295,10 +295,13 @@ abstract class PagerViewer(
      */
     private fun startSmartBubbleFromOverview(forward: Boolean): Boolean {
         if (!smartBubbleEnabled || !smartBubbleAwaitingPageStartTap) return false
-        val holder = currentPageHolder() ?: return false
+        val holder = currentPageHolder() ?: return activity.preferences.panelFlowPanelBoundaries().get()
         smartBubbleAwaitingPageStartTap = false
         smartBubbleAwaitingPageEndTap = false
         smartBubbleEnterForward = forward
+        // A silent splash with no reliable panels is already fully visible.
+        // Let the normal next/previous navigation move directly off it.
+        if (activity.preferences.panelFlowPanelBoundaries().get() && holder.hasNoSmartBubbleTargets()) return false
         holder.enterSmartBubble(forward)
         prewarmSmartBubbleNeighbor(holder.page, forward)
         return true
@@ -612,6 +615,16 @@ abstract class PagerViewer(
     protected open fun moveRight() {
         if (startSmartBubbleFromOverview(true)) return
         if (smartBubbleEnabled) {
+            if (activity.preferences.panelFlowPanelBoundaries().get() &&
+                currentPageHolder()?.hasNoSmartBubbleTargets() == true
+            ) {
+                smartBubbleAwaitingPageEndTap = false
+                if (pager.currentItem != adapter.count - 1) {
+                    hasMoved = true
+                    pager.setCurrentItem(pager.currentItem + 1, config.usePageTransitions)
+                }
+                return
+            }
             // The first tap after the final dialogue target only reveals the complete current page.
             // A second tap turns the page. This avoids skipping important artwork after the last
             // speech bubble/caption.

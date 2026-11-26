@@ -73,4 +73,32 @@ class PanelBoundaryDetectorTest {
             PanelBoundaryDetector.detect(pixels, width, height),
         )
     }
+    @Test fun smallBreakInVerticalGutterKeepsColumnsTogether() {
+        val pixels = page()
+        fill(pixels, 116, 0, 124, height, white)
+        fill(pixels, 116, 145, 124, 159, art)
+        assertEquals(
+            listOf(
+                PanelBoundaryDetector.Panel(0, 0, 116, height),
+                PanelBoundaryDetector.Panel(124, 0, 240, height),
+            ),
+            PanelBoundaryDetector.detect(pixels, width, height),
+        )
+    }
+
+    @Test fun staggeredPanelsFollowColumnBeforeCrossingGutter() {
+        val pixels = page()
+        fill(pixels, 116, 0, 124, height, white)
+        fill(pixels, 0, 120, 116, 128, white)
+        fill(pixels, 124, 190, width, 198, white)
+        assertEquals(
+            listOf(
+                PanelBoundaryDetector.Panel(0, 0, 116, 120),
+                PanelBoundaryDetector.Panel(0, 128, 116, height),
+                PanelBoundaryDetector.Panel(124, 0, 240, 190),
+                PanelBoundaryDetector.Panel(124, 198, 240, height),
+            ),
+            PanelBoundaryDetector.detect(pixels, width, height),
+        )
+    }
 }
