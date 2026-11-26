@@ -157,6 +157,8 @@ internal fun InkShelf2AdvancedSettingsScreen(
                 SettingsDivider()
                 ToggleSetting("Panel Flow (beta)", "Jump between comic panels", prefs.panelFlowEnabled())
                 SettingsDivider()
+                ToggleSetting("Panel Flow V3 (experimental)", "Detect panel gutters and silent artwork. Turn off for V2; reopen the comic after changing.", prefs.panelFlowPanelBoundaries())
+                SettingsDivider()
                 ToggleSetting("Animate page transitions", "Animate movement between pages", prefs.pageTransitions())
                 SettingsDivider()
                 ToggleSetting("Fullscreen reader", "Use the full display while reading", prefs.fullscreen())

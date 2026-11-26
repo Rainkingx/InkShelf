@@ -16,7 +16,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Smart Bubble V2 detector.
+ * Panel Flow V3 experimental detector, retaining the V2 OCR path.
  *
  * Primary path: bundled Google ML Kit OCR. We navigate to actual recognized dialogue/caption text
  * instead of guessing from white shapes, which removes the largest source of V1 false targets.
@@ -26,19 +26,20 @@ import kotlin.math.min
  */
 
 internal object SmartBubbleAnalyzer {
-    suspend fun analyze(streamProvider: () -> InputStream): List<RectF> {
+    suspend fun analyze(streamProvider: () -> InputStream, usePanelBoundaries: Boolean = true): List<RectF> {
         val bitmap = decodeForAnalysis(streamProvider) ?: return emptyList()
         return try {
             // V2: OCR is authoritative when it finds dialogue. It cannot confuse a plain white
             // shirt/cloud/window with a speech bubble because there must be recognized text.
-            val ocrRegions = runCatching { detectOcrTextRegions(bitmap) }.getOrDefault(emptyList())
+            val ocrRegions = runCatching { detectOcrTextRegions(bitmap, usePanelBoundaries) }.getOrDefault(emptyList())
             if (ocrRegions.isNotEmpty()) {
                 ocrRegions
             } else {
                 // Keep V1.4 as a fallback for stylised lettering that OCR genuinely cannot read.
                 val fallbackBitmap = bitmap.forHeuristicFallback()
                 try {
-                    detect(fallbackBitmap)
+                    val fallback = detect(fallbackBitmap)
+                    if (usePanelBoundaries) refinePanelStops(bitmap, fallback, groupDialogue = false) ?: fallback else fallback
                 } finally {
                     if (fallbackBitmap !== bitmap) fallbackBitmap.recycle()
                 }
@@ -67,7 +68,7 @@ internal object SmartBubbleAnalyzer {
         return streamProvider().use { BitmapFactory.decodeStream(it, null, options) }
     }
 
-    private suspend fun detectOcrTextRegions(bitmap: Bitmap): List<RectF> {
+    private suspend fun detectOcrTextRegions(bitmap: Bitmap, usePanelBoundaries: Boolean): List<RectF> {
         if (bitmap.width < 80 || bitmap.height < 80) return emptyList()
 
         val result = recognizeText(bitmap)
@@ -95,6 +96,9 @@ internal object SmartBubbleAnalyzer {
         // should usually be one tap, not one tap per speech balloon. We deliberately keep the
         // grouping conservative: only dialogue that can comfortably share one reader viewport is
         // merged, while distant blocks remain separate stops.
+        if (usePanelBoundaries) {
+            refinePanelStops(bitmap, deduped, groupDialogue = true)?.let { return it }
+        }
         val panelStops = groupDialogueIntoPanelStops(deduped)
 
         return readingOrder(panelStops)
@@ -104,6 +108,58 @@ internal object SmartBubbleAnalyzer {
             }
             .take(MAX_PANEL_STOPS_PER_PAGE)
     }
+
+    /**
+     * Preserve existing OCR reading beats, but never group dialogue across a
+     * confidently identified gutter. Each silent panel gets an artwork stop.
+     * If even one text target cannot be assigned confidently, retain V2 for
+     * the entire page rather than risk missing dialogue.
+     */
+    private fun refinePanelStops(bitmap: Bitmap, dialogue: List<RectF>, groupDialogue: Boolean): List<RectF>? =
+        runCatching {
+            val scale = (480f / max(bitmap.width, bitmap.height)).coerceAtMost(1f)
+            val width = max(1, (bitmap.width * scale).toInt())
+            val height = max(1, (bitmap.height * scale).toInt())
+            val sample = if (width == bitmap.width && height == bitmap.height) bitmap
+                else Bitmap.createScaledBitmap(bitmap, width, height, true)
+            val panels = try {
+                val pixels = IntArray(width * height)
+                sample.getPixels(pixels, 0, width, 0, 0, width, height)
+                PanelBoundaryDetector.detect(pixels, width, height)
+                    ?.map { RectF(it.left.toFloat() / width, it.top.toFloat() / height,
+                        it.right.toFloat() / width, it.bottom.toFloat() / height) }
+            } finally {
+                if (sample !== bitmap) sample.recycle()
+            } ?: return null
+            val assigned = panels.map { mutableListOf<RectF>() }
+            for (target in dialogue) {
+                val area = target.width() * target.height()
+                if (area <= 0f) return null
+                val index = panels.indexOfFirst { panel ->
+                    val overlapWidth = (min(panel.right, target.right) - max(panel.left, target.left)).coerceAtLeast(0f)
+                    val overlapHeight = (min(panel.bottom, target.bottom) - max(panel.top, target.top)).coerceAtLeast(0f)
+                    panel.contains(target.centerX(), target.centerY()) && overlapWidth * overlapHeight / area >= 0.80f
+                }
+                if (index < 0) return null
+                assigned[index] += target
+            }
+            val stops = panels.flatMapIndexed { index, panel ->
+                val targets = assigned[index]
+                if (targets.isEmpty()) {
+                    // No dialogue recognized here: show the artwork rather than
+                    // skipping directly to the next speech balloon.
+                    listOf(panel)
+                } else {
+                    val groups = if (groupDialogue) groupDialogueIntoPanelStops(targets) else targets
+                    if (groups.any {
+                            it.width() !in OCR_MIN_FINAL_WIDTH_RATIO..PANEL_STOP_MAX_FINAL_WIDTH_RATIO ||
+                                it.height() !in OCR_MIN_FINAL_HEIGHT_RATIO..PANEL_STOP_MAX_FINAL_HEIGHT_RATIO
+                        }) return null
+                    readingOrder(groups)
+                }
+            }
+            stops.takeIf { it.size in 2..MAX_PANEL_STOPS_PER_PAGE }
+        }.getOrNull()
 
     /**
      * ML Kit occasionally treats several visually separate bits of lettering as one TextBlock on

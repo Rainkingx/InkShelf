@@ -526,7 +526,7 @@ class PagerPageHolder(
             scope.launch(IO) {
                 val regions =
                     runCatching {
-                        SmartBubbleAnalyzer.analyze(streamProvider)
+                        SmartBubbleAnalyzer.analyze(streamProvider, viewer.activity.preferences.panelFlowPanelBoundaries().get())
                     }.getOrElse {
                         Timber.w(it, "Smart Bubble scan failed for page ${page.index}")
                         emptyList()
