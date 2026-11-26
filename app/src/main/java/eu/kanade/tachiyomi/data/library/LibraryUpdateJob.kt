@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.data.library
 
 import android.content.Context
+import eu.kanade.tachiyomi.data.preference.InkShelfDataSaver
 import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.work.Constraints
@@ -132,6 +133,7 @@ class LibraryUpdateJob(
 
     override suspend fun doWork(): Result {
         if (tags.contains(WORK_NAME_AUTO)) {
+            if (!InkShelfDataSaver.allowsAutomaticNetwork(context)) return Result.retry()
             val preferences = Injekt.get<PreferencesHelper>()
             val restrictions = preferences.libraryUpdateDeviceRestriction().get()
             if ((DEVICE_ONLY_ON_WIFI in restrictions) && !context.isConnectedToWifi()) {
@@ -732,7 +734,7 @@ class LibraryUpdateJob(
                 val constraints =
                     Constraints
                         .Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .setRequiredNetworkType(InkShelfDataSaver.networkType())
                         .setRequiresCharging(DEVICE_CHARGING in restrictions)
                         .setRequiresBatteryNotLow(DEVICE_BATTERY_NOT_LOW in restrictions)
                         .build()
@@ -750,7 +752,7 @@ class LibraryUpdateJob(
 
                 WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                     WORK_NAME_AUTO,
-                    if (keepExisting) ExistingPeriodicWorkPolicy.KEEP else ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+                    if (keepExisting) ExistingPeriodicWorkPolicy.UPDATE else ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
                     request,
                 )
             } else {

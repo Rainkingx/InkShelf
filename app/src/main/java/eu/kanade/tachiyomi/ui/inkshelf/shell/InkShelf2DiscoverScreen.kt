@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.data.preference.InkShelfDataSaver
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.ui.source.BrowseController
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverCache
@@ -127,7 +128,7 @@ internal fun InkShelf2DiscoverScreen(
     var refreshingSpotlight by remember { mutableStateOf(false) }
     var refreshingDiscover by remember { mutableStateOf(false) }
     suspend fun refreshSpotlight(manual: Boolean) {
-        if (refreshingSpotlight) return
+        if (refreshingSpotlight || (!manual && !InkShelfDataSaver.allowsAutomaticNetwork(context))) return
         refreshingSpotlight = true
         try {
             val result = InkShelf2Spotlight.loadWithStatus(context, force = manual)
@@ -290,6 +291,7 @@ internal fun InkShelf2DiscoverScreen(
     val heroKeys = heroSpotlight.map { it.id }
     LaunchedEffect(heroKeys) {
         heroSpotlight.forEach { feature ->
+            if (!InkShelfDataSaver.allowsAutomaticNetwork(context)) return@LaunchedEffect
             val cover = InkShelf2HeroArtwork.findCover(context,
                 InkShelf2Spotlight.metronTitle(feature.leadSeries))
             if (cover != null) highQualityHeroArt[feature.id] = cover
@@ -376,7 +378,8 @@ internal fun InkShelf2DiscoverScreen(
     // persisted shelf is empty or older than a week, and only with real sources.
     val readyForPicks = discover != null && enabledSourceIds.isNotEmpty()
     LaunchedEffect(readyForPicks) {
-        if (!readyForPicks || autoAttempted || refreshingDiscover) return@LaunchedEffect
+        if (!readyForPicks || autoAttempted || refreshingDiscover ||
+            !InkShelfDataSaver.allowsAutomaticNetwork(context)) return@LaunchedEffect
         autoAttempted = true
         val lastUpdated = InkShelfDiscoverCache.lastUpdatedAt(
             context, InkShelfDiscoverCache.Section.PICKED_FOR_YOU,

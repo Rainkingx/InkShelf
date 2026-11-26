@@ -284,7 +284,9 @@ class PreferencesHelper(
 
     fun downloadsDirectory() = flowPrefs.getString(Keys.downloadsDirectory, defaultDownloadsDir.toString())
 
-    fun downloadOnlyOverWifi() = prefs.getBoolean(Keys.downloadOnlyOverWifi, true)
+    fun inkShelfDataSaver() = flowPrefs.getBoolean("inkshelf_data_saver", false)
+
+    fun downloadOnlyOverWifi() = inkShelfDataSaver().get() || prefs.getBoolean(Keys.downloadOnlyOverWifi, true)
 
     fun downloadOnlyOverWifiSetting() = flowPrefs.getBoolean(Keys.downloadOnlyOverWifi, true)
 

@@ -1,10 +1,10 @@
 package eu.kanade.tachiyomi.ui.source
 
 import android.content.Context
+import eu.kanade.tachiyomi.data.preference.InkShelfDataSaver
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -17,6 +17,7 @@ internal class InkShelfDiscoverRefreshWorker(
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result =
         runCatching {
+            if (!InkShelfDataSaver.allowsAutomaticNetwork(applicationContext)) return Result.retry()
             if (BrowseController.refreshDiscoverFeedsInBackground(applicationContext)) {
                 Result.success()
             } else {
@@ -31,7 +32,7 @@ internal class InkShelfDiscoverRefreshWorker(
             val constraints =
                 Constraints
                     .Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiredNetworkType(InkShelfDataSaver.networkType())
                     .build()
 
             val request =
@@ -45,7 +46,7 @@ internal class InkShelfDiscoverRefreshWorker(
                 .getInstance(context.applicationContext)
                 .enqueueUniquePeriodicWork(
                     UNIQUE_WORK,
-                    ExistingPeriodicWorkPolicy.KEEP,
+                    ExistingPeriodicWorkPolicy.UPDATE,
                     request,
                 )
         }

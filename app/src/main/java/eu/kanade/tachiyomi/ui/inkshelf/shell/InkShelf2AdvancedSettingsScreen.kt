@@ -116,6 +116,25 @@ internal fun InkShelf2AdvancedSettingsScreen(
                 lineHeight = 17.sp,
             )
         }
+        if (!readerOnly) {
+            item(key = "data-saver-heading") { SettingsHeading("DATA SAVER") }
+            item(key = "data-saver") {
+                SettingsPanel {
+                    ToggleSetting(
+                        "Data Saver", "Wi-Fi-only automatic updates and downloads. Reduce background artwork fetching. Manual browsing and reading remain available.",
+                        prefs.inkShelfDataSaver(),
+                        onChange = {
+                            val app = context.applicationContext
+                            eu.kanade.tachiyomi.ui.source.InkShelfDiscoverRefreshWorker.schedule(app)
+                            InkShelf2ReleaseRadarWorker.schedule(app)
+                            if (eu.kanade.tachiyomi.BuildConfig.INCLUDE_UPDATER) eu.kanade.tachiyomi.data.updater.AppUpdateJob.setupTask(app)
+                            eu.kanade.tachiyomi.extension.ExtensionUpdateJob.setupTask(app)
+                            LibraryUpdateJob.setupTask(app, keepExisting = true)
+                        },
+                    )
+                }
+            }
+        }
         item(key = "reader-heading") { SettingsHeading("READER") }
         item(key = "reader-modes") {
             SettingsPanel {
@@ -272,7 +291,7 @@ internal fun InkShelf2AdvancedSettingsScreen(
         item(key = "downloads-toggles") {
             SettingsPanel {
                 ToggleSetting(
-                    "Wi-Fi only", "If enabled, downloads wait until Wi-Fi is connected",
+                    "Wi-Fi only", "Downloads wait for Wi-Fi if enabled here or in Data Saver",
                     prefs.downloadOnlyOverWifiSetting(),
                 )
                 SettingsDivider()
@@ -348,7 +367,7 @@ internal fun InkShelf2AdvancedSettingsScreen(
         item(key = "other-heading") { SettingsHeading("APPEARANCE & PRIVACY") }
         item(key = "other-panel") {
             SettingsPanel {
-                SettingsLink("Themes & appearance", "Choose your InkShelf 2.0 colours", onThemes)
+                SettingsLink("Themes & appearance", "Choose your InkShelf colours", onThemes)
                 SettingsDivider()
                 ToggleSetting("Hide notification content", "Keep comic names out of notification previews", prefs.hideNotificationContentSetting())
                 SettingsDivider()
@@ -410,7 +429,7 @@ private fun SettingCopy(title: String, detail: String, modifier: Modifier = Modi
 }
 
 @Composable
-private fun ToggleSetting(title: String, detail: String, pref: Preference<Boolean>) {
+private fun ToggleSetting(title: String, detail: String, pref: Preference<Boolean>, onChange: (Boolean) -> Unit = {}) {
     var checked by remember(pref) { mutableStateOf(pref.get()) }
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 11.dp),
@@ -423,6 +442,7 @@ private fun ToggleSetting(title: String, detail: String, pref: Preference<Boolea
             onCheckedChange = {
                 pref.set(it)
                 checked = it
+                onChange(it)
             },
         )
     }

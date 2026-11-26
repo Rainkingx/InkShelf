@@ -148,7 +148,7 @@ jobs:
               if [[ "$RELEASE_TAG" == "v2.0.0-b20" ]]; then
                 gh release create "$RELEASE_TAG" dist/InkShelf.apk \
                   --target "$GITHUB_SHA" \
-                  --title "InkShelf 2.0 — Public Beta 20" \
+                  --title "InkShelf — Public Beta 20" \
                   --notes-file RELEASE_NOTES.md \
                   --prerelease || true
               else

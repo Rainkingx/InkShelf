@@ -60,6 +60,7 @@ import eu.kanade.tachiyomi.data.download.DownloadJob
 import eu.kanade.tachiyomi.data.notification.NotificationReceiver
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
+import eu.kanade.tachiyomi.data.preference.InkShelfDataSaver
 import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.LocalSource
@@ -358,7 +359,8 @@ class InkShelf2Activity : AppCompatActivity() {
             val appUpdateChecker = remember { AppUpdateChecker() }
 
             fun checkAppUpdate(manual: Boolean) {
-                if (!BuildConfig.INCLUDE_UPDATER || checkingAppUpdate) return
+                if (!BuildConfig.INCLUDE_UPDATER || checkingAppUpdate ||
+                    (!manual && !InkShelfDataSaver.allowsAutomaticNetwork(applicationContext))) return
                 checkingAppUpdate = true
                 updateScope.launch {
                     try {
@@ -490,7 +492,7 @@ class InkShelf2Activity : AppCompatActivity() {
             // Populate the 2.0 bell when the app starts; use the existing
             // extension repository manager, not a duplicate HTTP client.
             LaunchedEffect(Unit) {
-                if (preferences.extensionRepos().get().isNotEmpty()) {
+                if (InkShelfDataSaver.allowsAutomaticNetwork(applicationContext) && preferences.extensionRepos().get().isNotEmpty()) {
                     checkingExtensionUpdates = true
                     try {
                         extensionManager.findAvailableExtensions()
@@ -635,7 +637,8 @@ class InkShelf2Activity : AppCompatActivity() {
             var eventCoverUpdates by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
             val eventArtworkConnected = remember(refreshEpoch) { InkShelf2GuidesData.configured(applicationContext) }
             LaunchedEffect(home != null, welcomeOpen, eventArtworkConnected) {
-                if (home == null || welcomeOpen || !eventArtworkConnected) return@LaunchedEffect
+                if (home == null || welcomeOpen || !eventArtworkConnected ||
+                    !InkShelfDataSaver.allowsAutomaticNetwork(applicationContext)) return@LaunchedEffect
                 delay(800)
                 val events = InkShelf2BatCaveGuides.verified()
                 val recent = events.sortedWith(compareByDescending<InkShelf2Guide> {
@@ -651,6 +654,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 // Publish each result immediately and warm the actual image disk cache.
                 while (true) {
                     priority.forEachIndexed { index, guide ->
+                        if (!InkShelfDataSaver.allowsAutomaticNetwork(applicationContext)) return@LaunchedEffect
                         val cached = InkShelf2GuidesData.cachedEventCover(applicationContext, guide)
                         val url = cached ?: InkShelf2GuidesData.coverUrl(applicationContext, guide)
                         if (url != null && eventCoverUpdates[guide.id] != url) {
@@ -757,7 +761,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         it.calendarDay == java.util.Calendar.getInstance()
                             .get(java.util.Calendar.DAY_OF_WEEK)
                     }?.artwork?.imageUrl
-                    if (!todaysHeroUrl.isNullOrBlank()) {
+                    if (!todaysHeroUrl.isNullOrBlank() && InkShelfDataSaver.allowsAutomaticNetwork(applicationContext)) {
                         withTimeoutOrNull(2_500L) {
                             withContext(Dispatchers.IO) {
                                 applicationContext.imageLoader.execute(
@@ -786,7 +790,8 @@ class InkShelf2Activity : AppCompatActivity() {
                 // pointing at XOXO. Rebuild missing shelves from the other
                 // enabled extensions AFTER the first UI frame; never delay the
                 // splash, hijack a saved comic or create library favourites.
-                if (refreshedDiscover != null && enabledSourceIds.isNotEmpty()) {
+                if (refreshedDiscover != null && enabledSourceIds.isNotEmpty() &&
+                    InkShelfDataSaver.allowsAutomaticNetwork(applicationContext)) {
                     val missing = InkShelf2RecommendationRecovery.missing(
                         refreshedDiscover, enabledSourceIds,
                     )
@@ -811,7 +816,8 @@ class InkShelf2Activity : AppCompatActivity() {
             // Populate Thursday from a wider source-backed catalogue after
             // the first Home snapshot. The splash and reader never wait.
             LaunchedEffect(home != null, enabledSourceIds, refreshEpoch) {
-                if (home == null || enabledSourceIds.isEmpty()) return@LaunchedEffect
+                if (home == null || enabledSourceIds.isEmpty() ||
+                    !InkShelfDataSaver.allowsAutomaticNetwork(applicationContext)) return@LaunchedEffect
                 try {
                     if (engine.refreshClassicPicks(enabledSourceIds)) {
                         home = engine.loadHome(enabledSourceIds)

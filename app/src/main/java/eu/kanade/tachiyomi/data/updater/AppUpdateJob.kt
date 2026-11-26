@@ -1,11 +1,11 @@
 package eu.kanade.tachiyomi.data.updater
 
 import android.content.Context
+import eu.kanade.tachiyomi.data.preference.InkShelfDataSaver
 import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -21,6 +21,7 @@ class AppUpdateJob(
 ) : CoroutineWorker(context, workerParams) {
     override suspend fun doWork(): Result =
         coroutineScope {
+            if (!InkShelfDataSaver.allowsAutomaticNetwork(context)) return@coroutineScope Result.retry()
             try {
                 AppUpdateChecker().checkForUpdate(context)
                 Result.success()
@@ -42,7 +43,7 @@ class AppUpdateJob(
             val constraints =
                 Constraints
                     .Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiredNetworkType(InkShelfDataSaver.networkType())
                     .build()
 
             val request =

@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.inkshelf.shell
 import android.Manifest
 import android.app.PendingIntent
 import android.content.Context
+import eu.kanade.tachiyomi.data.preference.InkShelfDataSaver
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -12,7 +13,6 @@ import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -123,6 +123,7 @@ internal object InkShelf2ReleaseRadar {
 class InkShelf2ReleaseRadarWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val context = applicationContext
+        if (!InkShelfDataSaver.allowsAutomaticNetwork(context)) return Result.retry()
         if (!InkShelf2ReleaseRadar.enabled(context) || !InkShelf2ReleaseRadar.configured(context) ||
             !InkShelf2ReleaseRadar.canNotify(context)) return Result.success()
         return try {
@@ -144,9 +145,9 @@ class InkShelf2ReleaseRadarWorker(context: Context, params: WorkerParameters) : 
                 return
             }
             val request = PeriodicWorkRequestBuilder<InkShelf2ReleaseRadarWorker>(12, TimeUnit.HOURS)
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(InkShelfDataSaver.networkType())
                     .setRequiresBatteryNotLow(true).build()).build()
-            manager.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+            manager.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
         }
     }
 }

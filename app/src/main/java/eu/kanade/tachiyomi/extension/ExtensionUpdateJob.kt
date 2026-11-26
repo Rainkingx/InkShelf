@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.extension
 
 import android.Manifest
 import android.content.Context
+import eu.kanade.tachiyomi.data.preference.InkShelfDataSaver
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.ActivityCompat
@@ -45,6 +46,7 @@ class ExtensionUpdateJob(
 ) : CoroutineWorker(context, workerParams) {
     override suspend fun doWork(): Result =
         coroutineScope {
+            if (!InkShelfDataSaver.allowsAutomaticNetwork(context)) return@coroutineScope Result.retry()
             val pendingUpdates =
                 try {
                     ExtensionApi().checkForUpdates(context)
@@ -168,7 +170,7 @@ class ExtensionUpdateJob(
             val constraints =
                 Constraints
                     .Builder()
-                    .setRequiredNetworkType(networkType)
+                    .setRequiredNetworkType(if (InkShelfDataSaver.enabled()) NetworkType.UNMETERED else networkType)
                     .build()
 
             val data = Data.Builder()
@@ -196,7 +198,7 @@ class ExtensionUpdateJob(
                 val constraints =
                     Constraints
                         .Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .setRequiredNetworkType(InkShelfDataSaver.networkType())
                         .build()
 
                 val request =
