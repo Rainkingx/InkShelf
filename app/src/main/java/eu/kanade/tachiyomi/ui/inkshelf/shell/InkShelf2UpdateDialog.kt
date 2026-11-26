@@ -21,6 +21,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +37,30 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.R
+import kotlinx.coroutines.delay
+
+private val updateComicMessages = listOf(
+    "Restocking the utility belt…",
+    "Preparing the Quinjet…",
+    "Finding a box of scraps…",
+    "Refuelling the Batmobile…",
+    "Recalibrating Cerebro…",
+    "Polishing the adamantium…",
+    "Opening a portal to the multiverse…",
+    "Ordering pizza for the Turtles…",
+    "Checking the B.P.R.D. files…",
+    "Powering up the Mother Box…",
+    "Charging the Green Lantern ring…",
+    "Assembling the Avengers…",
+    "Checking the Daily Bugle headlines…",
+    "Tuning up the Fantasticar…",
+    "Rewinding the cosmic treadmill…",
+    "Checking the Guardians' mixtape…",
+    "Restocking the Lazarus Pit…",
+    "Packing the Hellboy essentials…",
+    "Refilling the web shooters…",
+    "Checking the Spawn signal…",
+)
 
 /** The app's own update sheet; Android still owns the final install confirmation. */
 @Composable
@@ -43,6 +72,18 @@ internal fun InkShelf2UpdateDialog(
     onDismiss: () -> Unit,
 ) {
     val downloading = progress != null
+    // Shuffle once per dialog session, not on every progress recomposition.
+    // Show one random line at the update prompt; rotate while downloading.
+    val messages = remember { updateComicMessages.shuffled() }
+    var messageIndex by remember { mutableIntStateOf(0) }
+    LaunchedEffect(downloading) {
+        if (downloading) {
+            while (true) {
+                delay(4_000L)
+                messageIndex = (messageIndex + 1) % messages.size
+            }
+        }
+    }
     InkShelf2Theme {
         Dialog(
             onDismissRequest = onDismiss,
@@ -67,6 +108,8 @@ internal fun InkShelf2UpdateDialog(
                                 color = InkShelf2Colors.Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                         }
                     }
+                    Text(messages[messageIndex], color = InkShelf2Colors.AccentLight,
+                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     if (progress != null) {
                         Text(if (progress < 0) "Downloading…" else "$progress%",
                             color = InkShelf2Colors.AccentLight, fontSize = 30.sp, fontWeight = FontWeight.Bold)
