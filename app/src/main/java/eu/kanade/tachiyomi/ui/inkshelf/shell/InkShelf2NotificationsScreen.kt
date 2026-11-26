@@ -24,9 +24,15 @@ import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,6 +60,9 @@ internal fun InkShelf2NotificationsScreen(
     onRefresh: () -> Unit,
     onReleaseRadar: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val configured = InkShelf2ReleaseRadar.configured(context)
+    var alerts by remember { mutableStateOf(InkShelf2ReleaseRadar.enabled(context)) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = PaddingValues(
@@ -78,7 +87,21 @@ internal fun InkShelf2NotificationsScreen(
                 .background(InkShelf2Colors.SurfaceRaised, RoundedCornerShape(14.dp)).padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 InkShelf2PhoneNotificationControl()
-                InkShelf2ActionButton(label = "Release Radar", onClick = onReleaseRadar, modifier = Modifier.fillMaxWidth())
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Release-day alerts", color = InkShelf2Colors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Optional alerts for exact title and publication-year matches in your library.",
+                            color = InkShelf2Colors.Muted, fontSize = 11.sp)
+                    }
+                    Switch(checked = alerts, enabled = configured, onCheckedChange = {
+                        alerts = it
+                        InkShelf2ReleaseRadar.setEnabled(context, it)
+                    })
+                }
+                if (!configured) {
+                    Text("Connect Metron in Menu to enable release-day alerts.", color = InkShelf2Colors.Muted, fontSize = 11.sp)
+                }
+                InkShelf2ActionButton(label = "Release Radar", onClick = onReleaseRadar, outlined = true, modifier = Modifier.fillMaxWidth())
             }
         }
         if (appUpdatesEnabled) {

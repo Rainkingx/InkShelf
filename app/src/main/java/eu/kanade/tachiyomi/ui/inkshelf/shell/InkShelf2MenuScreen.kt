@@ -93,7 +93,7 @@ internal fun InkShelf2MenuScreen(
         }
         item {
             MenuSection("YOUR INKSHELF") {
-                MenuEntry("Notifications", if (extensionUpdateCount > 0) "$extensionUpdateCount extension update(s) available" else "No extension updates",
+                MenuEntry("Notifications", if (extensionUpdateCount > 0) "$extensionUpdateCount extension update(s) available" else "Phone alerts · App and source updates",
                     Icons.Outlined.NotificationsNone, onNotifications)
                 MenuEntry(
                     "Your Profile & Guided Setup",

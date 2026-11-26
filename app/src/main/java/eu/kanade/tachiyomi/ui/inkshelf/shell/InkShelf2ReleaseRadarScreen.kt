@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -98,7 +97,6 @@ internal fun InkShelf2ReleaseRadarScreen(
     var error by remember { mutableStateOf(false) }
     var epoch by remember { mutableIntStateOf(0) }
     var myLibrary by remember { mutableStateOf(true) }
-    var alerts by remember { mutableStateOf(InkShelf2ReleaseRadar.enabled(context)) }
     LaunchedEffect(epoch, configured) {
         if (!configured) return@LaunchedEffect
         loading = true
@@ -127,26 +125,8 @@ internal fun InkShelf2ReleaseRadarScreen(
                     InkShelf2PageHeading("Release Radar")
                 }
                 Text("Upcoming comic store releases · Next seven days", color = InkShelf2Colors.Muted, fontSize = 12.sp)
-                Text("Release dates can change. A store release is not a guarantee an issue is available in your source.",
+                Text("Store dates may change and differ from source availability.",
                     color = InkShelf2Colors.Muted, fontSize = 11.sp)
-            }
-        }
-        item("alerts") {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)
-                .background(InkShelf2Colors.SurfaceRaised, shape).border(1.dp, InkShelf2Colors.Border, shape).padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                InkShelf2PhoneNotificationControl()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Release-day alerts", color = InkShelf2Colors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Optional alerts for exact title and publication-year matches in your library.",
-                            color = InkShelf2Colors.Muted, fontSize = 11.sp)
-                    }
-                    Switch(checked = alerts, enabled = configured, onCheckedChange = {
-                        alerts = it
-                        InkShelf2ReleaseRadar.setEnabled(context, it)
-                    })
-                }
             }
         }
         if (!configured) {
@@ -160,14 +140,14 @@ internal fun InkShelf2ReleaseRadarScreen(
             item("filters") {
                 Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        InkShelf2ActionButton(label = if (myLibrary) "✓ My library" else "My library", onClick = { myLibrary = true }, modifier = Modifier.weight(1f))
-                        InkShelf2ActionButton(label = if (!myLibrary) "✓ All releases" else "All releases", onClick = { myLibrary = false }, modifier = Modifier.weight(1f))
+                        InkShelf2ActionButton(label = if (myLibrary) "✓ My library" else "My library", onClick = { myLibrary = true }, outlined = !myLibrary, modifier = Modifier.weight(1f))
+                        InkShelf2ActionButton(label = if (!myLibrary) "✓ All releases" else "All releases", onClick = { myLibrary = false }, outlined = myLibrary, modifier = Modifier.weight(1f))
                     }
                     InkShelf2ActionButton(label = if (loading) "Checking…" else "Refresh release dates", enabled = !loading,
-                        onClick = { epoch++ }, modifier = Modifier.fillMaxWidth())
+                        onClick = { epoch++ }, outlined = true, modifier = Modifier.fillMaxWidth())
                     if (error) Text("Could not refresh Metron. Showing saved dates if available.", color = InkShelf2Colors.Muted, fontSize = 12.sp)
                     if (calendar?.partial == true) Text("Partial calendar · More releases may be listed on Metron.", color = InkShelf2Colors.Muted, fontSize = 11.sp)
-                    if (myLibrary) Text("Titles without a publication year are possible matches only; phone alerts require an exact edition.",
+                    if (myLibrary) Text("Titles without a series year are possible matches.",
                         color = InkShelf2Colors.Muted, fontSize = 11.sp)
                 }
             }
