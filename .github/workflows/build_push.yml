@@ -72,16 +72,27 @@ jobs:
       - name: Test InkShelf 2.0 news and BatCave reading guides
         run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' -x :app:formatKotlinMain
 
-      - name: Prepare InkShelf 2.0 APK
+      - name: Prepare InkShelf Dev APK
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/dev/debug/*universal-debug.apk "dist/InkShelf-2.0-build-${GITHUB_RUN_NUMBER}.apk"
+          cp app/build/outputs/apk/dev/debug/*universal-debug.apk "dist/InkShelf-Dev-build-${GITHUB_RUN_NUMBER}.apk"
 
-      - name: Upload InkShelf 2.0 APK
+      - name: Verify Dev app identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          aapt="$(find "$sdk/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$aapt"
+          "$aapt" dump badging "dist/InkShelf-Dev-build-${GITHUB_RUN_NUMBER}.apk" > "$RUNNER_TEMP/dev-badging.txt"
+          grep -F "package: name='eu.kanade.tachiyomi.debugJ2K'" "$RUNNER_TEMP/dev-badging.txt"
+          grep -F "application-label:'InkShelf Dev'" "$RUNNER_TEMP/dev-badging.txt"
+
+      - name: Upload InkShelf Dev APK
         uses: actions/upload-artifact@v4
         with:
-          name: InkShelf-2.0-build-${{ github.run_number }}
-          path: dist/InkShelf-2.0-build-*.apk
+          name: InkShelf-Dev-build-${{ github.run_number }}
+          path: dist/InkShelf-Dev-build-*.apk
           if-no-files-found: error
           retention-days: 14
 
