@@ -1,11 +1,10 @@
-# InkShelf 2.0 — Public Beta 19
+# InkShelf 2.0 — Public Beta 20
 
-- Subtle screen transitions with a stationary header and navigation bar.
-- Theme-matched loading skeletons for covers, shelves, searches and issue lists.
-- Clearer recoverable errors and retry actions for source searches and issue loading.
-- Comic refresh distinguishes new issues, unchanged lists and genuine failures, while preserving existing issues.
-- Increased online cover cache from 50 MB to 150 MB, reused artwork across library saves and protected cached covers against incomplete writes.
-- Reader navigation opens InkShelf 2.0 Comic Details instead of the legacy interface. Shared compatibility classes remain intact.
+- Dedicated InkShelf 2.0 Reader Settings screen, accessible from the reader's settings cog without launching legacy onboarding.
+- Expanded reader preferences, using the existing reader settings and storage.
+- Reader toolbar, progress bar and quick settings now follow InkShelf's selected theme and typography.
+- Panel Flow preference changes apply when returning to an open left-to-right comic; the existing detection and navigation engine is retained.
+- Further legacy navigation cleanup while retaining shared compatibility code.
 
 ## Updating
 
