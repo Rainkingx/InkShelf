@@ -876,9 +876,7 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
                 item.isChecked = enabled
                 item.icon?.mutate()?.apply {
                     setTint(
-                        getResourceColor(
-                            if (enabled) R.attr.colorPrimary else R.attr.actionBarTintColor,
-                        ),
+                        if (enabled) InkShelfReaderChrome.accentColor else InkShelfReaderChrome.textColor,
                     )
                     alpha = 255
                 }
@@ -1758,6 +1756,16 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
     override fun onResume() {
         super.onResume()
         viewModel.setReadStartTime()
+        // Settings can be changed in the dedicated InkShelf settings Activity
+        // while this reader instance stays alive. Keep the current page and
+        // only enter/exit guided mode when the stored preference changed.
+        (viewer as? L2RPagerViewer)?.let { current ->
+            val enabled = preferences.panelFlowEnabled().get()
+            if (current.smartBubbleEnabled != enabled) {
+                current.setSmartBubbleEnabled(enabled)
+                invalidateOptionsMenu()
+            }
+        }
     }
 
     override fun onMultiWindowModeChanged(
