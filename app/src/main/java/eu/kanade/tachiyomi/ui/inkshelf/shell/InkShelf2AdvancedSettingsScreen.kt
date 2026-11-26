@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
@@ -33,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,7 +46,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fredporciuncula.flow.preferences.Preference
+import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
+import eu.kanade.tachiyomi.data.preference.PreferenceValues
+import eu.kanade.tachiyomi.ui.reader.settings.PageLayout
+import eu.kanade.tachiyomi.ui.reader.settings.ReaderBottomButton
+import eu.kanade.tachiyomi.ui.reader.viewer.ViewerNavigation
 import eu.kanade.tachiyomi.data.preference.PreferenceKeys
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.ui.reader.settings.OrientationType
@@ -63,6 +68,7 @@ internal fun InkShelf2AdvancedSettingsScreen(
     onThemes: () -> Unit,
     onDownloads: () -> Unit,
     onBackup: () -> Unit,
+    readerOnly: Boolean = false,
 ) {
     val context = LocalContext.current
     val prefs = remember { Injekt.get<PreferencesHelper>() }
@@ -97,12 +103,13 @@ internal fun InkShelf2AdvancedSettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Outlined.ArrowBack, "Back to Menu", tint = InkShelf2Colors.Text)
+                    Icon(Icons.Outlined.ArrowBack, if (readerOnly) "Back to Reader" else "Back to Menu", tint = InkShelf2Colors.Text)
                 }
-                InkShelf2PageHeading("Advanced Settings")
+                InkShelf2PageHeading(if (readerOnly) "Reader Settings" else "Advanced Settings")
             }
             Text(
-                "Your existing reader, download and library settings. Changes are saved instantly.",
+                if (readerOnly) "Your default reading preferences. Changes are saved instantly."
+                else "Your existing reader, download and library settings. Changes are saved instantly.",
                 modifier = Modifier.padding(horizontal = 17.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 12.sp,
@@ -167,6 +174,98 @@ internal fun InkShelf2AdvancedSettingsScreen(
                 ToggleSetting("Skip duplicate issues", "Avoid duplicate chapter entries", prefs.skipDupe())
             }
         }
+        if (readerOnly) {
+            item(key = "reader-display-extra") {
+                SettingsPanel {
+                    ChoiceSetting("Double-tap animation", "Zoom animation speed", prefs.doubleTapAnimSpeed(),
+                        listOf("None" to 1, "Fast" to 250, "Normal" to 500))
+                    SettingsDivider()
+                    ToggleSetting("Always show issue transition", "Show the screen between issues", prefs.alwaysShowChapterTransition())
+                    SettingsDivider()
+                    ChoiceSetting("Landscape cutout", "Display around the camera cutout", prefs.landscapeCutoutBehavior(),
+                        listOf("Pad cutout" to 0, "Ignore cutout" to 1))
+                    SettingsDivider()
+                    MultiChoiceSetting("Reader toolbar buttons", "Choose shortcuts shown in the reader",
+                        prefs.readerBottomButtons(), ReaderBottomButton.entries.map { context.getString(it.stringRes) to it.value })
+                }
+            }
+            item(key = "paged-heading") { SettingsHeading("PAGED READER") }
+            item(key = "paged-options") {
+                SettingsPanel {
+                    ChoiceSetting("Tap zones", "Choose where taps turn pages", prefs.navigationModePager(),
+                        context.resources.getStringArray(R.array.reader_nav).mapIndexed { i, label -> label to i })
+                    SettingsDivider()
+                    ChoiceSetting("Invert tapping", "Reverse page-turn tap zones", prefs.pagerNavInverted(),
+                        ViewerNavigation.TappingInvertMode.entries.map { it.name.lowercase().replaceFirstChar { c -> c.uppercase() } to it })
+                    SettingsDivider()
+                    ChoiceSetting("Page layout", "Choose single, double or split pages", prefs.pageLayout(),
+                        PageLayout.entries.map { context.getString(it.fullStringRes) to it.value })
+                    SettingsDivider()
+                    ChoiceSetting("Zoom start position", "Where zoomed pages begin", prefs.zoomStart(),
+                        listOf("Automatic" to 1, "Left" to 2, "Right" to 3, "Centre" to 4))
+                    SettingsDivider()
+                    ChoiceSetting("Display cutout", "How pages fit camera cutouts", prefs.pagerCutoutBehavior(),
+                        listOf("Pad cutout" to 0, "Start past cutout" to 1, "Ignore cutout" to 2))
+                    SettingsDivider()
+                    ToggleSetting("Crop borders", "Remove empty page margins", prefs.cropBorders())
+                    SettingsDivider()
+                    ToggleSetting("Zoom double-page spreads", "Enlarge spreads in landscape", prefs.landscapeZoom())
+                    SettingsDivider()
+                    ToggleSetting("Navigate to pan", "Pan across a zoomed page before turning", prefs.navigateToPan())
+                    SettingsDivider()
+                    ToggleSetting("Split double pages in portrait", "Split spreads in automatic layout", prefs.automaticSplitsPage())
+                    SettingsDivider()
+                    ToggleSetting("Invert double pages", "Reverse double-page order", prefs.invertDoublePages())
+                }
+            }
+            item(key = "webtoon-heading") { SettingsHeading("CONTINUOUS READER") }
+            item(key = "webtoon-options") {
+                SettingsPanel {
+                    ChoiceSetting("Tap zones", "Continuous reading tap controls", prefs.navigationModeWebtoon(),
+                        context.resources.getStringArray(R.array.reader_nav).mapIndexed { i, label -> label to i })
+                    SettingsDivider()
+                    ChoiceSetting("Invert tapping", "Reverse tap zones", prefs.webtoonNavInverted(),
+                        ViewerNavigation.TappingInvertMode.entries.map { it.name.lowercase().replaceFirstChar { c -> c.uppercase() } to it })
+                    SettingsDivider()
+                    ChoiceSetting("Hide controls threshold", "How easily controls hide", prefs.webtoonReaderHideThreshold(),
+                        PreferenceValues.ReaderHideThreshold.entries.map { context.getString(it.titleResId) to it })
+                    SettingsDivider()
+                    ChoiceSetting("Side padding", "Space beside continuous pages", prefs.webtoonSidePadding(),
+                        (0..25 step 5).map { "$it%" to it })
+                    SettingsDivider()
+                    ChoiceSetting("Page layout", "Single or split pages", prefs.webtoonPageLayout(),
+                        listOf(PageLayout.SINGLE_PAGE, PageLayout.SPLIT_PAGES).map { context.getString(it.fullStringRes) to it.webtoonValue })
+                    SettingsDivider()
+                    ToggleSetting("Crop borders", "Remove empty margins", prefs.cropBordersWebtoon())
+                    SettingsDivider()
+                    ToggleSetting("Invert double pages", "Reverse spread order", prefs.webtoonInvertDoublePages())
+                    SettingsDivider()
+                    ToggleSetting("Enable zoom out", "Allow zooming out in continuous mode", prefs.webtoonEnableZoomOut())
+                }
+            }
+            item(key = "reader-controls-heading") { SettingsHeading("NAVIGATION & ACTIONS") }
+            item(key = "reader-controls") {
+                SettingsPanel {
+                    ToggleSetting("Invert volume keys", "Reverse volume-button page turns", prefs.readWithVolumeKeysInverted())
+                    SettingsDivider()
+                    MultiChoiceSetting("Vertical progress bar", "Reading modes using a vertical bar",
+                        prefs.readerVerticalSeekbarModes(), ReadingModeType.entries.drop(1).map { context.getString(it.stringRes) to it.prefValue.toString() })
+                    SettingsDivider()
+                    ChoiceSetting("Progress bar height", "Vertical bar height", prefs.readerVerticalSeekbarHeightPercent(),
+                        (60..100 step 5).map { "$it%" to it })
+                    SettingsDivider()
+                    ToggleSetting("Dock progress bar left", "Place vertical progress bar on the left", prefs.readerVerticalSeekbarDockLeft())
+                    SettingsDivider()
+                    ChoiceSetting("Page preload amount", "Pages to load ahead while reading", prefs.preloadSize(),
+                        (4..20 step 2).map { "$it pages" to it })
+                    SettingsDivider()
+                    ToggleSetting("Long-press actions", "Show page actions when holding a page", prefs.readWithLongTap())
+                    SettingsDivider()
+                    ToggleSetting("Save pages separately", "Create a folder per comic when saving pages", prefs.folderPerManga())
+                }
+            }
+        }
+        if (!readerOnly) {
         item(key = "downloads-heading") { SettingsHeading("DOWNLOADS") }
         item(key = "downloads-toggles") {
             SettingsPanel {
@@ -254,6 +353,7 @@ internal fun InkShelf2AdvancedSettingsScreen(
                 SettingsLink("Backup & restore", "Protect your library and reading history", onBackup)
             }
         }
+        }
         item(key = "footnote") {
             Text(
                 "Reader preferences apply to your comics across InkShelf. " +
@@ -327,14 +427,14 @@ private fun ToggleSetting(title: String, detail: String, pref: Preference<Boolea
 }
 
 @Composable
-private fun ChoiceSetting(
+private fun <T : Any> ChoiceSetting(
     title: String,
     detail: String,
-    pref: Preference<Int>,
-    options: List<Pair<String, Int>>,
-    onChange: (Int) -> Unit = {},
+    pref: Preference<T>,
+    options: List<Pair<String, T>>,
+    onChange: (T) -> Unit = {},
 ) {
-    var current by remember(pref) { mutableIntStateOf(pref.get()) }
+    var current by remember(pref) { mutableStateOf(pref.get()) }
     var isOpen by remember { mutableStateOf(false) }
     if (isOpen) {
         AlertDialog(
@@ -377,6 +477,35 @@ private fun ChoiceSetting(
         Spacer(Modifier.width(12.dp))
         Text(label, color = InkShelf2Colors.AccentLight, fontSize = 11.sp, maxLines = 2)
     }
+}
+
+@Composable
+private fun MultiChoiceSetting(title: String, detail: String, pref: Preference<Set<String>>, options: List<Pair<String, String>>) {
+    var current by remember(pref) { mutableStateOf(pref.get()) }
+    var open by remember { mutableStateOf(false) }
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(title) },
+            text = {
+                Column(Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState())) {
+                    options.forEach { (label, value) ->
+                        val toggle = {
+                            current = if (value in current) current - value else current + value
+                            pref.set(current)
+                        }
+                        Row(Modifier.fillMaxWidth().clickable { toggle() },
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = value in current, onCheckedChange = { toggle() })
+                            Text(label, color = InkShelf2Colors.Text)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { open = false }) { Text("Done") } },
+        )
+    }
+    SettingsLink(title, detail + " · " + current.size + " selected") { open = true }
 }
 
 @Composable

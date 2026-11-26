@@ -17,6 +17,7 @@ import eu.kanade.tachiyomi.ui.base.controller.DialogController
 import eu.kanade.tachiyomi.ui.base.controller.FadeChangeHandler
 import eu.kanade.tachiyomi.ui.manga.MangaDetailsController
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
+import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2ReaderSettingsActivity
 import eu.kanade.tachiyomi.ui.security.SecureActivityDelegate
 import eu.kanade.tachiyomi.ui.setting.SettingsController
 import eu.kanade.tachiyomi.ui.setting.SettingsMainController
@@ -229,12 +230,6 @@ class SearchActivity : MainActivity() {
         }
 
         fun openReaderSettings(context: Context) =
-            Intent(
-                context,
-                SearchActivity::class
-                    .java,
-            ).apply {
-                action = SHORTCUT_READER_SETTINGS
-            }
+            Intent(context, InkShelf2ReaderSettingsActivity::class.java)
     }
 }

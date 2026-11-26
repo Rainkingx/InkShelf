@@ -114,6 +114,10 @@
             android:exported="false">
             <meta-data android:name="android.app.searchable" android:resource="@xml/searchable"/>
         </activity>
+        <activity
+            android:name=".ui.inkshelf.shell.InkShelf2ReaderSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.InkShelf2.Startup" />
         <activity android:name=".ui.reader.ReaderActivity"
             android:configChanges="screenLayout|smallestScreenSize|screenSize"
             android:theme="@style/Theme.Splash"
