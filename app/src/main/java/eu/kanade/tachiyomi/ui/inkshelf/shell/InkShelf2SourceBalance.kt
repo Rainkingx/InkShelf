@@ -67,6 +67,37 @@ internal object InkShelf2SourceBalance {
         return result
     }
 
+    /** Presentation only: keep the complete original feeds available in See All. */
+    internal class PreviewRotation {
+        private val seen = mutableSetOf<String>()
+
+        private fun key(manga: Manga): String =
+            if (InkShelf2DailyRotation.isInvincible(manga)) "invincible franchise"
+            else InkShelf2DailyRotation.seriesKey(manga)
+
+        fun <T> select(
+            input: List<T>,
+            limit: Int,
+            manga: (T) -> Manga,
+            preserveOrder: Boolean = false,
+        ): List<T> {
+            val unique = input.filter { key(manga(it)).isNotBlank() }
+                .distinctBy { key(manga(it)) }
+            val selected = if (preserveOrder) unique.take(limit) else {
+                val fresh = unique.filterNot { key(manga(it)) in seen }
+                    .sortedBy { InkShelf2DailyRotation.isInvincible(manga(it)) }
+                val repeats = unique.filter { key(manga(it)) in seen }
+                    .sortedBy { InkShelf2DailyRotation.isInvincible(manga(it)) }
+                // Avoid repeat titles altogether when enough distinct comics exist.
+                // Sparse feeds may repeat only enough to keep a usable preview.
+                (fresh + repeats.take((minOf(3, limit) - fresh.size).coerceAtLeast(0)))
+                    .take(limit)
+            }
+            seen += selected.map { key(manga(it)) }
+            return selected
+        }
+    }
+
     fun balanceDiscover(
         discover: InkShelf2Engine.Discover,
         sourceNames: Map<Long, String>,

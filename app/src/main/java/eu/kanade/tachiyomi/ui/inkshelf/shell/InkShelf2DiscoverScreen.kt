@@ -276,6 +276,15 @@ internal fun InkShelf2DiscoverScreen(
     val curated = curatedShelves.filterNot {
         it.title in setOf("Critically Acclaimed", "Hidden Gems", "Browse All")
     }
+    val previews = InkShelf2SourceBalance.PreviewRotation()
+    val newestPreview = previews.select(newest, 20, { it }, preserveOrder = true)
+    val personalPreview = previews.select(personalPicks, 9, { it.manga })
+    val acclaimedPreview = previews.select(acclaimed?.comics.orEmpty(), 12, { it })
+    val hiddenPreview = previews.select(hiddenGems?.comics.orEmpty(), 12, { it })
+    val trendingPreview = previews.select(trending, 20, { it })
+    val collectionArt = curated.associate { collection ->
+        collection.title to previews.select(collection.comics, 1, { it }).firstOrNull()
+    }
     val heroPager = rememberPagerState(pageCount = { heroSpotlight.size.coerceAtLeast(1) })
     val highQualityHeroArt = remember { mutableStateMapOf<String, String>() }
     val heroKeys = heroSpotlight.map { it.id }
@@ -304,7 +313,7 @@ internal fun InkShelf2DiscoverScreen(
                 force = force,
                 // Include the currently rendered cards, not just cached picks.
                 // Source-recovery fallbacks should not be repeated immediately.
-                visibleTitles = if (force) personalPicks.map { it.manga.title }.toSet()
+                visibleTitles = if (force) (personalPreview.map { it.manga } + newestPreview + acclaimedPreview + hiddenPreview + trendingPreview).map { it.title }.toSet()
                     else emptySet(),
             )
             if (success) {
@@ -734,7 +743,7 @@ internal fun InkShelf2DiscoverScreen(
                                     .clickable { onSeeAll(collection.title) },
                             ) {
                                 AsyncImage(
-                                    model = collection.comics.first(),
+                                    model = collectionArt[collection.title],
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop,
@@ -760,7 +769,7 @@ internal fun InkShelf2DiscoverScreen(
             item(key = "new") {
                 DiscoverSeeAllHeading("New This Week", onClick = { onSeeAll("New This Week") })
                 Spacer(Modifier.height(7.dp))
-                DiscoverShelf(newest.take(20), onOpen)
+                DiscoverShelf(newestPreview, onOpen)
             }
             item(key = "recommended") {
                 DiscoverSeeAllHeading("Recommended for You", onClick = { onSeeAll("Recommended for You") })
@@ -805,7 +814,7 @@ internal fun InkShelf2DiscoverScreen(
                         else "No personal picks yet. Tap Refresh Picks to find some.",
                     )
                 } else {
-                    DiscoverPersonalShelf(personalPicks.take(9), onOpen)
+                    DiscoverPersonalShelf(personalPreview, onOpen)
                 }
             }
             if (acclaimed != null) {
@@ -817,7 +826,7 @@ internal fun InkShelf2DiscoverScreen(
                         color = InkShelf2Colors.Muted,
                         fontSize = 11.sp,
                     )
-                    DiscoverShelf(acclaimed.comics.take(12), onOpen)
+                    DiscoverShelf(acclaimedPreview, onOpen)
                 }
             }
             if (hiddenGems != null) {
@@ -829,13 +838,13 @@ internal fun InkShelf2DiscoverScreen(
                         color = InkShelf2Colors.Muted,
                         fontSize = 11.sp,
                     )
-                    DiscoverShelf(hiddenGems.comics.take(12), onOpen)
+                    DiscoverShelf(hiddenPreview, onOpen)
                 }
             }
             item(key = "trending-shelf") {
                 DiscoverSeeAllHeading("Popular in Your Sources", onClick = { onSeeAll("Trending Right Now") })
                 Spacer(Modifier.height(7.dp))
-                DiscoverShelf(trending.take(20), onOpen)
+                DiscoverShelf(trendingPreview, onOpen)
             }
         }
         item { Spacer(Modifier.height(6.dp)) }

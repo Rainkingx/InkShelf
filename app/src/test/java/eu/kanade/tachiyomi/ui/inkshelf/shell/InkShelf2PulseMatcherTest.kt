@@ -24,6 +24,25 @@ class InkShelf2PulseMatcherTest {
         )
 
     @Test
+    fun discoverPreviewsPreferFreshSeriesAcrossShelves() {
+        fun comic(title: String) =
+            eu.kanade.tachiyomi.data.database.models.Manga.create(
+                "/comic/${title.hashCode()}", title, 2002L,
+            )
+        val invincible = comic("Invincible (2003)")
+        val latest = listOf(invincible, comic("Batman (2025)"))
+        val alternatives = listOf(comic("Saga (2012)"), comic("Hellboy (1994)"), comic("Spawn (1992)"))
+        val rotation = InkShelf2SourceBalance.PreviewRotation()
+        assertEquals(latest, rotation.select(latest, 20, { it }, preserveOrder = true))
+        val recommended = rotation.select(
+            latest + comic("Invincible Universe (2013)") + alternatives, 9, { it },
+        )
+        assertEquals(alternatives, recommended)
+        val sparse = rotation.select(listOf(invincible, comic("Invincible Universe (2013)")), 12, { it })
+        assertEquals(listOf(invincible), sparse)
+    }
+
+    @Test
     fun throwbackThursdayOnlyUsesKnownPre2000Editions() {
         fun comic(title: String) =
             eu.kanade.tachiyomi.data.database.models.Manga.create(
