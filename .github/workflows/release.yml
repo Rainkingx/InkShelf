@@ -14,7 +14,7 @@ jobs:
   release:
     # The one-time main-branch launch is explicit; ordinary main pushes
     # never publish an APK. Existing version-tag releases remain supported.
-    if: github.ref_type == 'tag' || (github.ref == 'refs/heads/main' && github.event.head_commit.message == 'Publish InkShelf 2.0 public beta 15')
+    if: github.ref_type == 'tag' || (github.ref == 'refs/heads/main' && github.event.head_commit.message == 'Publish InkShelf 2.0 public beta 16')
     name: Build and publish InkShelf
     runs-on: ubuntu-24.04
 
@@ -43,7 +43,7 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
             tag="$GITHUB_REF_NAME"
           else
-            tag="v2.0.0-b15"
+            tag="v2.0.0-b16"
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
@@ -102,9 +102,9 @@ jobs:
           aapt="$(dirname "$signer")/aapt"
           "$signer" verify --print-certs dist/InkShelf.apk > "$RUNNER_TEMP/new-signature.txt"
           cat "$RUNNER_TEMP/new-signature.txt"
-          if [[ "$RELEASE_TAG" == "v2.0.0-b15" ]]; then
+          if [[ "$RELEASE_TAG" == "v2.0.0-b16" ]]; then
             mkdir -p "$RUNNER_TEMP/previous-release"
-            gh release download v2.0.0-b14 --pattern InkShelf.apk --dir "$RUNNER_TEMP/previous-release"
+            gh release download v2.0.0-b15 --pattern InkShelf.apk --dir "$RUNNER_TEMP/previous-release"
             "$signer" verify --print-certs "$RUNNER_TEMP/previous-release/InkShelf.apk" > "$RUNNER_TEMP/old-signature.txt"
             grep 'certificate SHA-256 digest:' "$RUNNER_TEMP/new-signature.txt" | sort > "$RUNNER_TEMP/new-certs.txt"
             grep 'certificate SHA-256 digest:' "$RUNNER_TEMP/old-signature.txt" | sort > "$RUNNER_TEMP/old-certs.txt"
@@ -114,11 +114,11 @@ jobs:
             "$aapt" dump badging "$RUNNER_TEMP/previous-release/InkShelf.apk" > "$RUNNER_TEMP/old-badging.txt"
             grep -F "package: name='eu.kanade.tachiyomi.j2k'" "$RUNNER_TEMP/old-badging.txt"
             grep -F "package: name='eu.kanade.tachiyomi.j2k'" "$RUNNER_TEMP/new-badging.txt"
-            grep -F "versionName='2.0.0-b15'" "$RUNNER_TEMP/new-badging.txt"
-            grep -F "versionCode='214'" "$RUNNER_TEMP/new-badging.txt"
+            grep -F "versionName='2.0.0-b16'" "$RUNNER_TEMP/new-badging.txt"
+            grep -F "versionCode='215'" "$RUNNER_TEMP/new-badging.txt"
             old_code="$(sed -n "s/^package: .*versionCode='\\([0-9]*\\)'.*/\\1/p" "$RUNNER_TEMP/old-badging.txt")"
             test -n "$old_code"
-            test "$old_code" -lt 214
+            test "$old_code" -lt 215
           fi
 
       - name: Publish GitHub Release
@@ -145,10 +145,10 @@ jobs:
                 continue
               fi
             else
-              if [[ "$RELEASE_TAG" == "v2.0.0-b15" ]]; then
+              if [[ "$RELEASE_TAG" == "v2.0.0-b16" ]]; then
                 gh release create "$RELEASE_TAG" dist/InkShelf.apk \
                   --target "$GITHUB_SHA" \
-                  --title "InkShelf 2.0 — Public Beta 15" \
+                  --title "InkShelf 2.0 — Public Beta 16" \
                   --notes-file RELEASE_NOTES.md \
                   --prerelease || true
               else
