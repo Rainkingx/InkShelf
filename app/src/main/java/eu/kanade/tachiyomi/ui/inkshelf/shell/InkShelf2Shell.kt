@@ -1,5 +1,8 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -44,8 +48,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.BlendMode
@@ -192,6 +202,7 @@ fun InkShelf2Shell(
     modifier: Modifier = Modifier,
     showHeader: Boolean = true,
     showBottomNav: Boolean = true,
+    motionRoute: String = currentTab.name,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     InkShelf2Theme {
@@ -220,8 +231,46 @@ fun InkShelf2Shell(
                     )
                 }
             },
-            content = content,
+            content = { padding ->
+                InkShelf2PageMotion(motionRoute) { content(padding) }
+            },
         )
+    }
+}
+
+/**
+ * Only animate the incoming page. Never keep two live route trees, duplicate
+ * SaveableStateProviders or competing BackHandlers during a transition.
+ * The first frame stays still so startup and the cinematic splash are unchanged.
+ */
+@Composable
+private fun InkShelf2PageMotion(route: String, content: @Composable () -> Unit) {
+    val motionAllowed = android.os.Build.VERSION.SDK_INT < 26 ||
+        android.animation.ValueAnimator.areAnimatorsEnabled()
+    var previousRoute by remember { mutableStateOf(route) }
+    val progress = remember(route, motionAllowed) {
+        Animatable(if (motionAllowed && previousRoute != route) 0f else 1f)
+    }
+    LaunchedEffect(route, motionAllowed) {
+        previousRoute = route
+        if (motionAllowed && progress.value < 1f) {
+            progress.animateTo(1f, tween(durationMillis = 220, easing = FastOutSlowInEasing))
+        } else {
+            progress.snapTo(1f)
+        }
+    }
+    // Read animated values only in the graphics layer, not composition.
+    // A modest offset and opacity keep touch targets and comic covers legible.
+    Box(Modifier.fillMaxSize().clipToBounds()) {
+        Box(
+            Modifier.fillMaxSize().graphicsLayer {
+                val remaining = 1f - progress.value
+                alpha = 1f - remaining * 0.22f
+                translationY = 8.dp.toPx() * remaining
+            },
+        ) {
+            content()
+        }
     }
 }
 

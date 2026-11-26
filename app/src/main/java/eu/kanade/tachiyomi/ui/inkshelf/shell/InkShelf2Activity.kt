@@ -1140,8 +1140,37 @@ class InkShelf2Activity : AppCompatActivity() {
                 loadingIssues = false
             }
 
+            // Mirror the visible route priority below. Revisions, network
+            // results, scroll changes and reader progress are not navigation.
+            val motionRoute = when {
+                selected != null && !pulseExpanded && !notificationsOpen ->
+                    "comic:${selected?.source}:${selected?.url}"
+                pulseExpanded -> "pulse"
+                notificationsOpen -> "notifications"
+                selectedDiscoverShelf != null -> "shelf:$selectedDiscoverShelf"
+                selectedDay != null -> "daily-picks"
+                welcomeOpen &&
+                    (tab != InkShelf2Tab.ACCOUNT ||
+                        (!sourceHubOpen && !metronOpen && !themesOpen && !backupOpen && !importOpen)) ->
+                    "welcome:$welcomeStep"
+                tab == InkShelf2Tab.HOME -> "home"
+                tab == InkShelf2Tab.ACCOUNT && sourceHubOpen -> "source-hub:$sourceHubMode:$activeSourceId"
+                tab == InkShelf2Tab.DISCOVER -> "discover"
+                tab == InkShelf2Tab.GUIDES -> "events:$libraryGuideId"
+                tab == InkShelf2Tab.LIBRARY -> "library"
+                tab == InkShelf2Tab.ACCOUNT && settingsOpen && !themesOpen && !downloadsOpen && !backupOpen -> "settings"
+                tab == InkShelf2Tab.ACCOUNT && importOpen -> "import"
+                tab == InkShelf2Tab.ACCOUNT && backupOpen -> "backup"
+                tab == InkShelf2Tab.ACCOUNT && downloadsOpen -> "downloads"
+                tab == InkShelf2Tab.ACCOUNT && updatesOpen -> "updates"
+                tab == InkShelf2Tab.ACCOUNT && historyOpen -> "history"
+                tab == InkShelf2Tab.ACCOUNT && metronOpen -> "metron"
+                tab == InkShelf2Tab.ACCOUNT && themesOpen -> "themes"
+                else -> "menu"
+            }
             InkShelf2Shell(
                 currentTab = tab,
+                motionRoute = motionRoute,
                 showHeader = !welcomeOpen,
                 // Comic details keeps the same four-tab bar. The original
                 // full-screen reader still runs in its separate Activity.
