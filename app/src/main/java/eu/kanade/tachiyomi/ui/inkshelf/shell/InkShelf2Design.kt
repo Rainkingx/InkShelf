@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -277,6 +280,42 @@ internal fun InkShelf2EmptyShelf(message: String) {
         fontSize = 13.sp,
         modifier = Modifier.padding(horizontal = InkShelf2Metrics.PageGutter, vertical = 14.dp),
     )
+}
+
+/** Recoverable failures share the same visual treatment across the shell. */
+@Composable
+internal fun InkShelf2RetryCard(
+    title: String,
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+    actionLabel: String = "Try Again",
+    retryIcon: ImageVector = Icons.Outlined.Refresh,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Column(
+        modifier = modifier.fillMaxWidth().clip(shape)
+            .background(InkShelf2Colors.Surface)
+            .border(1.dp, InkShelf2Colors.Border, shape)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Info, contentDescription = null,
+                tint = InkShelf2Colors.AccentLight, modifier = Modifier.size(19.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(title, color = InkShelf2Colors.Text, fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold)
+        }
+        Text(message, color = InkShelf2Colors.Muted, fontSize = 12.sp, lineHeight = 17.sp)
+        InkShelf2ActionButton(
+            label = actionLabel,
+            onClick = onRetry,
+            outlined = true,
+            leadingIcon = retryIcon,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 /** Single-size, well-contrasted search field. Caller owns search behaviour. */

@@ -1075,18 +1075,12 @@ internal fun InkShelf2DetailsScreen(
                 }
                 if (sourceLinkError != null) {
                     Spacer(Modifier.height(9.dp))
-                    Text(
-                        sourceLinkError,
-                        color = InkShelf2Colors.Muted,
-                        fontSize = 12.sp,
-                        lineHeight = 17.sp,
-                    )
-                    Spacer(Modifier.height(7.dp))
-                    InkShelf2ActionButton(
-                        label = "Find on Installed Sources",
-                        outlined = true,
-                        onClick = onFindSource,
-                        modifier = Modifier.fillMaxWidth(),
+                    InkShelf2RetryCard(
+                        title = "Comic not connected",
+                        message = "No verified readable copy has been linked. Search your installed sources for this edition.",
+                        actionLabel = "Find on Installed Sources",
+                        retryIcon = Icons.Outlined.Search,
+                        onRetry = onFindSource,
                     )
                 }
                 if (isLoadingIssues && chapters.isEmpty()) {
@@ -1207,17 +1201,29 @@ internal fun InkShelf2DetailsScreen(
                 }
             }
         }
+        if (!isLoadingIssues && issuesError != null && sourceLinkError == null) {
+            item {
+                InkShelf2RetryCard(
+                    title = if (chapters.isEmpty()) "Issues unavailable" else "Refresh unsuccessful",
+                    message = issuesError,
+                    onRetry = onRefresh,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+        }
         if (chapters.isEmpty()) {
             item {
                 if (isLoadingIssues) {
                     InkShelf2SkeletonIssues(grid = showIssueGrid)
-                } else {
-                    InkShelf2EmptyShelf(
-                        when {
-                            sourceLinkError != null -> "This recommendation is not connected to a readable extension entry."
-                            issuesError != null -> issuesError
-                            else -> "No issues loaded yet. Tap Read Now to fetch them from the source."
-                        },
+                } else if (sourceLinkError != null) {
+                    InkShelf2EmptyShelf("Find a matching edition using the button above.")
+                } else if (issuesError == null) {
+                    InkShelf2RetryCard(
+                        title = "No issues loaded",
+                        message = "Fetch the latest issues from this source.",
+                        actionLabel = "Load Issues",
+                        onRetry = onRefresh,
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
             }

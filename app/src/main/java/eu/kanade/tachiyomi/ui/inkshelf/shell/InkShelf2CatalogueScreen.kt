@@ -79,6 +79,7 @@ internal fun InkShelf2CatalogueScreen(
     var page by rememberSaveable(source.id) { mutableIntStateOf(1) }
     var comics by remember { mutableStateOf<List<Manga>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var retry by remember { mutableStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var hasMore by remember { mutableStateOf(false) }
 
@@ -86,8 +87,9 @@ internal fun InkShelf2CatalogueScreen(
         search = draft.trim()
         comics = emptyList()
         page = 1
+        retry += 1
     }
-    LaunchedEffect(source.id, search, latest, page) {
+    LaunchedEffect(source.id, search, latest, page, retry) {
         loading = true
         error = null
         try {
@@ -99,7 +101,9 @@ internal fun InkShelf2CatalogueScreen(
             }
             hasMore = response.hasMore && response.comics.isNotEmpty()
         } catch (failure: Exception) {
-            error = failure.message ?: "This source is not responding."
+            if (failure is kotlinx.coroutines.CancellationException) throw failure
+            android.util.Log.w("InkShelf2", "Catalogue request failed", failure)
+            error = "Could not load comics from ${source.name}. Check your connection or try again."
             hasMore = false
         } finally {
             loading = false
@@ -137,13 +141,13 @@ internal fun InkShelf2CatalogueScreen(
         ) {
             InkShelf2ActionButton(
                 if (search.isBlank() && !latest) "Popular ✓" else "Popular",
-                onClick = { draft = ""; search = ""; latest = false; page = 1; comics = emptyList() },
+                onClick = { draft = ""; search = ""; latest = false; page = 1; comics = emptyList(); retry += 1 },
                 outlined = !(search.isBlank() && !latest),
                 modifier = Modifier.weight(1f),
             )
             InkShelf2ActionButton(
                 if (search.isBlank() && latest) "Latest ✓" else "Latest",
-                onClick = { draft = ""; search = ""; latest = true; page = 1; comics = emptyList() },
+                onClick = { draft = ""; search = ""; latest = true; page = 1; comics = emptyList(); retry += 1 },
                 enabled = source.supportsLatest,
                 outlined = !(search.isBlank() && latest),
                 modifier = Modifier.weight(1f),
@@ -204,7 +208,11 @@ internal fun InkShelf2CatalogueScreen(
             }
             error?.let { message ->
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    InkShelf2EmptyShelf(message)
+                    InkShelf2RetryCard(
+                        title = "Source unavailable",
+                        message = message,
+                        onRetry = { retry += 1 },
+                    )
                 }
             }
             if (comics.isEmpty() && !loading && error == null) {

@@ -109,6 +109,7 @@ internal fun InkShelf2DiscoverScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var activeQuery by rememberSaveable { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
+    var searchRetry by remember { mutableStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var found by remember { mutableStateOf<InkShelf2SourcesEngine.GlobalSearchResults?>(null) }
     var refreshingPicks by remember { mutableStateOf(false) }
@@ -208,7 +209,7 @@ internal fun InkShelf2DiscoverScreen(
             activeQuery = cleaned
         }
     }
-    LaunchedEffect(activeQuery, sourceIds) {
+    LaunchedEffect(activeQuery, sourceIds, searchRetry) {
         if (activeQuery.isBlank()) {
             found = null
             foundQuery = ""
@@ -227,7 +228,8 @@ internal fun InkShelf2DiscoverScreen(
         } catch (failure: Exception) {
             // Cancellation is managed by LaunchedEffect when a new query arrives.
             if (failure is kotlinx.coroutines.CancellationException) throw failure
-            error = failure.message ?: "Source search could not be completed."
+            android.util.Log.w("InkShelf2", "Source search failed", failure)
+            error = "Check your connection and try searching again."
         } finally {
             searching = false
         }
@@ -508,7 +510,11 @@ internal fun InkShelf2DiscoverScreen(
                             Text("Searching ${sources.size} comic sources…",
                                 color = InkShelf2Colors.Muted, fontSize = 12.sp)
                         }
-                        error != null -> Text(error.orEmpty(), color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                        error != null -> InkShelf2RetryCard(
+                            title = "Search unavailable",
+                            message = error.orEmpty(),
+                            onRetry = { searchRetry += 1 },
+                        )
                         found != null -> {
                             val result = found!!
                             Text(
@@ -518,10 +524,13 @@ internal fun InkShelf2DiscoverScreen(
                                 fontSize = 12.sp,
                             )
                             if (result.failedSources > 0) {
-                                Text(
-                                    "${result.failedSources} source(s) did not respond; other results are shown.",
-                                    color = InkShelf2Colors.AccentLight,
-                                    fontSize = 11.sp,
+                                val allFailed = result.failedSources >= result.searchedSources
+                                InkShelf2RetryCard(
+                                    title = if (allFailed) "Sources unavailable" else "Some sources unavailable",
+                                    message = if (allFailed)
+                                        "None of your sources responded. Check your connection or source availability."
+                                    else "${result.failedSources} source(s) did not respond. Available results are shown below.",
+                                    onRetry = { searchRetry += 1 },
                                 )
                             }
                         }
@@ -564,7 +573,8 @@ internal fun InkShelf2DiscoverScreen(
                     )
                 }
             }
-            if (!searching && error == null && comics.isEmpty() && query.length >= 2 && found != null) {
+            if (!searching && error == null && comics.isEmpty() && query.length >= 2 &&
+                found?.let { it.failedSources < it.searchedSources } == true) {
                 item(key = "search-empty") {
                     InkShelf2EmptyShelf("No matches from your installed sources. Try a different title.")
                 }

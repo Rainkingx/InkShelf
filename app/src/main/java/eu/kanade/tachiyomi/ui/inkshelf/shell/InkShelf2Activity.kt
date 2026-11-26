@@ -847,10 +847,12 @@ class InkShelf2Activity : AppCompatActivity() {
                         }
                     } catch (cancel: CancellationException) {
                         throw cancel
-                    } catch (_: Exception) {
-                        chapters = engine.chapters(comic)
-                        Toast.makeText(this@InkShelf2Activity,
-                            "Could not refresh issues. Existing issues kept.", Toast.LENGTH_LONG).show()
+                    } catch (failure: Exception) {
+                        android.util.Log.w("InkShelf2", "Manual details refresh failed", failure)
+                        // Keep the already visible chapters if the cache itself is unavailable.
+                        issuesError = if (chapters.isNotEmpty())
+                            "The source could not refresh this comic. Your existing issues are still available."
+                        else "Could not load issues from this source. Check your connection and try again."
                     } finally {
                         loadingIssues = false
                         refreshingDetails = false
@@ -865,7 +867,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     throw cancel
                 } catch (error: Exception) {
                     android.util.Log.w("InkShelf2", "Cached issues unavailable", error)
-                    issuesError = "This comic's issues could not be loaded. Please try reopening it."
+                    issuesError = "The saved issue list could not be loaded. Try fetching the issues again."
                     loadingIssues = false
                     return@LaunchedEffect
                 }
@@ -901,7 +903,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
-                    issuesError = "Could not refresh this comic. Check your source connection."
+                    issuesError = "Could not load this comic from its source. Check your connection and try again."
                 } finally {
                     loadingIssues = false
                 }
