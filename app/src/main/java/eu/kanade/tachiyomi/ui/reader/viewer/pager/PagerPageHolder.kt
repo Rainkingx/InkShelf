@@ -124,6 +124,7 @@ class PagerPageHolder(
     private var scope = MainScope()
 
     private var smartBubbleRegions: List<RectF>? = null
+    private var smartBubblePanelIndices: List<Int?> = emptyList()
     private var smartBubbleIndex = -1
     private var smartBubbleScanJob: Job? = null
     private var smartBubblePendingDirection: Int? = null
@@ -402,8 +403,9 @@ class PagerPageHolder(
         val target = if (smartBubbleIndex < 0) 0 else smartBubbleIndex + 1
         if (target > regions.lastIndex) return SmartBubbleNavigationResult.PAGE_COMPLETE
 
+        val previous = smartBubbleIndex
         smartBubbleIndex = target
-        transitionSmartBubble(target)
+        transitionSmartBubble(target, previous)
         return SmartBubbleNavigationResult.HANDLED
     }
 
@@ -423,8 +425,9 @@ class PagerPageHolder(
         val target = if (smartBubbleIndex < 0) regions.lastIndex else smartBubbleIndex - 1
         if (target < 0) return SmartBubbleNavigationResult.PAGE_COMPLETE
 
+        val previous = smartBubbleIndex
         smartBubbleIndex = target
-        transitionSmartBubble(target)
+        transitionSmartBubble(target, previous)
         return SmartBubbleNavigationResult.HANDLED
     }
 
@@ -433,7 +436,7 @@ class PagerPageHolder(
      * the next target. This keeps the artwork/panel geography visible instead of making Smart Bubble
      * feel like a sequence of disconnected OCR crops.
      */
-    private fun transitionSmartBubble(index: Int) {
+    private fun transitionSmartBubble(index: Int, previous: Int) {
         val view = pageView as? SubsamplingScaleImageView
         if (view == null || !view.isReady || view.sWidth <= 0 || view.sHeight <= 0) {
             focusSmartBubble(index)
@@ -442,6 +445,17 @@ class PagerPageHolder(
 
         val generation = ++smartBubbleTransitionGeneration
         smartBubbleTransitionInProgress = true
+        // Only pull back to the full page on a confirmed panel change. With
+        // uncertain ownership, a direct move is less disruptive than a false
+        // zoom-out between every bubble. V2 keeps its original transitions.
+        if (viewer.activity.preferences.panelFlowPanelBoundaries().get() && previous >= 0) {
+            val fromPanel = smartBubblePanelIndices.getOrNull(previous)
+            val toPanel = smartBubblePanelIndices.getOrNull(index)
+            if (fromPanel == null || toPanel == null || fromPanel == toPanel) {
+                focusSmartBubble(index, preserveUnknownScale = fromPanel == null || toPanel == null)
+                return
+            }
+        }
         val pageCenter = PointF(view.sWidth / 2f, view.sHeight / 2f)
 
         view
@@ -458,7 +472,7 @@ class PagerPageHolder(
                     !viewer.smartBubbleEnabled ||
                     !viewer.isCurrentSmartBubblePage(page)
                 ) {
-                    smartBubbleTransitionInProgress = false
+                    if (generation == smartBubbleTransitionGeneration) smartBubbleTransitionInProgress = false
                     return@postDelayed
                 }
 
@@ -556,7 +570,8 @@ class PagerPageHolder(
                     }
 
                 withContext(Dispatchers.Main) {
-                    smartBubbleRegions = regions
+                    smartBubbleRegions = regions.map { it.region }
+                    smartBubblePanelIndices = regions.map { it.panelIndex }
                     smartBubbleScanJob = null
 
                     if (viewer.isCurrentSmartBubblePage(page)) {
@@ -566,7 +581,7 @@ class PagerPageHolder(
             }
     }
 
-    private fun focusSmartBubble(index: Int) {
+    private fun focusSmartBubble(index: Int, preserveUnknownScale: Boolean = false) {
         val region = smartBubbleRegions?.getOrNull(index) ?: return
         val view = pageView as? SubsamplingScaleImageView ?: return
         if (!view.isReady || view.sWidth <= 0 || view.sHeight <= 0 || view.width <= 0 || view.height <= 0) {
@@ -576,13 +591,32 @@ class PagerPageHolder(
 
         val sourceWidth = view.sWidth.toFloat()
         val sourceHeight = view.sHeight.toFloat()
-        val regionWidth = (region.width() * sourceWidth).coerceAtLeast(1f)
-        val regionHeight = (region.height() * sourceHeight).coerceAtLeast(1f)
-        val fitWidth = view.width * SMART_BUBBLE_WIDTH_FILL / regionWidth
-        val fitHeight = view.height * SMART_BUBBLE_HEIGHT_FILL / regionHeight
         val upperScale = min(view.maxScale, view.minScale * SMART_BUBBLE_MAX_ZOOM)
         val lowerScale = min(upperScale, view.minScale * SMART_BUBBLE_MIN_ZOOM)
-        val targetScale = min(fitWidth, fitHeight).coerceIn(lowerScale, upperScale)
+        fun preferredScale(target: RectF): Float {
+            val width = (target.width() * sourceWidth).coerceAtLeast(1f)
+            val height = (target.height() * sourceHeight).coerceAtLeast(1f)
+            return min(view.width * SMART_BUBBLE_WIDTH_FILL / width,
+                view.height * SMART_BUBBLE_HEIGHT_FILL / height).coerceIn(lowerScale, upperScale)
+        }
+        val panelIndex = smartBubblePanelIndices.getOrNull(index)
+        val preferred = preferredScale(region)
+        val targetScale = if (viewer.activity.preferences.panelFlowPanelBoundaries().get() && panelIndex != null) {
+            // Use one readable scale for the whole panel, chosen so even its
+            // largest dialogue group fits. Pan between stops at that scale.
+            smartBubbleRegions.orEmpty().mapIndexedNotNull { i, target ->
+                if (smartBubblePanelIndices.getOrNull(i) == panelIndex) preferredScale(target) else null
+            }.minOrNull() ?: preferred
+        } else if (preserveUnknownScale) {
+            // Without a confirmed panel, keep the current zoom when the next
+            // target still fits with context. Never zoom in just because the
+            // next OCR box is smaller; zoom out only enough to fit larger text.
+            val fitWithMargin = min(
+                view.width * 0.80f / (region.width() * sourceWidth).coerceAtLeast(1f),
+                view.height * 0.78f / (region.height() * sourceHeight).coerceAtLeast(1f),
+            ).coerceIn(lowerScale, upperScale)
+            view.scale.coerceIn(lowerScale, fitWithMargin)
+        } else preferred
 
         // Keep the whole target comfortably inside the viewport instead of blindly centring it.
         // This particularly matters for the first balloon near the top edge, where centring the

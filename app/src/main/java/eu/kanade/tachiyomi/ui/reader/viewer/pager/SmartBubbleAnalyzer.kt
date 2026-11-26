@@ -16,7 +16,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Panel Flow V3.1: panel-first ordering and artwork-only stops, retaining V2.
+ * Panel Flow V3.2: panel-first ordering and artwork-only stops, retaining V2.
  *
  * Primary path: bundled Google ML Kit OCR. We navigate to actual recognized dialogue/caption text
  * instead of guessing from white shapes, which removes the largest source of V1 false targets.
@@ -26,7 +26,10 @@ import kotlin.math.min
  */
 
 internal object SmartBubbleAnalyzer {
-    suspend fun analyze(streamProvider: () -> InputStream, usePanelBoundaries: Boolean = true): List<RectF> {
+    // Keep the proven detection order and attach panel ownership for camera movement.
+    data class Stop(val region: RectF, val panelIndex: Int? = null)
+
+    suspend fun analyze(streamProvider: () -> InputStream, usePanelBoundaries: Boolean = true): List<Stop> {
         val bitmap = decodeForAnalysis(streamProvider) ?: return emptyList()
         return try {
             // V2: OCR is authoritative when it finds dialogue. It cannot confuse a plain white
@@ -43,7 +46,7 @@ internal object SmartBubbleAnalyzer {
                 val fallbackBitmap = bitmap.forHeuristicFallback()
                 try {
                     val fallback = detect(fallbackBitmap)
-                    if (usePanelBoundaries) refinePanelStops(bitmap, fallback, groupDialogue = false) ?: fallback else fallback
+                    if (usePanelBoundaries) refinePanelStops(bitmap, fallback, groupDialogue = false) ?: fallback.map { Stop(it) } else fallback.map { Stop(it) }
                 } finally {
                     if (fallbackBitmap !== bitmap) fallbackBitmap.recycle()
                 }
@@ -72,7 +75,7 @@ internal object SmartBubbleAnalyzer {
         return streamProvider().use { BitmapFactory.decodeStream(it, null, options) }
     }
 
-    private suspend fun detectOcrTextRegions(bitmap: Bitmap, usePanelBoundaries: Boolean): List<RectF> {
+    private suspend fun detectOcrTextRegions(bitmap: Bitmap, usePanelBoundaries: Boolean): List<Stop> {
         if (bitmap.width < 80 || bitmap.height < 80) return emptyList()
 
         val result = recognizeText(bitmap)
@@ -111,6 +114,7 @@ internal object SmartBubbleAnalyzer {
                     it.height() in OCR_MIN_FINAL_HEIGHT_RATIO..PANEL_STOP_MAX_FINAL_HEIGHT_RATIO
             }
             .take(MAX_PANEL_STOPS_PER_PAGE)
+            .map { Stop(it) }
     }
 
     /**
@@ -120,7 +124,7 @@ internal object SmartBubbleAnalyzer {
      * must not discard an otherwise reliable panel layout. Preserve every
      * dialogue box; fall back only if ownership is genuinely ambiguous.
      */
-    private fun refinePanelStops(bitmap: Bitmap, dialogue: List<RectF>, groupDialogue: Boolean): List<RectF>? =
+    private fun refinePanelStops(bitmap: Bitmap, dialogue: List<RectF>, groupDialogue: Boolean): List<Stop>? =
         runCatching {
             val scale = (720f / max(bitmap.width, bitmap.height)).coerceAtMost(1f)
             val width = max(1, (bitmap.width * scale).toInt())
@@ -157,7 +161,7 @@ internal object SmartBubbleAnalyzer {
                 if (targets.isEmpty()) {
                     // No dialogue recognized here: show the artwork rather than
                     // skipping directly to the next speech balloon.
-                    listOf(panel)
+                    listOf(Stop(panel, index))
                 } else {
                     val groups = if (groupDialogue) groupDialogueIntoPanelStops(targets) else targets
                     // Never let an unusually large dialogue union undo all the
@@ -166,7 +170,7 @@ internal object SmartBubbleAnalyzer {
                             it.width() !in OCR_MIN_FINAL_WIDTH_RATIO..PANEL_STOP_MAX_FINAL_WIDTH_RATIO ||
                                 it.height() !in OCR_MIN_FINAL_HEIGHT_RATIO..PANEL_STOP_MAX_FINAL_HEIGHT_RATIO
                         }) targets else groups
-                    readingOrder(safeGroups)
+                    readingOrder(safeGroups).map { Stop(it, index) }
                 }
             }
             // Busy pages may legitimately have more than 18 dialogue stops.
