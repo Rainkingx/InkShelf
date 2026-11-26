@@ -704,7 +704,7 @@ internal fun InkShelf2DetailPage(
                                 bottom = if (compactComicHero) 12.dp else 16.dp),
                         verticalAlignment = Alignment.Bottom,
                     ) {
-                        AsyncImage(
+                        InkShelf2LoadingArtwork(
                             model = imageModel,
                             contentDescription = "Cover of $title",
                             modifier = Modifier.size(
@@ -1209,14 +1209,17 @@ internal fun InkShelf2DetailsScreen(
         }
         if (chapters.isEmpty()) {
             item {
-                InkShelf2EmptyShelf(
-                    when {
-                        isLoadingIssues -> "Loading issues from the installed comic source…"
-                        sourceLinkError != null -> "This recommendation is not connected to a readable extension entry."
-                        issuesError != null -> issuesError
-                        else -> "No issues loaded yet. Tap Read Now to fetch them from the source."
-                    },
-                )
+                if (isLoadingIssues) {
+                    InkShelf2SkeletonIssues(grid = showIssueGrid)
+                } else {
+                    InkShelf2EmptyShelf(
+                        when {
+                            sourceLinkError != null -> "This recommendation is not connected to a readable extension entry."
+                            issuesError != null -> issuesError
+                            else -> "No issues loaded yet. Tap Read Now to fetch them from the source."
+                        },
+                    )
+                }
             }
 
         } else if (showIssueGrid) {
@@ -1370,7 +1373,7 @@ internal fun InkShelf2CoverCard(
                     } else Modifier,
                 ),
         ) {
-            AsyncImage(
+            InkShelf2LoadingArtwork(
                 model = imageModel,
                 contentDescription = "Open $title",
                 modifier = Modifier.fillMaxSize(),

@@ -56,7 +56,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Manga
 import java.util.Locale
 
@@ -455,7 +454,7 @@ private fun ShelfCover(item: InkShelf2LibraryItem, onClick: () -> Unit, onLongCl
             .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.7f), shape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
-        AsyncImage(
+        InkShelf2LoadingArtwork(
             model = item.manga,
             contentDescription = "Open ${item.manga.title}",
             modifier = Modifier.fillMaxSize(),
@@ -559,7 +558,7 @@ private fun ShelfListRow(item: InkShelf2LibraryItem, onClick: () -> Unit, onLong
             .padding(horizontal = 16.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AsyncImage(
+        InkShelf2LoadingArtwork(
             model = item.manga,
             contentDescription = null,
             modifier = Modifier.size(61.dp, 86.dp).clip(RoundedCornerShape(7.dp)),

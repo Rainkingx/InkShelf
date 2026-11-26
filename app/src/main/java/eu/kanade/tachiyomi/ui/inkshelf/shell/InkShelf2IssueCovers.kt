@@ -42,7 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.data.download.model.Download
@@ -156,7 +155,7 @@ internal fun InkShelf2IssueArtworkFrame(
             )
         }
         if (imageUrl != null && !failed) {
-            AsyncImage(
+            InkShelf2LoadingArtwork(
                 model = imageUrl,
                 contentDescription = "Cover for $title",
                 modifier = Modifier.fillMaxSize(),

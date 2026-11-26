@@ -529,6 +529,9 @@ internal fun InkShelf2DiscoverScreen(
                 }
             }
             val comics = found?.results.orEmpty()
+            if (searching && comics.isEmpty()) {
+                item(key = "search-skeleton") { InkShelf2SkeletonShelf() }
+            }
             val matchedEditions = if (guideIssueTarget == null) emptyList()
                 else comics.filter {
                     InkShelf2GuideEdition.classify(guideIssueTarget, it.manga.title) ==
@@ -593,7 +596,7 @@ internal fun InkShelf2DiscoverScreen(
                             modifier = Modifier.weight(1f)
                                 .clickable { onOpenSearchResult(result.manga) },
                         ) {
-                            AsyncImage(
+                            InkShelf2LoadingArtwork(
                                 model = result.manga,
                                 contentDescription = "Open ${result.manga.title}",
                                 modifier = Modifier.fillMaxWidth().aspectRatio(0.71f)
@@ -804,7 +807,8 @@ internal fun InkShelf2DiscoverScreen(
             item(key = "new") {
                 DiscoverSeeAllHeading("New This Week", onClick = { onSeeAll("New This Week") })
                 Spacer(Modifier.height(7.dp))
-                DiscoverShelf(newestPreview, onOpen)
+                if (newestPreview.isEmpty() && refreshingDiscover) InkShelf2SkeletonShelf()
+                else DiscoverShelf(newestPreview, onOpen)
             }
             item(key = "recommended") {
                 DiscoverSeeAllHeading("Recommended for You", onClick = { onSeeAll("Recommended for You") })
@@ -843,11 +847,14 @@ internal fun InkShelf2DiscoverScreen(
                     )
                 }
                 if (personalPicks.isEmpty()) {
-                    InkShelf2EmptyShelf(
-                        if (refreshingPicks) "Finding comics based on your reading…"
-                        else if (enabledSourceIds.isEmpty()) "Enable a comic extension to get personal recommendations."
-                        else "No personal picks yet. Tap Refresh Picks to find some.",
-                    )
+                    if (refreshingPicks || refreshingDiscover) {
+                        InkShelf2SkeletonShelf("Finding comics based on your reading…")
+                    } else {
+                        InkShelf2EmptyShelf(
+                            if (enabledSourceIds.isEmpty()) "Enable a comic extension to get personal recommendations."
+                            else "No personal picks yet. Tap Refresh Picks to find some.",
+                        )
+                    }
                 } else {
                     DiscoverPersonalShelf(personalPreview, onOpen)
                 }
@@ -879,7 +886,8 @@ internal fun InkShelf2DiscoverScreen(
             item(key = "trending-shelf") {
                 DiscoverSeeAllHeading("Popular in Your Sources", onClick = { onSeeAll("Trending Right Now") })
                 Spacer(Modifier.height(7.dp))
-                DiscoverShelf(trendingPreview, onOpen)
+                if (trendingPreview.isEmpty() && refreshingDiscover) InkShelf2SkeletonShelf()
+                else DiscoverShelf(trendingPreview, onOpen)
             }
         }
         item { Spacer(Modifier.height(6.dp)) }
@@ -983,7 +991,7 @@ private fun DiscoverPersonalShelf(
     ) {
         items(picks, key = { "${it.manga.source}:${it.manga.url}" }) { pick ->
             Column(modifier = Modifier.width(118.dp)) {
-                AsyncImage(
+                InkShelf2LoadingArtwork(
                     model = pick.manga,
                     contentDescription = "Open ${pick.manga.title}",
                     modifier = Modifier.fillMaxWidth().aspectRatio(0.71f)

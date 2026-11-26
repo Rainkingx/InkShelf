@@ -24,7 +24,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -47,7 +46,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.source.CatalogueSource
 
@@ -176,7 +174,7 @@ internal fun InkShelf2CatalogueScreen(
                             .border(1.dp, InkShelf2Colors.Border.copy(alpha = 0.7f),
                                 RoundedCornerShape(9.dp)),
                     ) {
-                        AsyncImage(
+                        InkShelf2LoadingArtwork(
                             model = manga, contentDescription = "Open ${manga.title}",
                             modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
                         )
@@ -186,14 +184,18 @@ internal fun InkShelf2CatalogueScreen(
                         maxLines = 2, lineHeight = 13.sp, overflow = TextOverflow.Ellipsis)
                 }
             }
-            if (loading) {
+            if (loading && comics.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    InkShelf2SkeletonShelf("Loading comics…")
+                }
+            } else if (loading) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(20.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        CircularProgressIndicator(color = InkShelf2Colors.AccentLight,
+                        InkShelf2LoadingIndicator(color = InkShelf2Colors.AccentLight,
                             modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.padding(horizontal = 6.dp))
                         Text("Loading comics…", color = InkShelf2Colors.Muted, fontSize = 12.sp)
