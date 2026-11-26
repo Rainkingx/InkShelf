@@ -93,6 +93,7 @@ internal fun InkShelf2SourceHub(
     var tab by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
     var hubTrail by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
     var search by rememberSaveable { mutableStateOf("") }
+    var availableExpanded by rememberSaveable { mutableStateOf(false) }
     var repoUrl by rememberSaveable(initialRepoUrl) { mutableStateOf(initialRepoUrl) }
     if (selectedSourceId != null) {
         catalogueState.SaveableStateProvider("catalogue:$selectedSourceId") {
@@ -546,27 +547,46 @@ internal fun InkShelf2SourceHub(
                         (ext.lang == "all" || ext.lang in languages) &&
                         installed.none { it.pkgName == ext.pkgName } &&
                         untrusted.none { it.pkgName == ext.pkgName } &&
-                        (search.isBlank() || ext.name.contains(search, true) ||
+                        (!availableExpanded || search.isBlank() || ext.name.contains(search, true) ||
                             ext.sources.any { it.name.contains(search, true) })
                 }.sortedBy { it.name }
                 item {
                     InkShelf2SectionHeading("Available (${candidates.size})", null)
-                    InkShelf2SearchField(search, onValueChange = { search = it },
-                        modifier = Modifier.padding(horizontal = 16.dp))
+                    InkShelf2ActionButton(
+                        if (availableExpanded) "Hide available sources" else "See more sources (${candidates.size})",
+                        onClick = {
+                            availableExpanded = !availableExpanded
+                            if (!availableExpanded) search = ""
+                        },
+                        outlined = true,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    )
+                    if (availableExpanded) {
+                        OutlinedTextField(
+                            value = search,
+                            onValueChange = { search = it },
+                            placeholder = { Text("Search available sources") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(24.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                        )
+                    }
                     if (repos.isEmpty()) {
                         InkShelf2EmptyShelf("No extension repositories configured.")
                         InkShelf2ActionButton("Add Repository", onClick = { openHubTab("Repos") },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
                     }
                 }
-                items(candidates.take(250), key = { "available:" + it.pkgName }) { ext ->
-                    HubInfoRow(ext.name,
-                        "${ext.lang.uppercase()} • ${ext.sources.size} sources • ${ext.versionName}",
-                        if (ext.pkgName in installing) "Installing…" else "Install",
-                        onAction = { install(ext) })
-                }
-                if (candidates.isEmpty() && repos.isNotEmpty() && !refreshing) {
-                    item { InkShelf2EmptyShelf("No extensions matched. Try another search or refresh.") }
+                if (availableExpanded) {
+                    items(candidates, key = { "available:" + it.pkgName }) { ext ->
+                        HubInfoRow(ext.name,
+                            "${ext.lang.uppercase()} • ${ext.sources.size} sources • ${ext.versionName}",
+                            if (ext.pkgName in installing) "Installing…" else "Install",
+                            onAction = { install(ext) })
+                    }
+                    if (candidates.isEmpty() && repos.isNotEmpty() && !refreshing) {
+                        item { InkShelf2EmptyShelf("No extensions matched. Try another search or refresh.") }
+                    }
                 }
                 item {
                     InkShelf2ActionButton(

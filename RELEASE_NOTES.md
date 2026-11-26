@@ -1,11 +1,12 @@
-# InkShelf 2.0 — Public Beta 14
+# InkShelf 2.0 — Public Beta 15
 
-- The update dialog now features 20 playful comic-book references, randomly shuffled each time it opens.
-- Messages rotate every four seconds during downloads, while actual progress and release notes remain visible.
-- All existing Discover, Spotlight and reader features remain unchanged.
+- The available extension catalogue is collapsed by default, keeping installed and untrusted extensions easy to find.
+- Tap See more sources to expand the available catalogue, filter by name and install extensions. Tap Hide available sources to collapse it again.
+- The expanded lazy list displays all matching extensions instead of stopping at 250.
+- Existing extension updates, trust, pause, repository controls and library data remain unchanged.
 
 ## Updating
 
-From Beta 13, use the app update notification or Menu > Settings > Check for updates. Back up your library before installing. The package identity and release signing key remain unchanged. The new messages appear in the updater after Beta 14 is installed.
+Use the in-app update notification to install Beta 15. Back up your library before updating. Package identity and release signing remain unchanged.
 
 This is a prerelease. InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders.
