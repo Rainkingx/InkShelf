@@ -1,16 +1,12 @@
-# InkShelf 2.0 — Public Beta 17
+# InkShelf 2.0 — Public Beta 18
 
-## Stability improvements
-
-- Source search now isolates individual source timeouts so other sources can still return results.
-- Automatic fallback can find a matching, explicitly dated edition when the original source cannot load its issue list. Disabled sources are excluded and existing library entries are not migrated.
-- Coordinated issue loading and library writes reduce racing requests and duplicate saves.
-- Library duplicate detection recognises equivalent titles with missing publication years when a substantial synopsis matches. Distinct editions, such as Noir editions, and conflicting publication years remain separate.
-- Existing duplicate favourites are grouped for display without deleting their source records, downloads or reading history. The active copy with the most progress is preferred.
-- Device testing on Dev Build 641 confirmed duplicate cards were gone and downloads, reading, resume and startup worked for the tester.
+- Improved library duplicate matching when source titles or synopses differ. Absolute Superman copies are recognised while Noir and other distinct editions remain separate.
+- Pull down on Comic Details to refresh issues and metadata from the selected source, using the same gesture as Discover. The three-dot menu also includes Refresh comic and issues.
+- Existing issues remain visible during refresh. Cached chapters are retained if the source provides an incomplete list or fails to respond.
+- Issue counts may differ between sources; refresh does not combine issues from separate editions.
 
 ## Updating
 
-Use the in-app update notification. The public app identity and release signing remain unchanged. Back up your library before updating. Automatic fallback covers issue-list failures, not individual comic page failures; unverified editions must be selected manually.
+Use the in-app update notification. Package identity and release signing remain unchanged. Back up your library before updating.
 
 This is a prerelease. InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders.
