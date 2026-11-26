@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit
 
 /** Local release-date cache. Never sends library titles to the API. */
 internal object InkShelf2ReleaseRadar {
-    data class Issue(val id: Int, val title: String, val year: Int, val number: String, val date: LocalDate)
+    data class Issue(val id: Int, val title: String, val year: Int, val number: String, val date: LocalDate, val coverUrl: String? = null)
     data class Calendar(val issues: List<Issue>, val partial: Boolean, val fetched: Long)
     private val lock = Mutex()
     private val yearTag = Regex("""\s*[\(\[]((?:19|20)\d{2})(?:\s*[-–—][^\)\]]*)?[\)\]]""")
@@ -63,7 +63,8 @@ internal object InkShelf2ReleaseRadar {
             val title = series.optString("name").ifBlank { series.optString("series") }
             val id = row.optInt("id")
             if (title.isBlank() || id <= 0) continue
-            add(Issue(id, title, series.optInt("year_began"), row.optString("number"), date))
+            val cover = row.optString("image").takeIf { it.startsWith("https://") }
+            add(Issue(id, title, series.optInt("year_began"), row.optString("number"), date, cover))
         }
     }.distinctBy { it.id }.sortedWith(compareBy<Issue> { it.date }.thenBy { it.title }.thenBy { it.number })
 

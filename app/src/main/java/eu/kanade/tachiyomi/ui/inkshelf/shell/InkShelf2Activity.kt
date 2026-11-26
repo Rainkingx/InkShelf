@@ -708,8 +708,8 @@ class InkShelf2Activity : AppCompatActivity() {
                     }
                 }
             }
-            LaunchedEffect(historyOpen, refreshEpoch) {
-                if (historyOpen) readingHistory = engine.loadHistory()
+            LaunchedEffect(historyOpen, radarOpen, refreshEpoch) {
+                if (historyOpen || radarOpen) readingHistory = engine.loadHistory()
             }
             LaunchedEffect(updatesOpen, refreshEpoch) {
                 if (updatesOpen) recentIssueUpdates = engine.recentUpdates()
@@ -956,6 +956,8 @@ class InkShelf2Activity : AppCompatActivity() {
                 }
                 when (action) {
                     ACTION_SHOW_RELEASE_RADAR -> {
+                        selected = null
+                        comicBackStack = emptyList()
                         openTab(InkShelf2Tab.DISCOVER)
                         radarOpen = true
                     }
@@ -1066,6 +1068,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         cinematicSplash = null
                     }
                     pulseExpanded -> closePulse()
+                    radarOpen && selected != null -> backFromComicDetails()
                     radarOpen -> radarOpen = false
                     notificationsOpen -> notificationsOpen = false
                     selected != null -> backFromComicDetails()
@@ -1172,8 +1175,8 @@ class InkShelf2Activity : AppCompatActivity() {
             // Mirror the visible route priority below. Revisions, network
             // results, scroll changes and reader progress are not navigation.
             val motionRoute = when {
-                radarOpen -> "release-radar"
-                selected != null && !pulseExpanded && !notificationsOpen ->
+                radarOpen && selected == null -> "release-radar"
+                selected != null && !pulseExpanded && (!notificationsOpen || radarOpen) ->
                     "comic:${selected?.source}:${selected?.url}"
                 pulseExpanded -> "pulse"
                 notificationsOpen -> "notifications"
@@ -1240,11 +1243,24 @@ class InkShelf2Activity : AppCompatActivity() {
                         .toMap()
                 }
                 when {
-                    radarOpen -> InkShelf2ReleaseRadarScreen(
-                        padding = padding, library = library, onBack = { radarOpen = false },
-                        onMetron = { openTab(InkShelf2Tab.ACCOUNT); metronOpen = true },
-                    )
-                    comic != null && !pulseExpanded && !notificationsOpen -> key(detailsRevision, comic.source, comic.url) {
+                    radarOpen && comic == null -> pageState.SaveableStateProvider("release-radar") {
+                        InkShelf2ReleaseRadarScreen(
+                            padding = padding, library = library, history = readingHistory,
+                            discover = discover, sources = enabledSources, onOpen = openComicDetails,
+                            onSearch = { issue ->
+                                clearDiscoverSearch()
+                                openTab(InkShelf2Tab.DISCOVER)
+                                discoverSearchPreset = issue.title
+                                searchFocusEpoch += 1
+                                Toast.makeText(this@InkShelf2Activity,
+                                    "Choose the correct series edition" + if (issue.year > 0) " (${issue.year})" else "",
+                                    Toast.LENGTH_LONG).show()
+                            },
+                            onBack = { radarOpen = false },
+                            onMetron = { openTab(InkShelf2Tab.ACCOUNT); metronOpen = true },
+                        )
+                    }
+                    comic != null && !pulseExpanded && (!notificationsOpen || radarOpen) -> key(detailsRevision, comic.source, comic.url) {
                         var downloadedIds by remember(comic.source, comic.url) {
                             mutableStateOf<Set<Long>>(emptySet())
                         }
@@ -1415,7 +1431,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         onCheckAppUpdate = { checkAppUpdate(manual = true) },
                         onBack = { notificationsOpen = false },
-                        onReleaseRadar = { radarOpen = true },
+                        onReleaseRadar = { leaveComicDetails(); radarOpen = true },
                         onExtensions = {
                             openTab(InkShelf2Tab.ACCOUNT)
                             sourceHubMode = "Extensions"

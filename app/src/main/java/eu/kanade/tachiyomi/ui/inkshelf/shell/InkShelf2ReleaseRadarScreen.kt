@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,11 +16,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -29,13 +34,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import eu.kanade.tachiyomi.data.database.models.Manga
+import eu.kanade.tachiyomi.source.CatalogueSource
 import kotlinx.coroutines.CancellationException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -87,6 +98,11 @@ internal fun InkShelf2PhoneNotificationControl() {
 internal fun InkShelf2ReleaseRadarScreen(
     padding: PaddingValues,
     library: List<InkShelf2LibraryItem>,
+    history: List<InkShelf2HistoryEntry>,
+    discover: InkShelf2Engine.Discover?,
+    sources: List<CatalogueSource>,
+    onOpen: (Manga) -> Unit,
+    onSearch: (InkShelf2ReleaseRadar.Issue) -> Unit,
     onBack: () -> Unit,
     onMetron: () -> Unit,
 ) {
@@ -96,7 +112,38 @@ internal fun InkShelf2ReleaseRadarScreen(
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf(false) }
     var epoch by remember { mutableIntStateOf(0) }
-    var myLibrary by remember { mutableStateOf(true) }
+    var myLibrary by rememberSaveable { mutableStateOf(true) }
+    val scroll = rememberLazyListState()
+    val sourceEngine = remember { InkShelf2SourcesEngine() }
+    val enabledIds = sources.map { it.id }.toSet()
+    val candidates = remember(library, history, discover, enabledIds) {
+        (library.map { it.manga } + history.map { it.manga } +
+            discover?.recommended.orEmpty() + discover?.trending.orEmpty() + discover?.newest.orEmpty())
+            .filter { it.source in enabledIds && it.url.isNotBlank() }
+            .distinctBy { "${it.source}:${it.url}" }
+    }
+    fun exactMatch(issue: InkShelf2ReleaseRadar.Issue, pool: List<Manga>): Manga? {
+        val matches = pool.filter { it.source in enabledIds && it.url.isNotBlank() &&
+            InkShelf2ReleaseRadar.matches(issue, it.title, strict = true) }
+            .distinctBy { "${it.source}:${it.url}" }
+        // Multiple URLs for the same edition within one source are ambiguous.
+        if (matches.groupBy { it.source }.any { it.value.size > 1 }) return null
+        return matches.firstOrNull()
+    }
+    var opening by remember { mutableStateOf<InkShelf2ReleaseRadar.Issue?>(null) }
+    LaunchedEffect(opening, enabledIds) {
+        val issue = opening ?: return@LaunchedEffect
+        val match = try {
+            val results = sourceEngine.searchAcross(sources, issue.title)
+            exactMatch(issue, results.results.map { it.manga })
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            null
+        }
+        opening = null
+        if (match != null) onOpen(match) else onSearch(issue)
+    }
     LaunchedEffect(epoch, configured) {
         if (!configured) return@LaunchedEffect
         loading = true
@@ -115,6 +162,7 @@ internal fun InkShelf2ReleaseRadarScreen(
     val shape = RoundedCornerShape(14.dp)
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
+        state = scroll,
         contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = padding.calculateBottomPadding() + 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -125,7 +173,7 @@ internal fun InkShelf2ReleaseRadarScreen(
                     InkShelf2PageHeading("Release Radar")
                 }
                 Text("Upcoming comic store releases · Next seven days", color = InkShelf2Colors.Muted, fontSize = 12.sp)
-                Text("Store dates may change and differ from source availability.",
+                Text("Tap a release to explore its series. Store dates may change.",
                     color = InkShelf2Colors.Muted, fontSize = 11.sp)
             }
         }
@@ -163,11 +211,36 @@ internal fun InkShelf2ReleaseRadarScreen(
                         Modifier.padding(horizontal = 17.dp), color = InkShelf2Colors.AccentLight, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
                 items(issues, key = { it.id }) { issue ->
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)
-                        .background(InkShelf2Colors.SurfaceRaised, shape).border(1.dp, InkShelf2Colors.Border, shape).padding(13.dp)) {
-                        Text(issue.title + " #" + issue.number, color = InkShelf2Colors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        Text(if (issue.year > 0) "Series began ${issue.year}" else "Series year unavailable",
-                            color = InkShelf2Colors.Muted, fontSize = 11.sp)
+                    val match = exactMatch(issue, candidates)
+                    val saved = library.any { InkShelf2ReleaseRadar.matches(issue, it.manga.title, strict = true) }
+                    val read = history.any { InkShelf2ReleaseRadar.matches(issue, it.manga.title, strict = true) }
+                    val cover = issue.coverUrl ?: match?.thumbnail_url
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp)
+                        .clip(shape).background(InkShelf2Colors.SurfaceRaised).border(1.dp, InkShelf2Colors.Border, shape)
+                        .clickable(enabled = opening == null) {
+                            if (match != null) onOpen(match) else opening = issue
+                        }.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (!cover.isNullOrBlank()) {
+                            AsyncImage(model = cover, contentDescription = null,
+                                modifier = Modifier.width(52.dp).height(78.dp).clip(RoundedCornerShape(5.dp)),
+                                contentScale = ContentScale.Crop)
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(issue.title + " #" + issue.number, color = InkShelf2Colors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Text(if (issue.year > 0) "Series began ${issue.year}" else "Series year unavailable",
+                                color = InkShelf2Colors.Muted, fontSize = 11.sp)
+                            val status = when {
+                                opening?.id == issue.id -> "Finding series…"
+                                saved && read -> "In your library · Previously read"
+                                saved -> "In your library"
+                                read -> "Previously read"
+                                else -> "Explore series"
+                            }
+                            Text(status, color = InkShelf2Colors.AccentLight, fontSize = 11.sp)
+                        }
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = "Open series", tint = InkShelf2Colors.AccentLight)
                     }
                 }
             }

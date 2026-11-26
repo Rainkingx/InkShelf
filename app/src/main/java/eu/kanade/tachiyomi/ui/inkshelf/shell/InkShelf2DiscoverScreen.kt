@@ -182,7 +182,7 @@ internal fun InkShelf2DiscoverScreen(
         activeSpotlightId = null
         focusManager.clearFocus(force = true)
         keyboard?.hide()
-        if (searchFocusToken > 0 && guideIssueTarget == null) {
+        if (searchFocusToken > 0 && guideIssueTarget == null && initialSearchQuery.isBlank()) {
             // Only an explicit header Search requests the keyboard.
             focusRequester.requestFocus()
             keyboard?.show()
