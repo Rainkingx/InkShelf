@@ -1,9 +1,11 @@
-# InkShelf 2.0 — Public Beta 18
+# InkShelf 2.0 — Public Beta 19
 
-- Improved library duplicate matching when source titles or synopses differ. Absolute Superman copies are recognised while Noir and other distinct editions remain separate.
-- Pull down on Comic Details to refresh issues and metadata from the selected source, using the same gesture as Discover. The three-dot menu also includes Refresh comic and issues.
-- Existing issues remain visible during refresh. Cached chapters are retained if the source provides an incomplete list or fails to respond.
-- Issue counts may differ between sources; refresh does not combine issues from separate editions.
+- Subtle screen transitions with a stationary header and navigation bar.
+- Theme-matched loading skeletons for covers, shelves, searches and issue lists.
+- Clearer recoverable errors and retry actions for source searches and issue loading.
+- Comic refresh distinguishes new issues, unchanged lists and genuine failures, while preserving existing issues.
+- Increased online cover cache from 50 MB to 150 MB, reused artwork across library saves and protected cached covers against incomplete writes.
+- Reader navigation opens InkShelf 2.0 Comic Details instead of the legacy interface. Shared compatibility classes remain intact.
 
 ## Updating
 
