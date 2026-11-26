@@ -123,6 +123,7 @@ internal fun InkShelf2DiscoverScreen(
     var foundQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
     var refreshingSpotlight by remember { mutableStateOf(false) }
+    var refreshingDiscover by remember { mutableStateOf(false) }
     suspend fun refreshSpotlight(manual: Boolean) {
         if (refreshingSpotlight) return
         refreshingSpotlight = true
@@ -142,13 +143,9 @@ internal fun InkShelf2DiscoverScreen(
             refreshingSpotlight = false
         }
     }
-    val spotlightPullRefresh = rememberPullRefreshState(
-        refreshing = refreshingSpotlight,
-        onRefresh = { scope.launch { refreshSpotlight(manual = true) } },
-    )
     LaunchedEffect(Unit) {
         while (true) {
-            refreshSpotlight(manual = false)
+            if (!refreshingDiscover) refreshSpotlight(manual = false)
             delay(InkShelf2Spotlight.TTL_MS)
         }
     }
@@ -303,7 +300,7 @@ internal fun InkShelf2DiscoverScreen(
         }
     }
 
-    suspend fun loadPersonalPicks(force: Boolean) {
+    suspend fun loadPersonalPicks(force: Boolean, reload: Boolean = true) {
         if (refreshingPicks) return
         refreshingPicks = true
         picksMessage = null
@@ -317,7 +314,7 @@ internal fun InkShelf2DiscoverScreen(
                     else emptySet(),
             )
             if (success) {
-                onRecommendationsUpdated()
+                if (reload) onRecommendationsUpdated()
             } else {
                 picksMessage = if (force) {
                     "No different picks available from your enabled sources right now. Your current recommendations remain."
@@ -334,11 +331,49 @@ internal fun InkShelf2DiscoverScreen(
         }
     }
 
+    // One explicit gesture refreshes all three source feeds plus the
+    // editorial manifest. The curated shelves are derived from the refreshed
+    // snapshot; no separate requests or fabricated entries are needed.
+    suspend fun refreshDiscover() {
+        if (refreshingDiscover || refreshingPicks || refreshingSpotlight) return
+        refreshingDiscover = true
+        try {
+            // Manual pull-to-refresh must bypass the editorial TTL.
+            val editorial = InkShelf2Spotlight.loadWithStatus(context, force = true)
+            spotlightEvents = editorial.events
+            if (enabledSourceIds.isNotEmpty()) {
+                try {
+                    BrowseController.refreshDiscoverFeedsInBackground(context.applicationContext)
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    // Continue with personal picks; keep the previous saved feed.
+                }
+                loadPersonalPicks(force = true, reload = false)
+                onRecommendationsUpdated()
+            }
+            Toast.makeText(context, "Discover refresh finished. Saved content kept where needed.",
+                Toast.LENGTH_SHORT).show()
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            Toast.makeText(context, "Discover refresh incomplete. Keeping saved content.",
+                Toast.LENGTH_SHORT).show()
+        } finally {
+            refreshingDiscover = false
+        }
+    }
+
+    val spotlightPullRefresh = rememberPullRefreshState(
+        refreshing = refreshingDiscover || refreshingSpotlight || refreshingPicks,
+        onRefresh = { scope.launch { refreshDiscover() } },
+    )
+
     // No network work at launch. Only generate on Discover entry when the
     // persisted shelf is empty or older than a week, and only with real sources.
     val readyForPicks = discover != null && enabledSourceIds.isNotEmpty()
     LaunchedEffect(readyForPicks) {
-        if (!readyForPicks || autoAttempted) return@LaunchedEffect
+        if (!readyForPicks || autoAttempted || refreshingDiscover) return@LaunchedEffect
         autoAttempted = true
         val lastUpdated = InkShelfDiscoverCache.lastUpdatedAt(
             context, InkShelfDiscoverCache.Section.PICKED_FOR_YOU,
@@ -385,7 +420,7 @@ internal fun InkShelf2DiscoverScreen(
                     )
                     if (query.isBlank() && guideIssueTarget == null) {
                         IconButton(
-                            enabled = !refreshingSpotlight,
+                            enabled = !refreshingSpotlight && !refreshingDiscover,
                             onClick = { scope.launch { refreshSpotlight(manual = true) } },
                         ) {
                             Icon(Icons.Outlined.Refresh, contentDescription = "Refresh Spotlights",
@@ -785,7 +820,7 @@ internal fun InkShelf2DiscoverScreen(
                         fontSize = 11.sp,
                     )
                     TextButton(
-                        enabled = !refreshingPicks && enabledSourceIds.isNotEmpty(),
+                        enabled = !refreshingPicks && !refreshingDiscover && enabledSourceIds.isNotEmpty(),
                         onClick = { scope.launch { loadPersonalPicks(force = true) } },
                     ) {
                         Icon(Icons.Outlined.Refresh, null,
@@ -851,7 +886,7 @@ internal fun InkShelf2DiscoverScreen(
     }
         if (query.isBlank() && guideIssueTarget == null) {
             PullRefreshIndicator(
-                refreshing = refreshingSpotlight,
+                refreshing = refreshingDiscover || refreshingSpotlight || refreshingPicks,
                 state = spotlightPullRefresh,
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = padding.calculateTopPadding()),
                 backgroundColor = InkShelf2Colors.SurfaceRaised,

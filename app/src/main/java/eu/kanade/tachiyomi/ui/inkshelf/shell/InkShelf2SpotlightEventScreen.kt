@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -300,6 +301,7 @@ internal fun InkShelf2SpotlightEventScreen(
                     .clip(RoundedCornerShape(15.dp))
                     .background(InkShelf2Colors.SurfaceRaised.copy(alpha = 0.82f))
                     .border(1.dp, InkShelf2Colors.Border, RoundedCornerShape(15.dp))
+                    .clickable(enabled = resolved != null) { resolved?.let { onOpen(it.manga) } }
                     .padding(13.dp),
             ) {
                 if (event.id == "doom-essential") {
@@ -361,12 +363,17 @@ internal fun InkShelf2SpotlightEventScreen(
                         )
                         Spacer(Modifier.height(5.dp))
                         if (resolved != null) {
-                            TextButton(onClick = { onOpen(resolved.manga) }) {
-                                Text(
-                                    if (resolved.edition == InkShelf2Spotlight.Edition.VERIFIED)
-                                        "OPEN SERIES" else "REVIEW EDITION",
-                                    color = InkShelf2Colors.AccentLight,
-                                    fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (resolved.edition != InkShelf2Spotlight.Edition.VERIFIED) {
+                                    Text("REVIEW EDITION", color = InkShelf2Colors.AccentLight,
+                                        fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                }
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Outlined.ChevronRight,
+                                    contentDescription = if (resolved.edition == InkShelf2Spotlight.Edition.VERIFIED)
+                                        "Open series" else "Review edition",
+                                    tint = InkShelf2Colors.AccentLight,
+                                    modifier = Modifier.size(24.dp))
                             }
                         } else if (lookingUp) {
                             CircularProgressIndicator(
