@@ -110,10 +110,7 @@ internal suspend fun loadInkShelf2Library(database: DatabaseHelper): List<InkShe
         // different extension sources. Display one item in 2.0; NEVER delete
         // either underlying row, reading history, categories or downloads.
         val pausedSourceIds = InkShelf2ExtensionPause.pausedSourceIds()
-        entries.groupBy { item ->
-            InkShelf2ComicIdentity.editionKey(item.manga)
-                .ifBlank { "${item.manga.source}:${item.manga.url}" }
-        }.values.map { copies ->
+        InkShelf2ComicIdentity.groupLibraryCopies(entries).map { copies ->
             // Prefer a usable source if one favourite has been paused; retain
             // all archived rows and their separate progress in J2K unchanged.
             val activeCopies = copies.filterNot { it.manga.source in pausedSourceIds }

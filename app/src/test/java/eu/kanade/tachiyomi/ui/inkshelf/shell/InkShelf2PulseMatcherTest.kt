@@ -24,6 +24,30 @@ class InkShelf2PulseMatcherTest {
         )
 
     @Test
+    fun libraryDuplicatesUseSynopsisWhenYearMissingButKeepNoirAndOtherRuns() {
+        val synopsis = "Superstars Jason Aaron and Rafa Sandoval unleash a shocking new take on the last son of Krypton. Without the fortress, without the family, without a home, Superman must find a new way forward."
+        fun comic(title: String, source: Long, description: String? = synopsis) =
+            eu.kanade.tachiyomi.data.database.models.Manga.create(
+                "/comic/${title.hashCode()}", title, source,
+            ).apply { this.description = description }
+        val dated = comic("Absolute Superman (2024-)", 1L)
+        val yearless = comic("Absolute Superman", 2L)
+        val noir = comic("Absolute Superman Noir Edition (2024)", 3L)
+        val otherYear = comic("Absolute Superman (2030)", 4L)
+        assertTrue(InkShelf2ComicIdentity.isSameEdition(dated, yearless))
+        assertFalse(InkShelf2ComicIdentity.isSameEdition(dated, noir))
+        assertFalse(InkShelf2ComicIdentity.isSameEdition(dated, otherYear))
+        assertFalse(InkShelf2ComicIdentity.isSameEdition(dated, comic("Absolute Superman", 5L, "Short synopsis")))
+        assertFalse(InkShelf2ComicIdentity.isVerifiedAlternative(dated.title, yearless.title))
+        assertEquals(dated, InkShelf2ComicIdentity.matchingLibraryCopy(yearless, listOf(dated, noir)))
+        assertEquals(null, InkShelf2ComicIdentity.matchingLibraryCopy(yearless, listOf(dated, otherYear)))
+        fun item(manga: eu.kanade.tachiyomi.data.database.models.Manga) =
+            InkShelf2LibraryItem(manga, InkShelf2ReadingState.UNSTARTED, null, 0, 0)
+        assertEquals(2, InkShelf2ComicIdentity.groupLibraryCopies(listOf(dated, yearless, noir).map(::item)).size)
+        assertEquals(3, InkShelf2ComicIdentity.groupLibraryCopies(listOf(dated, yearless, otherYear).map(::item)).size)
+    }
+
+    @Test
     fun automaticFallbackRequiresMatchingKnownEdition() {
         assertTrue(InkShelf2ComicIdentity.isVerifiedAlternative("Spider-Man (1963)", "Spider Man [1963–1998]"))
         assertFalse(InkShelf2ComicIdentity.isVerifiedAlternative("Spider-Man (1963)", "Spider-Man (2022)"))

@@ -223,12 +223,14 @@ internal class InkShelf2Engine(private val context: Context) {
         runCatching {
             val item = database.getManga(manga.url, manga.source).executeAsBlocking() ?: manga
             if (item.favorite) return@runCatching LibrarySaveResult(true)
-            // Only a matching publication edition can block another library entry.
-            val existing = database.getLibraryMangas().executeAsBlocking()
-                .firstOrNull { other ->
-                    other.favorite && InkShelf2ComicIdentity.isSameEdition(other, item) &&
-                        (other.source != item.source || other.url != item.url)
+            // A matching known edition or substantial shared synopsis can
+            // identify a duplicate even when a source omits the year.
+            val otherFavourites = database.getLibraryMangas().executeAsBlocking()
+                .filter { other ->
+                    other.favorite && (other.source != item.source || other.url != item.url)
                 }
+                .distinctBy { it.id }
+            val existing = InkShelf2ComicIdentity.matchingLibraryCopy(item, otherFavourites)
             if (existing != null) return@runCatching LibrarySaveResult(false, existing)
             item.favorite = true
             item.date_added = System.currentTimeMillis()
