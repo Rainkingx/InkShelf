@@ -256,8 +256,8 @@ internal fun InkShelf2AdvancedSettingsScreen(
         }
         item(key = "footnote") {
             Text(
-                "Reader controls still apply to the proven InkShelf reading engine. " +
-                    "More specialised legacy settings will be migrated before the old launcher is retired.",
+                "Reader preferences apply to your comics across InkShelf. " +
+                    "Additional reader controls are available while reading a comic.",
                 modifier = Modifier.padding(horizontal = 17.dp, vertical = 6.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 11.sp,

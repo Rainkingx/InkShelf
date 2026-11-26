@@ -93,7 +93,8 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.ui.base.MaterialMenuSheet
 import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.main.MainActivity
-import eu.kanade.tachiyomi.ui.main.SearchActivity
+import eu.kanade.tachiyomi.ui.manga.MangaDetailsController
+import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2Activity
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Error
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Success
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
@@ -915,8 +916,8 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
     private fun popToMain() {
         if (fromUrl) {
             val intent =
-                Intent(this, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                Intent(this, InkShelf2Activity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
             startActivity(intent)
             finishAfterTransition()
@@ -1104,7 +1105,12 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
 
         binding.toolbar.setOnClickListener {
             viewModel.manga?.id?.let { id ->
-                val intent = SearchActivity.openMangaIntent(this, id)
+                // Keep the original reader running, but show the new
+                // Comic Details route rather than the retired search shell.
+                val intent = Intent(this, InkShelf2Activity::class.java).apply {
+                    action = InkShelf2Activity.ACTION_SHOW_MANGA
+                    putExtra(MangaDetailsController.MANGA_EXTRA, id)
+                }
                 startActivity(intent)
             }
         }
