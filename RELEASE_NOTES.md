@@ -1,13 +1,13 @@
-# InkShelf 2.0 — Public Beta 10
+# InkShelf 2.0 — Public Beta 11
 
-- Discover now supports six active Spotlights instead of four.
-- The modern Marvel Ultimate Universe collection returns with its seven original series.
-- A Very Comic Christmas launches on 1 December and runs through 31 December, featuring four Marvel, four DC and four independent comics.
-- Seasonal collections can contain multiple publisher groups. Doctor Doom remains the lead feature from 1 December through 28 February.
-- Existing daily themes, including Indie Tuesday, are unchanged.
+- Throwback Thursday now selects only editions with a known original publication year before 2000.
+- Daily Heroes consider a larger candidate pool and favour less repetitive series, including alternatives to Invincible.
+- Discover shelf previews favour distinct comics across recommendations, collections, Hidden Gems, Critically Acclaimed and popular titles. Sparse shelves may reuse a few titles.
+- Refresh Picks considers other comics already visible in Discover. New This Week keeps its feed order; full lists remain available via See All.
+- Existing daily themes, Spotlights and seasonal schedules are unchanged.
 
 ## Updating
 
-From Beta 9, use the app's update notification or Menu > Settings > Check for updates. Back up your library before installing. The package identity and release signing key remain unchanged. Refresh Discover after updating. Availability and artwork depend on enabled sources and metadata services.
+From Beta 10, use the update notification or Menu > Settings > Check for updates. Back up your library before installing. The package identity and release signing key remain unchanged.
 
 This is a prerelease. InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders.
