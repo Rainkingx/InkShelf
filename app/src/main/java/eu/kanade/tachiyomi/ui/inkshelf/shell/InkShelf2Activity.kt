@@ -798,6 +798,20 @@ class InkShelf2Activity : AppCompatActivity() {
                     }
                 }
             }
+            // Populate Thursday from a wider source-backed catalogue after
+            // the first Home snapshot. The splash and reader never wait.
+            LaunchedEffect(home != null, enabledSourceIds, refreshEpoch) {
+                if (home == null || enabledSourceIds.isEmpty()) return@LaunchedEffect
+                try {
+                    if (engine.refreshClassicPicks(enabledSourceIds)) {
+                        home = engine.loadHome(enabledSourceIds)
+                    }
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    android.util.Log.w("InkShelf2", "Classic daily picks refresh failed", error)
+                }
+            }
             // InkShelf 1's flow: show Comic Details immediately, then fetch
             // its metadata and issue list asynchronously. Do not block the
             // navigation with a multi-extension search or a loading page.

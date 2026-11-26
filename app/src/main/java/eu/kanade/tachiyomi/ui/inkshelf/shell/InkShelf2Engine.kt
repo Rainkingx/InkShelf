@@ -72,6 +72,7 @@ internal class InkShelf2Engine(private val context: Context) {
             database.getLibraryMangas().executeAsBlocking().filter { it.favorite }
         }.getOrDefault(emptyList())
 
+        val classics = InkShelf2ClassicPicks.load(context, enabledSourceIds)
         val dayStamp = InkShelf2DailyRotation.localDayStamp()
         val usedAcrossDays = mutableSetOf<String>()
         val days = weekdays.map { day ->
@@ -81,7 +82,7 @@ internal class InkShelf2Engine(private val context: Context) {
                 newest = discover.newest,
                 trending = discover.trending,
                 personal = discover.recommended,
-                library = saved,
+                library = if (day == Calendar.THURSDAY) saved + classics else saved,
                 enabledSourceIds = enabledSourceIds,
                 usedAcrossDays = usedAcrossDays,
             )
@@ -103,6 +104,10 @@ internal class InkShelf2Engine(private val context: Context) {
             .distinctBy { "${it.source}:${it.url}" }
         Home(history, days, trendingNow)
     }
+
+    suspend fun refreshClassicPicks(enabledSourceIds: Set<Long>): Boolean =
+        InkShelf2ClassicPicks.refresh(context, sourceManager.getCatalogueSources()
+            .filter { it.id in enabledSourceIds && it.id !in InkShelf2ExtensionPause.pausedSourceIds() })
 
     suspend fun loadLibrary(): List<InkShelf2LibraryItem> =
         loadInkShelf2Library(database)

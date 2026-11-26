@@ -43,6 +43,25 @@ class InkShelf2PulseMatcherTest {
     }
 
     @Test
+    fun classicPoolRejectsUnknownModernAndDisabledEditions() {
+        fun comic(title: String, source: Long = 2002L) =
+            eu.kanade.tachiyomi.data.database.models.Manga.create(
+                "/comic/${title.hashCode()}", title, source,
+            ).apply { thumbnail_url = "https://example.com/cover.jpg" }
+        val enabled = setOf(2002L)
+        assertTrue(InkShelf2ClassicPicks.eligible(comic("Fantastic Four (1961)"), enabled))
+        assertFalse(InkShelf2ClassicPicks.eligible(comic("Fantastic Four (2022)"), enabled))
+        assertFalse(InkShelf2ClassicPicks.eligible(comic("Fantastic Four"), enabled))
+        assertFalse(InkShelf2ClassicPicks.eligible(comic("Fantastic Four (1961)", 2003L), enabled))
+        val cached = listOf(comic("Fantastic Four (1961)"), comic("Batman (1940)"), comic("Hellboy (1994)"))
+        val picks = InkShelf2DailyRotation.select(
+            java.util.Calendar.THURSDAY, 2026400,
+            emptyList(), emptyList(), emptyList(), cached, enabled, emptySet(),
+        )
+        assertEquals(3, picks.size)
+    }
+
+    @Test
     fun throwbackThursdayOnlyUsesKnownPre2000Editions() {
         fun comic(title: String) =
             eu.kanade.tachiyomi.data.database.models.Manga.create(
