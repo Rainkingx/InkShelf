@@ -664,6 +664,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var chapters by remember { mutableStateOf<List<Chapter>>(emptyList()) }
             var loadingIssues by remember { mutableStateOf(false) }
             var manualRefreshEpoch by remember { mutableIntStateOf(0) }
+            var refreshingDetails by remember { mutableStateOf(false) }
             var requestedRefresh by remember { mutableStateOf<Pair<Long, String>?>(null) }
             var issuesError by remember { mutableStateOf<String?>(null) }
             var sourceLinkError by remember { mutableStateOf<String?>(null) }
@@ -819,16 +820,18 @@ class InkShelf2Activity : AppCompatActivity() {
             // navigation with a multi-extension search or a loading page.
             LaunchedEffect(selected?.source, selected?.url, refreshEpoch, manualRefreshEpoch) {
                 val comic = selected
-                chapters = emptyList()
                 issuesError = null
                 if (comic == null) {
+                    chapters = emptyList()
                     loadingIssues = false
+                    refreshingDetails = false
                     return@LaunchedEffect
                 }
 
                 if (requestedRefresh == (comic.source to comic.url)) {
                     requestedRefresh = null
                     loadingIssues = true
+                    refreshingDetails = true
                     try {
                         val result = sourcesEngine.refreshDetails(comic)
                         if (selected?.source == comic.source && selected?.url == comic.url) {
@@ -850,10 +853,12 @@ class InkShelf2Activity : AppCompatActivity() {
                             "Could not refresh issues. Existing issues kept.", Toast.LENGTH_LONG).show()
                     } finally {
                         loadingIssues = false
+                        refreshingDetails = false
                     }
                     return@LaunchedEffect
                 }
 
+                chapters = emptyList()
                 val cached = try {
                     engine.chapters(comic)
                 } catch (cancel: CancellationException) {
@@ -1264,6 +1269,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         isOpeningReader = readerOpenInProgress,
                         isLoadingIssues = loadingIssues,
+                        isRefreshingDetails = refreshingDetails,
                         onRefresh = {
                             if (!loadingIssues) {
                                 requestedRefresh = comic.source to comic.url

@@ -46,7 +46,9 @@ import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SwapVert
@@ -641,8 +643,17 @@ internal fun InkShelf2DetailPage(
     onBack: () -> Unit,
     topActions: @Composable () -> Unit = {},
     compactComicHero: Boolean = false,
+    refreshing: Boolean = false,
+    onRefresh: (() -> Unit)? = null,
     content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
+    val refreshState = rememberPullRefreshState(
+        refreshing = refreshing,
+        onRefresh = { onRefresh?.invoke() },
+    )
+    Box(
+        modifier = Modifier.fillMaxSize().pullRefresh(refreshState, enabled = onRefresh != null),
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
         contentPadding = padding,
@@ -730,6 +741,16 @@ internal fun InkShelf2DetailPage(
         }
         content()
     }
+        if (onRefresh != null) {
+            PullRefreshIndicator(
+                refreshing = refreshing,
+                state = refreshState,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = padding.calculateTopPadding()),
+                backgroundColor = InkShelf2Colors.SurfaceRaised,
+                contentColor = InkShelf2Colors.AccentLight,
+            )
+        }
+    }
 }
 
 @Composable
@@ -745,6 +766,7 @@ internal fun InkShelf2DetailsScreen(
     isOpeningReader: Boolean,
     isLoadingIssues: Boolean,
     onRefresh: () -> Unit,
+    isRefreshingDetails: Boolean,
     issuesError: String?,
     onChapter: (Chapter) -> Unit,
     onDownload: (List<Chapter>) -> Unit,
@@ -969,10 +991,9 @@ internal fun InkShelf2DetailsScreen(
         compactComicHero = true,
         padding = padding,
         onBack = onBack,
+        refreshing = isRefreshingDetails,
+        onRefresh = { if (!isLoadingIssues) onRefresh() },
         topActions = {
-            IconButton(onClick = onRefresh, enabled = !isLoadingIssues) {
-                Icon(Icons.Outlined.Refresh, "Refresh comic details", tint = Color.White)
-            }
             IconButton(onClick = { comicMenu = true }) {
                 Icon(Icons.Outlined.MoreVert, "Comic options", tint = Color.White)
             }
