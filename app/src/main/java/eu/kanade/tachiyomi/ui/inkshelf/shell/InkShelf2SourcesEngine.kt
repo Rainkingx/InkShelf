@@ -410,7 +410,25 @@ internal class InkShelf2SourcesEngine {
             }
         }
 
-    data class DetailsRefresh(val manga: Manga, val chapters: List<Chapter>, val fetchedCount: Int)
+    data class DetailsRefresh(
+        val manga: Manga,
+        val chapters: List<Chapter>,
+        val fetchedCount: Int,
+        val newCount: Int,
+        val retainedCount: Int,
+    ) {
+        val message: String
+            get() = when {
+                newCount > 0 && retainedCount > 0 ->
+                    "$newCount new issue(s) found. $retainedCount saved issue(s) retained."
+                newCount > 0 -> "$newCount new issue(s) found"
+                retainedCount > 0 -> "No new issues returned. $retainedCount saved issue(s) retained."
+                else -> "You're up to date — no new issues."
+            }
+    }
+
+    class DetailsRefreshFailure(val explanation: String, cause: Throwable? = null) :
+        Exception(explanation, cause)
 
     /** Explicit refresh bypasses cached issues, but never deletes a local
      * chapter when an extension returns an incomplete list. */
@@ -419,14 +437,69 @@ internal class InkShelf2SourcesEngine {
             val local = database.getManga(comic.url, comic.source).executeAsBlocking()
                 ?: comic.also { it.id = database.insertManga(it).executeAsBlocking().insertedId() }
             val source = installedSource(local.source)?.takeIf { sourceAllowed(it) }
-                ?: throw IllegalStateException("Source unavailable or disabled")
+                ?: throw DetailsRefreshFailure("This source is unavailable or disabled. Check Manage Extensions.")
             val previous = database.getChapters(local).executeAsBlocking()
-            val fetched = withTimeoutOrNull(30_000L) { source.getChapterList(local.copy()) }
-            if (fetched.isNullOrEmpty()) throw IllegalStateException("No issues returned")
+            val tag = "InkShelf2Refresh"
+            var failure: Throwable? = null
+            suspend fun attempt(label: String, timeoutMs: Long,
+                fetch: suspend () -> List<eu.kanade.tachiyomi.source.model.SChapter>):
+                List<eu.kanade.tachiyomi.source.model.SChapter> {
+                return try {
+                    val result = withTimeoutOrNull(timeoutMs) { fetch() }
+                    if (result == null) {
+                        failure = DetailsRefreshFailure("The source took too long to respond.")
+                        android.util.Log.w(tag, "${source.name}: $label timed out")
+                    } else {
+                        android.util.Log.d(tag, "${source.name}: $label returned ${result.size} issues")
+                        if (result.isEmpty()) failure = DetailsRefreshFailure("The source returned an empty issue list.")
+                    }
+                    result.orEmpty()
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    failure = error
+                    android.util.Log.w(tag, "${source.name}: $label failed", error)
+                    emptyList()
+                }
+            }
+            // Use the original J2K update contract first. Some extensions
+            // implement that path separately from getChapterList.
+            val fetched = attempt("update", 45_000L) {
+                source.getMangaUpdate(
+                    manga = local.copy(), chapters = emptyList(),
+                    fetchDetails = false, fetchChapters = true,
+                ).chapters
+            }.ifEmpty {
+                attempt("chapter-list fallback", 24_000L) { source.getChapterList(local.copy()) }
+            }.distinctBy { it.url }
+            if (fetched.isEmpty()) {
+                val explanation = (failure as? DetailsRefreshFailure)?.explanation
+                    ?: "The source could not return its issue list. Check your connection and try again."
+                throw DetailsRefreshFailure(explanation, failure)
+            }
             val currentUrls = fetched.map { it.url }.toHashSet()
-            // The original synchronizer keeps IDs, reading progress and
-            // bookmarks for matching URLs. Retain missing cached chapters.
-            syncChaptersWithSource(database, fetched + previous.filter { it.url !in currentUrls }, local, source)
+            val previousUrls = previous.map { it.url }.toHashSet()
+            val newCount = (currentUrls - previousUrls).size
+            val retained = previous.filter { it.url !in currentUrls }
+            android.util.Log.d(tag, "${source.name}: ${previousUrls.size} cached, ${currentUrls.size} returned, $newCount new, ${retained.size} retained")
+            // Same URLs and metadata require no chapter write. In particular,
+            // an unchanged successful response must not be reported as failure.
+            val unchanged = retained.isEmpty() && newCount == 0 &&
+                fetched.size == previous.size && fetched.zip(previous.sortedBy { it.source_order }).all { (remote, cached) ->
+                    remote.url == cached.url && remote.name == cached.name &&
+                        remote.date_upload == cached.date_upload && remote.scanlator == cached.scanlator
+                }
+            if (!unchanged) {
+                try {
+                    // Preserve IDs, reading progress, bookmarks and omitted cached chapters.
+                    syncChaptersWithSource(database, fetched + retained, local, source)
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (error: Exception) {
+                    android.util.Log.w(tag, "Issue sync failed after successful source response", error)
+                    throw DetailsRefreshFailure("Issues were received, but could not be saved locally. Try again.", error)
+                }
+            }
             try {
                 val details = withTimeoutOrNull(8_000L) { source.getMangaDetails(local.copy()) }
                 if (details != null) {
@@ -443,7 +516,8 @@ internal class InkShelf2SourcesEngine {
             } catch (_: Exception) {
                 // A fresh issue list is useful even without updated metadata.
             }
-            DetailsRefresh(local, database.getChapters(local).executeAsBlocking(), fetched.size)
+            val saved = database.getChapters(local).executeAsBlocking()
+            DetailsRefresh(local, saved, fetched.size, newCount, retained.size)
         }
     }
 

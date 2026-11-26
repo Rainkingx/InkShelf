@@ -838,21 +838,36 @@ class InkShelf2Activity : AppCompatActivity() {
                             chapters = result.chapters
                             selected = result.manga
                             sourceLinkError = null
-                            library = engine.loadLibrary()
-                            home = engine.loadHome(enabledSourceIds)
                             detailsRevision += 1
-                            Toast.makeText(this@InkShelf2Activity,
-                                "${result.fetchedCount} issues returned by source · ${result.chapters.size} available locally",
-                                Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@InkShelf2Activity, result.message,
+                                Toast.LENGTH_SHORT).show()
+                            // A secondary Home/Library cache error must not
+                            // turn an already successful issue refresh into a failure.
+                            try {
+                                library = engine.loadLibrary()
+                            } catch (cancel: CancellationException) {
+                                throw cancel
+                            } catch (failure: Exception) {
+                                android.util.Log.w("InkShelf2Refresh", "Library snapshot refresh failed", failure)
+                            }
+                            try {
+                                home = engine.loadHome(enabledSourceIds)
+                            } catch (cancel: CancellationException) {
+                                throw cancel
+                            } catch (failure: Exception) {
+                                android.util.Log.w("InkShelf2Refresh", "Home snapshot refresh failed", failure)
+                            }
                         }
                     } catch (cancel: CancellationException) {
                         throw cancel
                     } catch (failure: Exception) {
                         android.util.Log.w("InkShelf2", "Manual details refresh failed", failure)
                         // Keep the already visible chapters if the cache itself is unavailable.
+                        val explanation = (failure as? InkShelf2SourcesEngine.DetailsRefreshFailure)?.explanation
+                            ?: "Could not refresh this comic. Check your connection and try again."
                         issuesError = if (chapters.isNotEmpty())
-                            "The source could not refresh this comic. Your existing issues are still available."
-                        else "Could not load issues from this source. Check your connection and try again."
+                            "$explanation Your existing issues are still available."
+                        else explanation
                     } finally {
                         loadingIssues = false
                         refreshingDetails = false
