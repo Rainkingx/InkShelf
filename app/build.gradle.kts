@@ -27,7 +27,7 @@ android {
         multiDexEnabled = true
 
         buildConfigField("String", "COMMIT_COUNT", "\"1\"")
-        buildConfigField("String", "BETA_COUNT", "\"12\"")
+        buildConfigField("String", "BETA_COUNT", "\"13\"")
         buildConfigField("String", "COMMIT_SHA", "\"nogit\"")
         buildConfigField("String", "BUILD_TIME", "\"${BuildTools.getBuildTime()}\"")
         buildConfigField("Boolean", "INCLUDE_UPDATER", "false")
@@ -82,7 +82,7 @@ android {
         create("beta") {
             initWith(getByName("release"))
             buildConfigField("boolean", "BETA", "true")
-            versionNameSuffix = "-b12"
+            versionNameSuffix = "-b13"
         }
     }
 
