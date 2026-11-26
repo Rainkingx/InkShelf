@@ -24,6 +24,16 @@ class InkShelf2PulseMatcherTest {
         )
 
     @Test
+    fun automaticFallbackRequiresMatchingKnownEdition() {
+        assertTrue(InkShelf2ComicIdentity.isVerifiedAlternative("Spider-Man (1963)", "Spider Man [1963–1998]"))
+        assertFalse(InkShelf2ComicIdentity.isVerifiedAlternative("Spider-Man (1963)", "Spider-Man (2022)"))
+        assertFalse(InkShelf2ComicIdentity.isVerifiedAlternative("Spider-Man (1963)", "Spider-Man"))
+        assertFalse(InkShelf2ComicIdentity.isVerifiedAlternative("Spider-Man", "Spider-Man"))
+        assertFalse(InkShelf2ComicIdentity.isVerifiedAlternative("Spider-Man (1963)", "Ultimate Spider-Man (1963)"))
+        assertEquals("Spider-Man", InkShelf2ComicIdentity.searchTitle("Spider-Man [1963–1998]"))
+    }
+
+    @Test
     fun discoverPreviewsPreferFreshSeriesAcrossShelves() {
         fun comic(title: String) =
             eu.kanade.tachiyomi.data.database.models.Manga.create(

@@ -9,6 +9,8 @@ import eu.kanade.tachiyomi.ui.home.InkShelfDailyHeroArt
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverCache
 import eu.kanade.tachiyomi.ui.source.InkShelfDiscoverCache.Section
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -23,6 +25,7 @@ import kotlin.math.roundToInt
 internal class InkShelf2Engine(private val context: Context) {
     private val database: DatabaseHelper = Injekt.get()
     private val sourceManager: SourceManager = Injekt.get()
+    private val libraryWriteMutex = Mutex()
 
     data class Reading(val manga: Manga, val percent: Int?)
     data class Day(
@@ -216,6 +219,7 @@ internal class InkShelf2Engine(private val context: Context) {
 
     /** Save through the J2K database; refuse a second favourite for the same edition. */
     suspend fun addToLibrary(manga: Manga): LibrarySaveResult = withContext(Dispatchers.IO) {
+        libraryWriteMutex.withLock {
         runCatching {
             val item = database.getManga(manga.url, manga.source).executeAsBlocking() ?: manga
             if (item.favorite) return@runCatching LibrarySaveResult(true)
@@ -238,10 +242,12 @@ internal class InkShelf2Engine(private val context: Context) {
             manga.id = item.id
             LibrarySaveResult(true)
         }.getOrDefault(LibrarySaveResult(false))
+        }
     }
 
     /** Remove Library membership without discarding reading history or files. */
     suspend fun removeFromLibrary(manga: Manga): Boolean = withContext(Dispatchers.IO) {
+        libraryWriteMutex.withLock {
         runCatching {
             val entry = database.getManga(manga.url, manga.source).executeAsBlocking()
                 ?: return@runCatching false
@@ -251,6 +257,7 @@ internal class InkShelf2Engine(private val context: Context) {
             manga.favorite = false
             true
         }.getOrDefault(false)
+        }
     }
 
     private fun dayTitle(day: Int): String = when (day) {

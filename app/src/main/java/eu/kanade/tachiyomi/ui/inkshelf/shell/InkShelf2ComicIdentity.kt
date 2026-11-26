@@ -17,8 +17,19 @@ internal object InkShelf2ComicIdentity {
     )
     private val separators = Regex("""[^\p{L}\p{N}]+""")
 
+    fun searchTitle(title: String): String = title.replace(yearTag, "").trim()
+
     fun normalizedTitle(title: String): String =
-        title.replace(yearTag, "").lowercase(Locale.ROOT).replace(separators, " ").trim()
+        searchTitle(title).lowercase(Locale.ROOT).replace(separators, " ").trim()
+
+    // Automatic source switching requires a matching, explicitly dated run.
+    // A yearless title is not evidence that two editions are identical.
+    fun isVerifiedAlternative(requested: String, candidate: String): Boolean {
+        val requestedYear = year(requested) ?: return false
+        val name = normalizedTitle(requested)
+        return name.isNotBlank() && name == normalizedTitle(candidate) &&
+            requestedYear == year(candidate)
+    }
 
     fun year(title: String): Int? =
         yearTag.find(title)?.groupValues?.getOrNull(1)?.toIntOrNull()

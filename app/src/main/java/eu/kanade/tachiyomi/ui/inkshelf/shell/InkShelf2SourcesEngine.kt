@@ -7,7 +7,6 @@ import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.LocalSource
 import eu.kanade.tachiyomi.source.model.SManga
-import java.util.Locale
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.util.chapter.syncChaptersWithSource
@@ -15,6 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
@@ -91,10 +92,11 @@ internal class InkShelf2SourcesEngine {
             async {
                 limiter.withPermit {
                     try {
-                        val found = withTimeout(12_000L) {
+                        val found = withTimeoutOrNull(12_000L) {
                             page(source, 1, query).comics
                         }
-                        found.take(35).map { SourceResult(it, source.name) } to false
+                        if (found == null) emptyList<SourceResult>() to true
+                        else found.take(35).map { SourceResult(it, source.name) } to false
                     } catch (cancel: CancellationException) {
                         throw cancel
                     } catch (_: Exception) {
@@ -126,108 +128,17 @@ internal class InkShelf2SourcesEngine {
         val problem: String? = null,
     )
 
-    private fun seriesYear(title: String): String? =
-        Regex("""\(((?:19|20)\d{2})(?:[-–]\d{0,4})?\)\s*$""")
-            .find(title.trim())?.groupValues?.get(1)
-
-    private fun searchTitle(title: String): String =
-        title.trim().replace(
-            Regex("""\s*\((?:19|20)\d{2}(?:[-–]\d{0,4})?\)\s*$"""), "",
-        ).trim()
-
-    private fun titleKey(title: String): String =
-        searchTitle(title).lowercase(Locale.ROOT)
-            .replace(Regex("""[^a-z0-9]+"""), " ").trim()
-
-    private fun matchesRequestedEdition(requested: String, candidate: String): Boolean {
-        if (titleKey(requested) != titleKey(candidate)) return false
-        val desiredYear = seriesYear(requested)
-        val candidateYear = seriesYear(candidate)
-        // A known different year could be an entirely different comic series.
-        return desiredYear == null || candidateYear == null || desiredYear == candidateYear
+    private fun sourceAllowed(source: Source): Boolean {
+        if (source.id == LocalSource.ID) return true
+        if (source.id in InkShelf2ExtensionPause.pausedSourceIds()) return false
+        if (source.id.toString() in prefs.hiddenSources().get()) return false
+        return source !is CatalogueSource || source.lang in prefs.enabledLanguages().get()
     }
 
-    /**
-     * Reuse InkShelf 1's MangaDetailsPresenter.refreshAll contract.
-     * It requests source metadata and chapter list as a single J2K manga
-     * update, persists metadata, then syncs chapters using the ORIGINAL
-     * chapter synchronizer. The Compose screen only observes the result.
-     *
-     * If one half fails (some third-party extensions do this), the other
-     * half is tried separately instead of discarding otherwise usable
-     * chapters or metadata.
-     */
-    private suspend fun refreshFromOriginalSource(local: Manga, source: Source): Boolean {
-        val cached = database.getChapters(local).executeAsBlocking()
-        val metadataMissing = !local.initialized || local.description.isNullOrBlank()
-        val needChapters = cached.isEmpty()
-        if (!metadataMissing && !needChapters) return true
-
-        var fetchedChapters = emptyList<eu.kanade.tachiyomi.source.model.SChapter>()
-        var metadataLoaded = false
-        try {
-            val update = withTimeout(25_000L) {
-                source.getMangaUpdate(
-                    local.copy(),
-                    emptyList(),
-                    fetchDetails = metadataMissing,
-                    fetchChapters = needChapters,
-                )
-            }
-            if (metadataMissing) {
-                local.copyFrom(update.manga)
-                local.initialized = true
-                database.insertManga(local).executeAsBlocking()
-                metadataLoaded = true
-            }
-            fetchedChapters = update.chapters
-        } catch (cancel: CancellationException) {
-            if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
-        } catch (_: Exception) {
-            // Unlike the old presenter, tolerate partial extension responses.
-        }
-
-        if (metadataMissing && !metadataLoaded) {
-            try {
-                val details = withTimeout(12_000L) { source.getMangaDetails(local.copy()) }
-                local.copyFrom(details)
-                local.initialized = true
-                database.insertManga(local).executeAsBlocking()
-            } catch (cancel: CancellationException) {
-                if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
-            } catch (_: Exception) {
-                // Lack of synopsis does not make a comic unreadable.
-            }
-        }
-        if (needChapters && fetchedChapters.isEmpty()) {
-            try {
-                fetchedChapters = withTimeout(20_000L) { source.getChapterList(local.copy()) }
-            } catch (cancel: CancellationException) {
-                if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
-            } catch (_: Exception) {
-                // The alternate-source resolver is the final fallback.
-            }
-        }
-        if (fetchedChapters.isNotEmpty()) {
-            syncChaptersWithSource(database, fetchedChapters, local, source)
-        }
-        return database.getChapters(local).executeAsBlocking().isNotEmpty()
-    }
-
-    private suspend fun hydrateDetails(local: Manga, source: Source) {
-        if (local.initialized && !local.description.isNullOrBlank()) return
-        // Once issues exist, metadata refresh does not re-request them.
-        try {
-            val details = withTimeout(12_000L) { source.getMangaDetails(local.copy()) }
-            local.copyFrom(details)
-            local.initialized = true
-            database.insertManga(local).executeAsBlocking()
-        } catch (cancel: CancellationException) {
-            if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
-        } catch (_: Exception) {
-            // Source may return readable issues without a synopsis.
-        }
-    }
+    // Short-lived successful alternate resolution, not a library migration.
+    // Guarded by issueLoadMutex, so a racing Read Now reuses the result.
+    private data class RecentResolution(val result: ResolvedComic, val at: Long)
+    private val recentAlternates = LinkedHashMap<String, RecentResolution>()
 
     /**
      * Refresh as InkShelf 1's MangaDetailsPresenter.refreshAll() does:
@@ -255,6 +166,7 @@ internal class InkShelf2SourcesEngine {
             }
         } catch (cancel: CancellationException) {
             if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+            currentCoroutineContext().ensureActive()
             failure = cancel
             null
         } catch (error: Exception) {
@@ -290,6 +202,7 @@ internal class InkShelf2SourcesEngine {
                 withTimeout(if (xoxo) 45_000L else 15_000L) { source.getChapterList(local) }
             } catch (cancel: CancellationException) {
                 if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+            currentCoroutineContext().ensureActive()
                 failure = cancel
                 emptyList()
             } catch (error: Exception) {
@@ -340,63 +253,91 @@ internal class InkShelf2SourcesEngine {
      * Daredevil (2019) just because their names partially match.
      */
     suspend fun resolveReadableComic(comic: Manga): ResolvedComic = withContext(Dispatchers.IO) {
+        issueLoadMutex.withLock { resolveLocked(comic) }
+    }
+
+    private suspend fun resolveLocked(comic: Manga): ResolvedComic {
         val local = database.getManga(comic.url, comic.source).executeAsBlocking()
             ?: comic.also {
                 it.id = database.insertManga(it).executeAsBlocking().insertedId()
             }
+        val requestedTitle = local.title
         val original = installedSource(local.source)
-        if (original != null) {
-            // Exactly as in InkShelf 1, trust the installed source attached to
-            // this series. Don't silently search and switch to other editions.
-            return@withContext refreshUsingJ2K(local, original)
+        val cached = database.getChapters(local).executeAsBlocking()
+        // Never replace a saved issue list, including existing downloads.
+        if (cached.isNotEmpty()) {
+            if (original != null && sourceAllowed(original) && local.description.isNullOrBlank()) {
+                prepareComic(local)
+            }
+            return ResolvedComic(local, original?.name)
         }
+        val key = "${local.source}:${local.url}"
+        recentAlternates[key]?.let { recent ->
+            val source = sources.get(recent.result.manga.source)
+            if (System.currentTimeMillis() - recent.at in 0L..120_000L &&
+                source != null && sourceAllowed(source) &&
+                database.getChapters(recent.result.manga).executeAsBlocking().isNotEmpty()
+            ) return recent.result
+            recentAlternates.remove(key)
+        }
+        val originalResult = if (original != null && sourceAllowed(original)) {
+            refreshUsingJ2K(local, original)
+        } else ResolvedComic(local, original?.name, "The original source is unavailable or disabled.")
+        if (originalResult.problem == null) return originalResult
 
-        // A favourite from an obsolete extension may also be read through an
-        // alternative source, but we never rewrite the original library row
-        // or its progress: the newly resolved source remains a distinct row.
-        val enabledLanguages = prefs.enabledLanguages().get()
-        val hidden = prefs.hiddenSources().get()
+        // A confirmed year is mandatory for automatic switching. A yearless
+        // title must be selected manually rather than guessing a reboot.
+        if (InkShelf2ComicIdentity.year(requestedTitle) == null || local.source == LocalSource.ID) {
+            return originalResult.copy(problem = originalResult.problem +
+                " Choose an alternative edition manually in Discover.")
+        }
+        val alternate = withTimeoutOrNull(45_000L) { findAlternate(local, requestedTitle) }
+        if (alternate != null) {
+            recentAlternates[key] = RecentResolution(alternate, System.currentTimeMillis())
+            while (recentAlternates.size > 64) recentAlternates.remove(recentAlternates.keys.first())
+            return alternate
+        }
+        return originalResult.copy(problem = originalResult.problem +
+            " No verified alternative returned issues. Your library data is unchanged.")
+    }
+
+    private suspend fun findAlternate(local: Manga, requestedTitle: String): ResolvedComic? {
         val catalogues = sources.getCatalogueSources()
-            .filter { it.id != LocalSource.ID }
-            .filter { it.lang in enabledLanguages && it.id.toString() !in hidden }
+            .filter { it.id != LocalSource.ID && it.id != local.source && sourceAllowed(it) }
             .distinctBy { it.id }
-        val query = searchTitle(local.title)
+            .sortedBy { it.name }
+            .take(8)
+        val query = InkShelf2ComicIdentity.searchTitle(requestedTitle)
         val limiter = Semaphore(3)
         val matches = supervisorScope {
             catalogues.map { source ->
                 async {
                     limiter.withPermit {
                         try {
-                            withTimeout(10_000L) {
+                            withTimeoutOrNull(10_000L) {
                                 source.getSearchManga(1, query, source.getFilterList()).mangas
-                                    .filter { matchesRequestedEdition(local.title, it.title) }
+                                    .filter { InkShelf2ComicIdentity.isVerifiedAlternative(requestedTitle, it.title) }
                                     .take(4)
                                     .map { source to it }
-                            }
+                            }.orEmpty()
                         } catch (cancel: CancellationException) {
-                            if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
-                            emptyList<Pair<CatalogueSource, SManga>>()
+                            throw cancel
                         } catch (_: Exception) {
                             emptyList<Pair<CatalogueSource, SManga>>()
                         }
                     }
                 }
             }.awaitAll().flatten()
-        }.sortedWith(
-            compareByDescending<Pair<CatalogueSource, SManga>> {
-                it.first.id == local.source
-            }.thenByDescending {
-                seriesYear(it.second.title) == seriesYear(local.title)
-            }.thenBy { it.first.name },
-        )
+        }.distinctBy { (source, remote) -> "${source.id}:${remote.url}" }
+            .sortedBy { it.first.name }
 
-        for ((source, remote) in matches.take(9)) {
+        for ((source, remote) in matches.take(6)) {
+            if (!sourceAllowed(source)) continue
             // Probe chapters before inserting a candidate into the database.
             val remoteChapters = try {
-                withTimeout(12_000L) { source.getChapterList(remote) }
+                withTimeoutOrNull(8_000L) { source.getChapterList(remote) }.orEmpty()
             } catch (cancel: CancellationException) {
-                if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
-                emptyList()
+                throw cancel
             } catch (_: Exception) {
                 emptyList()
             }
@@ -407,11 +348,13 @@ internal class InkShelf2SourcesEngine {
                     copyFrom(remote)
                     id = database.insertManga(this).executeAsBlocking().insertedId()
                 }
+            if (!InkShelf2ComicIdentity.isVerifiedAlternative(requestedTitle, resolved.title)) continue
             try {
                 syncChaptersWithSource(database, remoteChapters, resolved, source)
-                hydrateDetails(resolved, source)
                 if (database.getChapters(resolved).executeAsBlocking().isNotEmpty()) {
-                    return@withContext ResolvedComic(resolved, source.name)
+                    // Leave details enrichment to the normal UI; never lose a
+                    // good issue list because metadata is slow or unavailable.
+                    return ResolvedComic(resolved, source.name)
                 }
             } catch (cancel: CancellationException) {
                 throw cancel
@@ -420,15 +363,7 @@ internal class InkShelf2SourcesEngine {
             }
         }
 
-        ResolvedComic(
-            local,
-            original?.name,
-            if (local.favorite) {
-                "Your saved source cannot provide issues, and no readable alternative was found. Your library data is unchanged."
-            } else {
-                "No installed comic source returned readable issues for this title. Search Sources to choose an edition."
-            },
-        )
+        return null
     }
 
     /**
@@ -447,13 +382,20 @@ internal class InkShelf2SourcesEngine {
                 val cached = database.getChapters(local).executeAsBlocking()
                 if (cached.isNotEmpty() && !refreshCached) return@withLock local to cached
 
-                val source = sources.get(local.source)
-                    ?: throw IllegalStateException("Comic source is not installed.")
+                val source = installedSource(local.source)
+                    ?.takeIf { sourceAllowed(it) }
+                    ?: throw IllegalStateException("Comic source is unavailable or disabled.")
                 // Guide retry only: a partial/stale cache must not prevent a
                 // missing issue being found. Never clear existing chapters on
                 // an empty or failed response; use the normal J2K synchronizer.
                 if (cached.isNotEmpty() && refreshCached) {
-                    val fetched = withTimeoutOrNull(20_000L) { source.getChapterList(local.copy()) }
+                    val fetched = try {
+                        withTimeoutOrNull(20_000L) { source.getChapterList(local.copy()) }
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        null
+                    }
                     if (!fetched.isNullOrEmpty()) {
                         syncChaptersWithSource(database, fetched, local, source)
                     }
@@ -461,7 +403,9 @@ internal class InkShelf2SourcesEngine {
                 }
                 // Exactly the same data-fetching path used by the Details
                 // screen and the original InkShelf 1 presenter.
-                refreshFromOriginalSource(local, source)
+                // Guide lookups remain pinned to the selected source. Share
+                // the same issue-loading lock and original J2K refresh path.
+                refreshUsingJ2K(local, source)
                 local to database.getChapters(local).executeAsBlocking()
             }
         }
@@ -486,6 +430,7 @@ internal class InkShelf2SourcesEngine {
                 database.updateMangaInfo(local).executeAsBlocking()
             } catch (cancel: CancellationException) {
                 if (cancel !is kotlinx.coroutines.TimeoutCancellationException) throw cancel
+            currentCoroutineContext().ensureActive()
                 // Partial cached metadata is still enough to open Details.
             } catch (_: Exception) {
                 // Offline/missing metadata must not stop Comic Details opening.

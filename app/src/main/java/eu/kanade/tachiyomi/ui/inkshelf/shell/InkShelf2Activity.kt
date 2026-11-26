@@ -856,6 +856,11 @@ class InkShelf2Activity : AppCompatActivity() {
                     // database row. The identity policy above makes this
                     // recompose even when source+URL are unchanged.
                     chapters = engine.chapters(match.manga)
+                    if (match.manga.source != comic.source || match.manga.url != comic.url) {
+                        Toast.makeText(this@InkShelf2Activity,
+                            "Using verified edition from ${match.sourceName ?: "another source"}. Saved library unchanged.",
+                            Toast.LENGTH_LONG).show()
+                    }
                     selected = match.manga
                     detailsRevision += 1
                 } catch (cancel: CancellationException) {
@@ -1731,10 +1736,18 @@ class InkShelf2Activity : AppCompatActivity() {
                 if (chapter == null) {
                     // The first read must fetch the series' issue list, not
                     // require the user to visit the old J2K interface first.
-                    val (resolved, fetched) = sourcesEngine.ensureIssues(manga)
-                    local = resolved
-                    if (fetched.isNotEmpty()) {
+                    val match = sourcesEngine.resolveReadableComic(manga)
+                    local = match.manga
+                    if (match.problem == null) {
+                        if (local.source != manga.source || local.url != manga.url) {
+                            Toast.makeText(this@InkShelf2Activity,
+                                "Using verified edition from ${match.sourceName ?: "another source"}. Saved library unchanged.",
+                                Toast.LENGTH_LONG).show()
+                        }
                         chapter = engine.nextChapter(local)
+                    } else {
+                        Toast.makeText(this@InkShelf2Activity, match.problem, Toast.LENGTH_LONG).show()
+                        return@launch
                     }
                 }
                 if (chapter != null) {
