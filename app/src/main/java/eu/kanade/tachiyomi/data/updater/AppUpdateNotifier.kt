@@ -48,6 +48,8 @@ internal class AppUpdateNotifier(
     }
 
     fun promptUpdate(release: GithubRelease) {
+        if (!androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()) return
+        if (Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         val body = release.info
         val url = release.downloadLink
         val releaseUrl = release.releaseLink
@@ -55,7 +57,9 @@ internal class AppUpdateNotifier(
 
         val pendingIntent = NotificationReceiver.openUpdatePendingActivity(context, body, url)
         releasePageUrl = releaseUrl
-        with(notificationBuilder) {
+        val alert = NotificationCompat.Builder(context, Notifications.CHANNEL_APP_UPDATE_AVAILABLE)
+        with(alert) {
+            setOnlyAlertOnce(true)
             setContentTitle(context.getString(R.string.app_name))
             setContentText(
                 context.getString(
@@ -80,7 +84,7 @@ internal class AppUpdateNotifier(
             )
             addReleasePageAction()
         }
-        notificationBuilder.show()
+        alert.show()
     }
 
     private fun NotificationCompat.Builder.addReleasePageAction() {

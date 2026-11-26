@@ -52,6 +52,7 @@ internal fun InkShelf2NotificationsScreen(
     onBack: () -> Unit,
     onExtensions: () -> Unit,
     onRefresh: () -> Unit,
+    onReleaseRadar: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().inkShelf2Atmosphere(),
@@ -70,6 +71,14 @@ internal fun InkShelf2NotificationsScreen(
                     Icon(Icons.Outlined.ArrowBack, "Back", tint = InkShelf2Colors.Text)
                 }
                 InkShelf2PageHeading("Notifications")
+            }
+        }
+        item(key = "phone-notifications") {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)
+                .background(InkShelf2Colors.SurfaceRaised, RoundedCornerShape(14.dp)).padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                InkShelf2PhoneNotificationControl()
+                InkShelf2ActionButton(label = "Release Radar", onClick = onReleaseRadar, modifier = Modifier.fillMaxWidth())
             }
         }
         if (appUpdatesEnabled) {

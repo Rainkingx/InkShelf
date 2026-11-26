@@ -16,6 +16,9 @@ object Notifications {
      * Common notification channel and ids used anywhere.
      */
     const val CHANNEL_COMMON = "common_channel"
+    const val CHANNEL_APP_UPDATE_AVAILABLE = "inkshelf_app_update_available"
+    const val CHANNEL_RELEASE_RADAR = "inkshelf_release_radar"
+    const val ID_RELEASE_RADAR = -821
     const val ID_UPDATER = 1
     const val ID_DOWNLOAD_IMAGE = 2
     const val ID_INSTALL = 3
@@ -113,6 +116,8 @@ object Notifications {
 
         val channels =
             listOf(
+                NotificationChannel(CHANNEL_APP_UPDATE_AVAILABLE, "App updates available", NotificationManager.IMPORTANCE_DEFAULT).apply { group = GROUP_APP_UPDATES },
+                NotificationChannel(CHANNEL_RELEASE_RADAR, "Release Radar", NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(
                     CHANNEL_COMMON,
                     context.getString(R.string.common),

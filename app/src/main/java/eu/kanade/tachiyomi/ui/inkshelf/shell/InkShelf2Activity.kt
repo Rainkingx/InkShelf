@@ -95,6 +95,7 @@ class InkShelf2Activity : AppCompatActivity() {
         const val ACTION_SHOW_MANGA = "eu.kanade.tachiyomi.inkshelf2.SHOW_MANGA"
         const val ACTION_SHOW_EXTENSIONS = "eu.kanade.tachiyomi.inkshelf2.SHOW_EXTENSIONS"
         const val ACTION_SHOW_LIBRARY = "eu.kanade.tachiyomi.inkshelf2.SHOW_LIBRARY"
+        const val ACTION_SHOW_RELEASE_RADAR = "eu.kanade.tachiyomi.inkshelf2.SHOW_RELEASE_RADAR"
         const val ACTION_SHOW_UPDATES = "eu.kanade.tachiyomi.inkshelf2.SHOW_UPDATES"
         const val ACTION_SHOW_APP_UPDATE = "eu.kanade.tachiyomi.inkshelf2.APP_UPDATE"
     }
@@ -279,6 +280,10 @@ class InkShelf2Activity : AppCompatActivity() {
         // Keep the same six-hour Discover feed refresh when users launch only
         // the new Compose shell. KEEP ensures no duplicate workers are created.
         InkShelfDiscoverRefreshWorker.schedule(applicationContext)
+        InkShelf2ReleaseRadarWorker.schedule(applicationContext)
+        if (BuildConfig.INCLUDE_UPDATER) eu.kanade.tachiyomi.data.updater.AppUpdateJob.setupTask(applicationContext)
+        eu.kanade.tachiyomi.extension.ExtensionUpdateJob.setupTask(applicationContext)
+        eu.kanade.tachiyomi.data.library.LibraryUpdateJob.setupTask(applicationContext, keepExisting = true)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             isAppearanceLightStatusBars = false
@@ -332,6 +337,7 @@ class InkShelf2Activity : AppCompatActivity() {
             var importOpen by rememberSaveable { mutableStateOf(false) }
             var settingsOpen by rememberSaveable { mutableStateOf(false) }
             var notificationsOpen by rememberSaveable { mutableStateOf(false) }
+            var radarOpen by rememberSaveable { mutableStateOf(false) }
             var sourceHubMode by rememberSaveable { mutableStateOf("Sources") }
             var updateAllExtensionsRequested by remember { mutableStateOf(false) }
             var externalRepoDraft by rememberSaveable { mutableStateOf("") }
@@ -448,6 +454,7 @@ class InkShelf2Activity : AppCompatActivity() {
                 importOpen = false
                 settingsOpen = false
                 notificationsOpen = false
+                radarOpen = false
                 activeSourceId = null
                 selectedDay = null
                 selectedDiscoverShelf = null
@@ -948,6 +955,10 @@ class InkShelf2Activity : AppCompatActivity() {
                     )
                 }
                 when (action) {
+                    ACTION_SHOW_RELEASE_RADAR -> {
+                        openTab(InkShelf2Tab.DISCOVER)
+                        radarOpen = true
+                    }
                     ACTION_SHOW_DOWNLOADS, MainActivity.SHORTCUT_DOWNLOADS -> {
                         openTab(InkShelf2Tab.ACCOUNT)
                         downloadsOpen = true
@@ -1055,6 +1066,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         cinematicSplash = null
                     }
                     pulseExpanded -> closePulse()
+                    radarOpen -> radarOpen = false
                     notificationsOpen -> notificationsOpen = false
                     selected != null -> backFromComicDetails()
                     selectedDiscoverShelf != null -> selectedDiscoverShelf = null
@@ -1160,6 +1172,7 @@ class InkShelf2Activity : AppCompatActivity() {
             // Mirror the visible route priority below. Revisions, network
             // results, scroll changes and reader progress are not navigation.
             val motionRoute = when {
+                radarOpen -> "release-radar"
                 selected != null && !pulseExpanded && !notificationsOpen ->
                     "comic:${selected?.source}:${selected?.url}"
                 pulseExpanded -> "pulse"
@@ -1227,6 +1240,10 @@ class InkShelf2Activity : AppCompatActivity() {
                         .toMap()
                 }
                 when {
+                    radarOpen -> InkShelf2ReleaseRadarScreen(
+                        padding = padding, library = library, onBack = { radarOpen = false },
+                        onMetron = { openTab(InkShelf2Tab.ACCOUNT); metronOpen = true },
+                    )
                     comic != null && !pulseExpanded && !notificationsOpen -> key(detailsRevision, comic.source, comic.url) {
                         var downloadedIds by remember(comic.source, comic.url) {
                             mutableStateOf<Set<Long>>(emptySet())
@@ -1398,6 +1415,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         onCheckAppUpdate = { checkAppUpdate(manual = true) },
                         onBack = { notificationsOpen = false },
+                        onReleaseRadar = { radarOpen = true },
                         onExtensions = {
                             openTab(InkShelf2Tab.ACCOUNT)
                             sourceHubMode = "Extensions"
@@ -1543,6 +1561,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     tab == InkShelf2Tab.DISCOVER -> pageState.SaveableStateProvider("discover") {
                         InkShelf2DiscoverScreen(
                         searchSession = discoverSearchSession,
+                        onReleaseRadar = { radarOpen = true },
                         discover = discover,
                         curatedShelves = curatedShelves,
                         padding = padding,

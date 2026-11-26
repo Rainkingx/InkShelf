@@ -65,6 +65,32 @@ internal object InkShelfMetronCovers {
         InkShelf2MetronTokenStore(context).read()?.takeIf(String::isNotBlank)
             ?: InkShelfMetronCredentials.get(context)?.takeIf(String::isNotBlank)
 
+    fun hasCalendarToken(context: Context): Boolean = configuredToken(context) != null
+
+    // Use the same authenticated client and rate limiter as issue artwork.
+    // Only request a bounded date window, never the user's library titles.
+    suspend fun fetchReleaseCalendar(context: Context, from: String, through: String): Pair<List<JSONObject>, Boolean> =
+        withContext(Dispatchers.IO) {
+            val token = configuredToken(context) ?: error("Connect Metron first")
+            var next: HttpUrl? = endpoint("issue").newBuilder()
+                .addQueryParameter("store_date_range_after", from)
+                .addQueryParameter("store_date_range_before", through)
+                .build()
+            val rows = mutableListOf<JSONObject>()
+            repeat(8) {
+                val url = next ?: return@withContext rows to false
+                val body = getJson(url, token) ?: error("No Metron calendar data")
+                val results = body.optJSONArray("results") ?: error("Invalid Metron calendar data")
+                for (i in 0 until results.length()) results.optJSONObject(i)?.let { rows += it }
+                val raw = body.optString("next").takeIf { it.isNotBlank() && it != "null" }
+                next = raw?.toHttpUrlOrNull()?.takeIf {
+                    it.scheme == "https" && it.host == "metron.cloud" && it.encodedPath == "/api/issue/"
+                }
+                if (raw != null && next == null) return@withContext rows to true
+            }
+            rows to (next != null)
+        }
+
     fun requestIssueCover(
         context: Context,
         manga: Manga,

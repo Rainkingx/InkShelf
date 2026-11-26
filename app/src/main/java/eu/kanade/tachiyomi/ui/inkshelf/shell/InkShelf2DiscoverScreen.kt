@@ -99,6 +99,7 @@ internal fun InkShelf2DiscoverScreen(
     guideIssueTarget: InkShelf2GuideIssue? = null,
     onClearGuideTarget: () -> Unit = {},
     onAutoOpenGuideMatch: (Manga, InkShelf2GuideIssue) -> Unit,
+    onReleaseRadar: () -> Unit,
 ) {
     val engine = remember { InkShelf2SourcesEngine() }
     val scroll = rememberLazyListState()
@@ -772,6 +773,14 @@ internal fun InkShelf2DiscoverScreen(
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
+                }
+            }
+            item(key = "release-radar") {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    InkShelf2SectionHeading("Release Radar", onClick = onReleaseRadar)
+                    Text("Upcoming releases for your library and beyond", color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                    InkShelf2ActionButton(label = "Explore Release Radar", onClick = onReleaseRadar, modifier = Modifier.fillMaxWidth())
                 }
             }
             item(key = "collections") {

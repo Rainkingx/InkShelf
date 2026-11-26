@@ -722,6 +722,7 @@ class LibraryUpdateJob(
         fun setupTask(
             context: Context,
             prefInterval: Int? = null,
+            keepExisting: Boolean = false,
         ) {
             val preferences = Injekt.get<PreferencesHelper>()
             val interval = prefInterval ?: preferences.libraryUpdateInterval().get()
@@ -749,7 +750,7 @@ class LibraryUpdateJob(
 
                 WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                     WORK_NAME_AUTO,
-                    ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+                    if (keepExisting) ExistingPeriodicWorkPolicy.KEEP else ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
                     request,
                 )
             } else {
