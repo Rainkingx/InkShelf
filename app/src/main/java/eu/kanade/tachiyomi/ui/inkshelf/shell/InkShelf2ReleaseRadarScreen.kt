@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,6 +45,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import coil.compose.AsyncImage
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.source.CatalogueSource
@@ -59,12 +63,17 @@ internal fun InkShelf2PhoneNotificationControl() {
     val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         allowed = InkShelf2ReleaseRadar.canNotify(context)
     }
-    // Recheck after returning from system notification settings.
-    LaunchedEffect(Unit) {
-        while (true) {
-            allowed = InkShelf2ReleaseRadar.canNotify(context)
-            kotlinx.coroutines.delay(1000)
+    // Android reports a lifecycle resume after returning from system settings.
+    // No periodic polling is needed while the screen is idle.
+    DisposableEffect(context) {
+        val lifecycle = (context as? LifecycleOwner)?.lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                allowed = InkShelf2ReleaseRadar.canNotify(context)
+            }
         }
+        lifecycle?.addObserver(observer)
+        onDispose { lifecycle?.removeObserver(observer) }
     }
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text(if (allowed) "Phone notifications enabled" else "Phone notifications are off",

@@ -117,6 +117,7 @@ class InkShelf2Activity : AppCompatActivity() {
     private val preferences: PreferencesHelper by lazy { Injekt.get() }
     private val profileStore by lazy { InkShelf2ProfileStore(applicationContext) }
     private var refreshEpoch by mutableIntStateOf(0)
+    private var shellForeground by mutableStateOf(false)
     private var lastBackAtMillis = 0L
     private var readerOpenInProgress by mutableStateOf(false)
     private var guideIssueOpenInProgress = false
@@ -636,8 +637,8 @@ class InkShelf2Activity : AppCompatActivity() {
             // Starting after Home is ready keeps the startup/splash independent.
             var eventCoverUpdates by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
             val eventArtworkConnected = remember(refreshEpoch) { InkShelf2GuidesData.configured(applicationContext) }
-            LaunchedEffect(home != null, welcomeOpen, eventArtworkConnected) {
-                if (home == null || welcomeOpen || !eventArtworkConnected ||
+            LaunchedEffect(home != null, welcomeOpen, eventArtworkConnected, shellForeground) {
+                if (!shellForeground || home == null || welcomeOpen || !eventArtworkConnected ||
                     !InkShelfDataSaver.allowsAutomaticNetwork(applicationContext)) return@LaunchedEffect
                 delay(800)
                 val events = InkShelf2BatCaveGuides.verified()
@@ -655,11 +656,13 @@ class InkShelf2Activity : AppCompatActivity() {
                 while (true) {
                     priority.forEachIndexed { index, guide ->
                         if (!InkShelfDataSaver.allowsAutomaticNetwork(applicationContext)) return@LaunchedEffect
+                        if (eventCoverUpdates.containsKey(guide.id)) return@forEachIndexed
                         val cached = InkShelf2GuidesData.cachedEventCover(applicationContext, guide)
                         val url = cached ?: InkShelf2GuidesData.coverUrl(applicationContext, guide)
                         if (url != null && eventCoverUpdates[guide.id] != url) {
                             eventCoverUpdates = eventCoverUpdates + (guide.id to url)
-                            if (cached == null || index < 12) {
+                            // Only warm priority artwork; other covers load on demand.
+                            if (index < 12) {
                                 imageLoader.enqueue(ImageRequest.Builder(this@InkShelf2Activity)
                                     .data(url).size(480).build())
                             }
@@ -667,7 +670,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     }
                     // Revisit missing covers after a temporary network error or negative-cache expiry.
                     if (priority.all { eventCoverUpdates.containsKey(it.id) }) break
-                    delay(10 * 60 * 1000L)
+                    delay(30 * 60 * 1000L)
                 }
             }
             var library by remember { mutableStateOf<List<InkShelf2LibraryItem>>(emptyList()) }
@@ -687,9 +690,11 @@ class InkShelf2Activity : AppCompatActivity() {
             var readingHistory by remember { mutableStateOf<List<InkShelf2HistoryEntry>>(emptyList()) }
             var recentIssueUpdates by remember { mutableStateOf<List<InkShelf2RecentUpdate>>(emptyList()) }
 
-            LaunchedEffect(downloadsOpen, library) {
-                if (downloadsOpen) {
+            LaunchedEffect(downloadsOpen, library, shellForeground) {
+                if (downloadsOpen && shellForeground) {
                     downloadManager.awaitDownloadCacheReady()
+                    var lastScan = 0L
+                    var lastQueueState: List<Pair<Long?, Download.State>>? = null
                     while (true) {
                         downloadQueue = downloadManager.queue.map { job ->
                             InkShelf2QueueEntry(
@@ -699,16 +704,22 @@ class InkShelf2Activity : AppCompatActivity() {
                                 percent = job.progress.coerceIn(0, 100),
                             )
                         }
-                        offlineSeries = withContext(Dispatchers.IO) {
-                            library.mapNotNull { item ->
-                                val count = downloadManager.getDownloadCount(item.manga)
-                                if (count > 0) InkShelf2SavedSeries(item.manga, count) else null
-                            }.sortedBy { it.manga.title.lowercase() }
+                        val queueState = downloadQueue.map { it.chapter.id to it.status }
+                        val now = SystemClock.elapsedRealtime()
+                        if (queueState != lastQueueState || now - lastScan >= 30_000L) {
+                            offlineSeries = withContext(Dispatchers.IO) {
+                                library.mapNotNull { item ->
+                                    val count = downloadManager.getDownloadCount(item.manga)
+                                    if (count > 0) InkShelf2SavedSeries(item.manga, count) else null
+                                }.sortedBy { it.manga.title.lowercase() }
+                            }
+                            lastQueueState = queueState
+                            lastScan = now
                         }
                         downloadsWifiRequired = preferences.downloadOnlyOverWifi() &&
                             !applicationContext.isConnectedToWifi()
                         downloadsPaused = downloadManager.isPaused()
-                        delay(1_500)
+                        delay(if (downloadQueue.isEmpty()) 5_000L else 1_500L)
                     }
                 }
             }
@@ -1280,20 +1291,28 @@ class InkShelf2Activity : AppCompatActivity() {
                         var downloadsPaused by remember { mutableStateOf(false) }
                         // Read the existing J2K download cache and queue. The
                         // worker can leave items queued when Wi-Fi-only is on.
-                        LaunchedEffect(comic.source, comic.url, chapters) {
+                        LaunchedEffect(comic.source, comic.url, chapters, shellForeground) {
+                            if (!shellForeground) return@LaunchedEffect
                             if (chapters.isNotEmpty()) {
                                 downloadManager.awaitDownloadCacheReady()
+                                var lastScan = 0L
+                                var lastQueueState: List<Pair<Long?, Download.State>>? = null
                                 while (true) {
                                     // Checking local chapter files can touch disk;
                                     // keep this work off the Compose/UI thread.
-                                    val snapshot = chapters.toList()
-                                    downloadedIds = withContext(Dispatchers.IO) {
-                                        snapshot.filter {
-                                            it.id != null && downloadManager.isChapterDownloaded(it, comic)
-                                        }.mapNotNull { it.id }.toSet()
-                                    }
                                     val queued = downloadManager.queue.filter {
                                         it.manga.source == comic.source && it.manga.url == comic.url
+                                    }
+                                    val queueState = queued.map { it.chapter.id to it.status }
+                                    val now = SystemClock.elapsedRealtime()
+                                    if (queueState != lastQueueState || now - lastScan >= 30_000L) {
+                                        downloadedIds = withContext(Dispatchers.IO) {
+                                            chapters.filter {
+                                                it.id != null && downloadManager.isChapterDownloaded(it, comic)
+                                            }.mapNotNull { it.id }.toSet()
+                                        }
+                                        lastQueueState = queueState
+                                        lastScan = now
                                     }
                                     downloadStates = queued.mapNotNull { entry ->
                                         entry.chapter.id?.let { id ->
@@ -1312,7 +1331,7 @@ class InkShelf2Activity : AppCompatActivity() {
                                     downloadsPaused = downloadManager.isPaused()
                                     // Small delay keeps queue progress responsive
                                     // without scanning every issue every second.
-                                    delay(2_500)
+                                    delay(if (queued.isEmpty()) 5_000L else 2_500L)
                                 }
                             } else {
                                 downloadedIds = emptySet()
@@ -1848,8 +1867,14 @@ class InkShelf2Activity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    override fun onPause() {
+        shellForeground = false
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
+        shellForeground = true
         InkShelf2Themes.refreshScheduledEvent(this)
         SecureActivityDelegate.promptLockIfNeeded(this)
         refreshEpoch += 1
