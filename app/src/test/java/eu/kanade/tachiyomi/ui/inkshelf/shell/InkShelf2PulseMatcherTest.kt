@@ -24,6 +24,43 @@ class InkShelf2PulseMatcherTest {
         )
 
     @Test
+    fun throwbackThursdayOnlyUsesKnownPre2000Editions() {
+        fun comic(title: String) =
+            eu.kanade.tachiyomi.data.database.models.Manga.create(
+                "/comic/${title.hashCode()}", title, 2002L,
+            ).apply {
+                thumbnail_url = "https://example.com/cover.jpg"
+                genre = "Classic"
+            }
+        val candidates = listOf(
+            comic("Batman (1939)"), comic("Superman (1999)"),
+            comic("X-Men (2000)"), comic("Classic Batman (2024)"),
+            comic("Classic Comics"), comic("Spider-Man (2009)"),
+        )
+        val picks = InkShelf2DailyRotation.select(
+            java.util.Calendar.THURSDAY, 2026400,
+            candidates, candidates, candidates, emptyList(), setOf(2002L), emptySet(),
+        )
+        assertEquals(setOf("Batman (1939)", "Superman (1999)"), picks.map { it.manga.title }.toSet())
+    }
+
+    @Test
+    fun indieTuesdayPrefersAlternativesToInvincible() {
+        fun comic(title: String) =
+            eu.kanade.tachiyomi.data.database.models.Manga.create(
+                "/comic/${title.hashCode()}", title, 2002L,
+            ).apply { thumbnail_url = "https://example.com/cover.jpg" }
+        val candidates = listOf(comic("Invincible (2003)"), comic("Saga (2012)"),
+            comic("Spawn (1992)"), comic("Hellboy (1994)"))
+        val picks = InkShelf2DailyRotation.select(
+            java.util.Calendar.TUESDAY, 2026400,
+            candidates, candidates, candidates, emptyList(), setOf(2002L), emptySet(),
+        )
+        assertEquals(3, picks.size)
+        assertFalse(picks.any { InkShelf2DailyRotation.isInvincible(it.manga) })
+    }
+
+    @Test
     fun moreLikeThisDoesNotTreatTmntAsXMenBecauseBothAreMutants() {
         fun comic(title: String) =
             eu.kanade.tachiyomi.data.database.models.Manga.create(

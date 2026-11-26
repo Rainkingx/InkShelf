@@ -78,7 +78,17 @@ internal object InkShelf2SourceBalance {
         val picksBySource = discover.recommendationDetails.associateBy {
             it.manga.source to it.manga.url
         }
-        val picks = ordered.mapNotNull { picksBySource[it.source to it.url] }
+        val seen = (trending.take(20) + newest.take(20)).map { InkShelf2DailyRotation.seriesKey(it) }.toSet()
+        val orderedPicks = ordered.mapNotNull { picksBySource[it.source to it.url] }
+        // Keep the live feed ordering intact. Prefer fresh series in personal picks.
+        val picks = orderedPicks.sortedBy { pick ->
+            val manga = pick.manga
+            when {
+                InkShelf2DailyRotation.isInvincible(manga) -> 2
+                InkShelf2DailyRotation.seriesKey(manga) in seen -> 1
+                else -> 0
+            }
+        }
         return discover.copy(
             trending = trending,
             newest = newest,
