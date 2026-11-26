@@ -410,6 +410,43 @@ internal class InkShelf2SourcesEngine {
             }
         }
 
+    data class DetailsRefresh(val manga: Manga, val chapters: List<Chapter>, val fetchedCount: Int)
+
+    /** Explicit refresh bypasses cached issues, but never deletes a local
+     * chapter when an extension returns an incomplete list. */
+    suspend fun refreshDetails(comic: Manga): DetailsRefresh = withContext(Dispatchers.IO) {
+        issueLoadMutex.withLock {
+            val local = database.getManga(comic.url, comic.source).executeAsBlocking()
+                ?: comic.also { it.id = database.insertManga(it).executeAsBlocking().insertedId() }
+            val source = installedSource(local.source)?.takeIf { sourceAllowed(it) }
+                ?: throw IllegalStateException("Source unavailable or disabled")
+            val previous = database.getChapters(local).executeAsBlocking()
+            val fetched = withTimeoutOrNull(30_000L) { source.getChapterList(local.copy()) }
+            if (fetched.isNullOrEmpty()) throw IllegalStateException("No issues returned")
+            val currentUrls = fetched.map { it.url }.toHashSet()
+            // The original synchronizer keeps IDs, reading progress and
+            // bookmarks for matching URLs. Retain missing cached chapters.
+            syncChaptersWithSource(database, fetched + previous.filter { it.url !in currentUrls }, local, source)
+            try {
+                val details = withTimeoutOrNull(8_000L) { source.getMangaDetails(local.copy()) }
+                if (details != null) {
+                    // Keep the existing title if the provider drops its year.
+                    val oldTitle = local.title
+                    local.copyFrom(details)
+                    if (InkShelf2ComicIdentity.year(oldTitle) != null &&
+                        InkShelf2ComicIdentity.year(local.title) == null) local.title = oldTitle
+                    local.initialized = true
+                    database.updateMangaInfo(local).executeAsBlocking()
+                }
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                // A fresh issue list is useful even without updated metadata.
+            }
+            DetailsRefresh(local, database.getChapters(local).executeAsBlocking(), fetched.size)
+        }
+    }
+
     /**
      * The single source of truth for every 2.0 Comic Details route.
      * Resolve the original J2K database row and hydrate missing metadata.

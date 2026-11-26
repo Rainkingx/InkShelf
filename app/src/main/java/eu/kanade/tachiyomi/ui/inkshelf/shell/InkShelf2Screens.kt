@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SwapVert
@@ -743,6 +744,7 @@ internal fun InkShelf2DetailsScreen(
     onFindSource: () -> Unit,
     isOpeningReader: Boolean,
     isLoadingIssues: Boolean,
+    onRefresh: () -> Unit,
     issuesError: String?,
     onChapter: (Chapter) -> Unit,
     onDownload: (List<Chapter>) -> Unit,
@@ -968,10 +970,18 @@ internal fun InkShelf2DetailsScreen(
         padding = padding,
         onBack = onBack,
         topActions = {
+            IconButton(onClick = onRefresh, enabled = !isLoadingIssues) {
+                Icon(Icons.Outlined.Refresh, "Refresh comic details", tint = Color.White)
+            }
             IconButton(onClick = { comicMenu = true }) {
                 Icon(Icons.Outlined.MoreVert, "Comic options", tint = Color.White)
             }
             DropdownMenu(expanded = comicMenu, onDismissRequest = { comicMenu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Refresh comic and issues") },
+                    enabled = !isLoadingIssues,
+                    onClick = { comicMenu = false; onRefresh() },
+                )
                 DropdownMenuItem(
                     text = { Text("Reset reading progress") },
                     enabled = chapters.isNotEmpty() && !isLoadingIssues,

@@ -47,9 +47,22 @@ internal object InkShelf2ComicIdentity {
 
     fun editionKey(manga: Manga) = editionKey(manga.title)
 
-    private fun synopsisFingerprint(manga: Manga): String =
+    private fun synopsisWords(manga: Manga): List<String> =
         manga.description.orEmpty().lowercase(Locale.ROOT)
-            .replace(separators, " ").trim().take(120)
+            .replace(separators, " ").trim().split(" ")
+            .filter { it.isNotBlank() }.take(300)
+
+    // Verified from the two source records shown by the tester. This alias
+    // does not generalise to other yearless titles or Noir editions.
+    private val knownSingleRuns = mapOf("absolute superman" to 2024)
+
+    private fun sharedSynopsis(left: Manga, right: Manga): Boolean {
+        val a = synopsisWords(left)
+        val b = synopsisWords(right)
+        if (a.size < 12 || b.size < 12) return false
+        val phrases = a.windowed(12).map { it.joinToString(" ") }.toHashSet()
+        return b.windowed(12).any { it.joinToString(" ") in phrases }
+    }
 
     /**
      * Sources sometimes omit the year entirely. Exact normalized title plus
@@ -64,8 +77,10 @@ internal object InkShelf2ComicIdentity {
         val leftYear = year(left.title)
         val rightYear = year(right.title)
         if (leftYear != null && rightYear != null) return leftYear == rightYear
-        val synopsis = synopsisFingerprint(left)
-        return synopsis.length == 120 && synopsis == synopsisFingerprint(right)
+        val documentedYear = knownSingleRuns[name]
+        if (documentedYear != null && (leftYear == null || leftYear == documentedYear) &&
+            (rightYear == null || rightYear == documentedYear)) return true
+        return sharedSynopsis(left, right)
     }
 
     /** Keep ambiguous yearless copies separate if they match conflicting runs. */

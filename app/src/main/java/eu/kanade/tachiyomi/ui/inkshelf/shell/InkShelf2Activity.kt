@@ -663,6 +663,8 @@ class InkShelf2Activity : AppCompatActivity() {
             var discover by remember { mutableStateOf<InkShelf2Engine.Discover?>(null) }
             var chapters by remember { mutableStateOf<List<Chapter>>(emptyList()) }
             var loadingIssues by remember { mutableStateOf(false) }
+            var manualRefreshEpoch by remember { mutableIntStateOf(0) }
+            var requestedRefresh by remember { mutableStateOf<Pair<Long, String>?>(null) }
             var issuesError by remember { mutableStateOf<String?>(null) }
             var sourceLinkError by remember { mutableStateOf<String?>(null) }
             var detailsRevision by remember { mutableIntStateOf(0) }
@@ -815,12 +817,40 @@ class InkShelf2Activity : AppCompatActivity() {
             // InkShelf 1's flow: show Comic Details immediately, then fetch
             // its metadata and issue list asynchronously. Do not block the
             // navigation with a multi-extension search or a loading page.
-            LaunchedEffect(selected?.source, selected?.url, refreshEpoch) {
+            LaunchedEffect(selected?.source, selected?.url, refreshEpoch, manualRefreshEpoch) {
                 val comic = selected
                 chapters = emptyList()
                 issuesError = null
                 if (comic == null) {
                     loadingIssues = false
+                    return@LaunchedEffect
+                }
+
+                if (requestedRefresh == (comic.source to comic.url)) {
+                    requestedRefresh = null
+                    loadingIssues = true
+                    try {
+                        val result = sourcesEngine.refreshDetails(comic)
+                        if (selected?.source == comic.source && selected?.url == comic.url) {
+                            chapters = result.chapters
+                            selected = result.manga
+                            sourceLinkError = null
+                            library = engine.loadLibrary()
+                            home = engine.loadHome(enabledSourceIds)
+                            detailsRevision += 1
+                            Toast.makeText(this@InkShelf2Activity,
+                                "${result.fetchedCount} issues returned by source · ${result.chapters.size} available locally",
+                                Toast.LENGTH_LONG).show()
+                        }
+                    } catch (cancel: CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        chapters = engine.chapters(comic)
+                        Toast.makeText(this@InkShelf2Activity,
+                            "Could not refresh issues. Existing issues kept.", Toast.LENGTH_LONG).show()
+                    } finally {
+                        loadingIssues = false
+                    }
                     return@LaunchedEffect
                 }
 
@@ -1234,6 +1264,12 @@ class InkShelf2Activity : AppCompatActivity() {
                         },
                         isOpeningReader = readerOpenInProgress,
                         isLoadingIssues = loadingIssues,
+                        onRefresh = {
+                            if (!loadingIssues) {
+                                requestedRefresh = comic.source to comic.url
+                                manualRefreshEpoch += 1
+                            }
+                        },
                         issuesError = issuesError,
                         onChapter = { openChapter(comic, it) },
                         onDownload = { requested -> downloadIssues(comic, requested) },
