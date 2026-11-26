@@ -73,12 +73,43 @@ class MangaCoverFetcher(
         val networkRead = options.networkCachePolicy.readEnabled
         val shouldFetchRemotely = networkRead && !diskRead
         val coverFile = coverCache.getCoverFile(manga)
-        if (!shouldFetchRemotely && coverFile.exists() && options.diskCachePolicy.readEnabled) {
-            if (!manga.favorite) {
-                coverFile.setLastModified(Date().time)
+        if (!shouldFetchRemotely && diskRead) {
+            if (coverFile.isFile && coverFile.length() > 0L) {
+                if (!manga.favorite) coverFile.setLastModified(Date().time)
+                setRatioAndColorsInScope(manga, coverFile)
+                return fileLoader(coverFile)
             }
-            setRatioAndColorsInScope(manga, coverFile)
-            return fileLoader(coverFile)
+            // Saving a series changes the cache directory, not its thumbnail.
+            // Reuse only the identical URL hash and preserve custom overrides
+            // and explicit force-network requests.
+            val alternate = coverCache.getAlternateCoverFile(manga)
+            if (alternate.isFile && alternate.length() > 0L) {
+                if (manga.favorite && options.diskCachePolicy.writeEnabled) {
+                    try {
+                        alternate.source().use { writeSourceToCoverCache(it, coverFile) }
+                        setRatioAndColorsInScope(manga, coverFile)
+                        return fileLoader(coverFile)
+                    } catch (e: Exception) {
+                        Timber.w(e, "Could not promote cached cover")
+                    }
+                } else if (!manga.favorite && options.diskCachePolicy.writeEnabled) {
+                    try {
+                        alternate.source().use { writeSourceToCoverCache(it, coverFile) }
+                        coverFile.setLastModified(Date().time)
+                        setRatioAndColorsInScope(manga, coverFile)
+                        return fileLoader(coverFile)
+                    } catch (e: Exception) {
+                        Timber.w(e, "Could not reuse saved cover")
+                    }
+                }
+                if (alternate.parentFile?.name == "online_covers") {
+                    alternate.setLastModified(Date().time)
+                }
+                if (alternate.isFile && alternate.length() > 0L) {
+                    setRatioAndColorsInScope(manga, alternate)
+                    return fileLoader(alternate)
+                }
+            }
         }
         var snapshot = readFromDiskCache()
         try {
@@ -219,15 +250,20 @@ class MangaCoverFetcher(
         input: Source,
         cacheFile: File,
     ) {
-        cacheFile.parentFile?.mkdirs()
-        cacheFile.delete()
+        val parent = checkNotNull(cacheFile.parentFile)
+        parent.mkdirs()
+        // Write a unique temporary sibling and replace only after completion.
+        // Concurrent requests never see a partially written cover, and a
+        // failed download leaves the last good image intact.
+        val temp = File.createTempFile(".cover-write-", ".tmp", parent)
         try {
-            cacheFile.sink().buffer().use { output ->
+            temp.sink().buffer().use { output ->
                 output.writeAll(input)
             }
-        } catch (e: Exception) {
-            cacheFile.delete()
-            throw e
+            check(temp.length() > 0L) { "Empty cover image" }
+            check(temp.renameTo(cacheFile)) { "Could not publish cached cover" }
+        } finally {
+            temp.delete()
         }
     }
 

@@ -50,8 +50,11 @@ class CoverCache(
     /** Cache directory used for covers not in library management.*/
     private val onlineCoverDirectory = File(context.cacheDir, ONLINE_COVERS_DIR).also { it.mkdirs() }
 
-    private val maxOnlineCacheSize = 50L * 1024L * 1024L // 50 MB
+    // Several Discover shelves and recent issues can exceed the old 50 MB
+    // budget quickly. This is disposable artwork, not downloaded comics.
+    private val maxOnlineCacheSize = 150L * 1024L * 1024L // 150 MB
 
+    @Volatile
     private var lastClean = 0L
 
     /**
@@ -75,7 +78,7 @@ class CoverCache(
         val files = cacheDir.listFiles()?.iterator() ?: return
         while (files.hasNext()) {
             val file = files.next()
-            if (file.isFile && file.name !in urls) {
+            if (file.isFile && !file.name.startsWith(".cover-write-") && file.name !in urls) {
                 deletedSize += file.length()
                 file.delete()
             }
@@ -126,11 +129,14 @@ class CoverCache(
                     val directory = onlineCoverDirectory
                     val size = DiskUtil.getDirectorySize(directory)
                     if (size <= maxOnlineCacheSize) {
+                        lastClean = System.currentTimeMillis()
                         return@withIOContext
                     }
                     var deletedSize = 0L
                     val files =
-                        directory.listFiles()?.sortedBy { it.lastModified() }?.iterator()
+                        directory.listFiles()
+                            ?.filter { it.isFile && !it.name.startsWith(".cover-write-") }
+                            ?.sortedBy { it.lastModified() }?.iterator()
                             ?: return@withIOContext
                     while (files.hasNext()) {
                         val file = files.next()
@@ -210,6 +216,12 @@ class CoverCache(
         } else {
             File(onlineCoverDirectory, hashKey)
         }
+    }
+
+    /** The same exact thumbnail may already be cached in the other shelf. */
+    internal fun getAlternateCoverFile(manga: Manga): File {
+        val hashKey = DiskUtil.hashKeyForDisk(manga.thumbnail_url.orEmpty())
+        return File(if (manga.favorite) onlineCoverDirectory else cacheDir, hashKey)
     }
 
     fun deleteFromCache(name: String?) {
