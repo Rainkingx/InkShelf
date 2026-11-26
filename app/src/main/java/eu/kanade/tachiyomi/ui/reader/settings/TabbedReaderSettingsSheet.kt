@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.databinding.ReaderColorFilterBinding
 import eu.kanade.tachiyomi.ui.main.SearchActivity
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
+import eu.kanade.tachiyomi.ui.reader.InkShelfReaderChrome
 import eu.kanade.tachiyomi.util.system.dpToPx
 import eu.kanade.tachiyomi.util.view.collapse
 import eu.kanade.tachiyomi.util.view.expand
@@ -140,13 +141,27 @@ class TabbedReaderSettingsSheet(
             },
         )
 
+        applyInkShelfStyle()
         if (showColorFilterSettings) {
             binding.tabs.getTabAt(filterTabIndex)?.select()
         }
     }
 
+    private fun applyInkShelfStyle() {
+        InkShelfReaderChrome.surface(binding.root)
+        InkShelfReaderChrome.surface(generalView)
+        InkShelfReaderChrome.surface(pagedView)
+        InkShelfReaderChrome.surface(filterView)
+        InkShelfReaderChrome.tabs(binding.tabs)
+        binding.menu.setColorFilter(InkShelfReaderChrome.accentColor)
+        InkShelfReaderChrome.settings(generalView)
+        InkShelfReaderChrome.settings(pagedView)
+        InkShelfReaderChrome.settings(filterView, preserveFilterColors = true)
+    }
+
     override fun onStart() {
         super.onStart()
+        applyInkShelfStyle()
         val filterTabIndex = getTabViews().indexOf(filterView)
         sheetBehavior.skipCollapsed = binding.tabs.selectedTabPosition != filterTabIndex
     }
@@ -163,5 +178,6 @@ class TabbedReaderSettingsSheet(
         showWebtoonView = isWebtoon
         binding.pager.adapter?.notifyDataSetChanged()
         pagedView.updatePrefs()
+        applyInkShelfStyle()
     }
 }

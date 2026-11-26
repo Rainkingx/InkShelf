@@ -95,6 +95,7 @@ import eu.kanade.tachiyomi.ui.base.activity.BaseActivity
 import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.manga.MangaDetailsController
 import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2Activity
+import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2Themes
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Error
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel.SetAsCoverResult.Success
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
@@ -318,6 +319,7 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
         }
 
         super.onCreate(savedInstanceState)
+        InkShelf2Themes.restore(this)
         binding = ReaderActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
         withStyledAttributes(null, intArrayOf(android.R.attr.windowLightStatusBar)) {
@@ -327,11 +329,12 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
 
         wic.isAppearanceLightStatusBars = themeLightStatusBars
         wic.isAppearanceLightNavigationBars = themeLightStatusBars
-        binding.appBar.setBackgroundColor(contextCompatColor(R.color.surface_alpha))
-        ViewCompat.setBackgroundTintList(
-            binding.readerNav.root,
-            ColorStateList.valueOf(contextCompatColor(R.color.surface_alpha)),
-        )
+        binding.appBar.setBackgroundColor(InkShelfReaderChrome.toolbarColor)
+        InkShelfReaderChrome.surface(binding.readerNav.root, translucent = true)
+        InkShelfReaderChrome.surface(binding.chaptersSheet.root)
+        InkShelfReaderChrome.navigation(binding.readerNav.root)
+        InkShelfReaderChrome.navigation(binding.chaptersSheet.buttonGroup)
+        InkShelfReaderChrome.typography(binding.toolbar)
 
         backPressedCallback =
             object : OnBackPressedCallback(enabled = true) {
@@ -569,9 +572,7 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
         smartBubbleItem?.title = if (smartBubbleOn) getString(R.string.panel_flow_on) else getString(R.string.panel_flow)
         smartBubbleItem?.icon?.mutate()?.apply {
             setTint(
-                getResourceColor(
-                    if (smartBubbleOn) R.attr.colorPrimary else R.attr.actionBarTintColor,
-                ),
+                if (smartBubbleOn) InkShelfReaderChrome.accentColor else InkShelfReaderChrome.textColor,
             )
             alpha = 255
         }
@@ -597,6 +598,8 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
             binding.chaptersSheet.shiftPageButton.icon = icon
         }
         setBottomNavButtons(preferences.pageLayout().get())
+        InkShelfReaderChrome.navigation(binding.chaptersSheet.buttonGroup)
+        InkShelfReaderChrome.typography(binding.toolbar)
         (binding.toolbar.background as? LayerDrawable)?.let { layerDrawable ->
             val isDoublePage = splitItem?.isVisible ?: false
             // Shout out to Google for not fixing setVisible https://issuetracker.google.com/issues/127538945
@@ -1091,14 +1094,12 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
     private fun initializeMenu() {
         // Set binding.toolbar
         setSupportActionBar(binding.toolbar)
-        val primaryColor =
-            ColorUtils.setAlphaComponent(
-                getResourceColor(R.attr.colorSurface),
-                200,
-            )
-        binding.appBar.setBackgroundColor(primaryColor)
+        binding.appBar.setBackgroundColor(InkShelfReaderChrome.toolbarColor)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        binding.toolbar.navigationIcon?.setTint(getResourceColor(R.attr.actionBarTintColor))
+        binding.toolbar.navigationIcon?.setTint(InkShelfReaderChrome.textColor)
+        binding.toolbar.setTitleTextColor(InkShelfReaderChrome.textColor)
+        binding.toolbar.setSubtitleTextColor(InkShelfReaderChrome.mutedColor)
+        InkShelfReaderChrome.typography(binding.toolbar)
         binding.toolbar.setNavigationOnClickListener {
             popToMain()
         }
