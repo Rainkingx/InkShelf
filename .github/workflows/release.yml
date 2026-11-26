@@ -12,9 +12,8 @@ permissions:
 
 jobs:
   release:
-    # The one-time main-branch launch is explicit; ordinary main pushes
-    # never publish an APK. Existing version-tag releases remain supported.
-    if: github.ref_type == 'tag' || (github.ref == 'refs/heads/main' && github.event.head_commit.message == 'Publish InkShelf 2.0 public beta 20')
+    # Publish only the explicitly approved stable release; ordinary pushes do not publish.
+    if: github.ref == 'refs/tags/v2.0.0' || (github.ref == 'refs/heads/main' && github.event.head_commit.message == 'Publish InkShelf stable 2.0.0')
     name: Build and publish InkShelf
     runs-on: ubuntu-24.04
 
@@ -43,7 +42,7 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
             tag="$GITHUB_REF_NAME"
           else
-            tag="v2.0.0-b20"
+            tag="v2.0.0"
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
@@ -59,7 +58,7 @@ jobs:
       - name: Remove previous build output
         run: rm -rf app/build
 
-      - name: Build signed InkShelf beta
+      - name: Build signed InkShelf stable
         env:
           INKSHELF_RELEASE_STORE_FILE: ${{ runner.temp }}/inkshelf-signing/inkshelf-release.keystore
           INKSHELF_RELEASE_PASSWORD: ${{ secrets.INKSHELF_RELEASE_PASSWORD }}
@@ -68,7 +67,7 @@ jobs:
           test -n "$INKSHELF_RELEASE_PASSWORD"
           for attempt in 1 2 3; do
             set +e
-            ./gradlew :app:assembleStandardBeta -x :app:formatKotlinMain 2>&1 | tee "$RUNNER_TEMP/inkshelf-release-build.log"
+            ./gradlew :app:assembleStandardRelease -x :app:formatKotlinMain 2>&1 | tee "$RUNNER_TEMP/inkshelf-release-build.log"
             result=${PIPESTATUS[0]}
             set -e
             if [ "$result" -eq 0 ]; then
@@ -81,12 +80,12 @@ jobs:
           done
 
       - name: Run existing regression tests
-        run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' -x :app:formatKotlinMain
+        run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.reader.viewer.pager.PanelBoundaryDetectorTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideChapterFinderTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2EventTimelineTest' -x :app:formatKotlinMain
 
       - name: Prepare universal APK
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/standard/beta/*universal-beta.apk dist/InkShelf.apk
+          cp app/build/outputs/apk/standard/release/*universal-release.apk dist/InkShelf.apk
 
       - name: Verify APK signature and upgrade compatibility
         env:
@@ -102,9 +101,9 @@ jobs:
           aapt="$(dirname "$signer")/aapt"
           "$signer" verify --print-certs dist/InkShelf.apk > "$RUNNER_TEMP/new-signature.txt"
           cat "$RUNNER_TEMP/new-signature.txt"
-          if [[ "$RELEASE_TAG" == "v2.0.0-b20" ]]; then
+          if [[ "$RELEASE_TAG" == "v2.0.0" ]]; then
             mkdir -p "$RUNNER_TEMP/previous-release"
-            gh release download v2.0.0-b19 --pattern InkShelf.apk --dir "$RUNNER_TEMP/previous-release"
+            gh release download v2.0.0-b20 --pattern InkShelf.apk --dir "$RUNNER_TEMP/previous-release"
             "$signer" verify --print-certs "$RUNNER_TEMP/previous-release/InkShelf.apk" > "$RUNNER_TEMP/old-signature.txt"
             grep 'certificate SHA-256 digest:' "$RUNNER_TEMP/new-signature.txt" | sort > "$RUNNER_TEMP/new-certs.txt"
             grep 'certificate SHA-256 digest:' "$RUNNER_TEMP/old-signature.txt" | sort > "$RUNNER_TEMP/old-certs.txt"
@@ -114,11 +113,11 @@ jobs:
             "$aapt" dump badging "$RUNNER_TEMP/previous-release/InkShelf.apk" > "$RUNNER_TEMP/old-badging.txt"
             grep -F "package: name='eu.kanade.tachiyomi.j2k'" "$RUNNER_TEMP/old-badging.txt"
             grep -F "package: name='eu.kanade.tachiyomi.j2k'" "$RUNNER_TEMP/new-badging.txt"
-            grep -F "versionName='2.0.0-b20'" "$RUNNER_TEMP/new-badging.txt"
-            grep -F "versionCode='219'" "$RUNNER_TEMP/new-badging.txt"
+            grep -F "versionName='2.0.0'" "$RUNNER_TEMP/new-badging.txt"
+            grep -F "versionCode='220'" "$RUNNER_TEMP/new-badging.txt"
             old_code="$(sed -n "s/^package: .*versionCode='\\([0-9]*\\)'.*/\\1/p" "$RUNNER_TEMP/old-badging.txt")"
             test -n "$old_code"
-            test "$old_code" -lt 219
+            test "$old_code" -lt 220
           fi
 
       - name: Publish GitHub Release
@@ -130,8 +129,8 @@ jobs:
           set -euo pipefail
           expected_size="$(stat -c%s dist/InkShelf.apk)"
           for attempt in 1 2 3 4; do
-            if release_json="$(gh release view "$RELEASE_TAG" --json assets,isDraft 2>/dev/null)"; then
-              if jq -e --argjson size "$expected_size" '.isDraft == false and any(.assets[]; .name == "InkShelf.apk" and .state == "uploaded" and .size == $size)' <<< "$release_json" >/dev/null; then
+            if release_json="$(gh release view "$RELEASE_TAG" --json assets,isDraft,isPrerelease 2>/dev/null)"; then
+              if jq -e --argjson size "$expected_size" '.isDraft == false and .isPrerelease == false and any(.assets[]; .name == "InkShelf.apk" and .state == "uploaded" and .size == $size)' <<< "$release_json" >/dev/null; then
                 echo "Release and complete APK already published."
                 exit 0
               fi
@@ -145,20 +144,20 @@ jobs:
                 continue
               fi
             else
-              if [[ "$RELEASE_TAG" == "v2.0.0-b20" ]]; then
+              if [[ "$RELEASE_TAG" == "v2.0.0" ]]; then
                 gh release create "$RELEASE_TAG" dist/InkShelf.apk \
                   --target "$GITHUB_SHA" \
-                  --title "InkShelf — Public Beta 20" \
+                  --title "InkShelf" \
                   --notes-file RELEASE_NOTES.md \
-                  --prerelease || true
+                  --latest || true
               else
                 gh release create "$RELEASE_TAG" dist/InkShelf.apk \
                   --target "$GITHUB_SHA" \
                   --title "InkShelf $RELEASE_TAG" \
                   --generate-notes \
-                  --prerelease || true
+                  --latest || true
               fi
             fi
             if [[ "$attempt" -lt 4 ]]; then sleep $((attempt * 20)); fi
           done
-          gh release view "$RELEASE_TAG" --json assets,isDraft | jq -e --argjson size "$expected_size" '.isDraft == false and any(.assets[]; .name == "InkShelf.apk" and .state == "uploaded" and .size == $size)'
+          gh release view "$RELEASE_TAG" --json assets,isDraft,isPrerelease | jq -e --argjson size "$expected_size" '.isDraft == false and .isPrerelease == false and any(.assets[]; .name == "InkShelf.apk" and .state == "uploaded" and .size == $size)'

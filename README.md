@@ -7,7 +7,7 @@ The project keeps the proven J2K reader, library, source/extension, download, ba
 
 > InkShelf is under active development. Some features are intentionally marked **BETA**.
 
-## What's new in 2.0
+## Features
 
 InkShelf introduces a rebuilt Android interface with a shared header, bottom navigation and a comic-focused visual identity, while retaining the existing reader and library foundations.
 
@@ -24,7 +24,7 @@ InkShelf introduces a rebuilt Android interface with a shared header, bottom nav
 
 ## Installation and updates
 
-The public APK is available from [GitHub Releases](https://github.com/Rainkingx/InkShelf/releases). Check the release notes for the version and whether it is a prerelease.
+The public APK is available from [GitHub Releases](https://github.com/Rainkingx/InkShelf/releases). Check the release notes for the current stable version and any available prereleases.
 
 Before switching from an existing installation, export a backup. Development builds and public releases use different Android package IDs; a development APK cannot be upgraded in place by the public APK. Restore a backup in the new installation and check your library before removing the old app. Downloaded files and extension settings may need separate migration.
 
