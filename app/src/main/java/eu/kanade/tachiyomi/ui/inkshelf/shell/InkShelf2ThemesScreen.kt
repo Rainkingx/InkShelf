@@ -297,7 +297,7 @@ internal fun InkShelf2ThemesScreen(
         }
         item {
             Text(
-                "READY-MADE THEMES",
+                "FOLLOW YOUR DEVICE",
                 modifier = Modifier.padding(horizontal = 19.dp),
                 color = InkShelf2Colors.AccentLight,
                 fontSize = 12.sp,
@@ -305,7 +305,41 @@ internal fun InkShelf2ThemesScreen(
                 letterSpacing = 1.3.sp,
             )
         }
-        items(InkShelf2Themes.presets.filterNot { it.id == InkShelf2Themes.DOOM_ID }, key = { it.id }) { preset ->
+        item {
+            InkShelfPresetRow(
+                InkShelf2Preset(InkShelf2Themes.SYSTEM_ID, "Follow system", "Spider-Gwen in light mode · Original in dark mode",
+                    InkShelf2Themes.systemPalette(context.resources.configuration.uiMode)),
+                selected = !editingCustom && savedThemeId == InkShelf2Themes.SYSTEM_ID,
+                onClick = {
+                    InkShelf2Themes.select(context, InkShelf2Themes.SYSTEM_ID)
+                    val chosen = InkShelf2Themes.current
+                    editingCustom = false
+                    primary = chosen.accent
+                    secondary = chosen.highlight
+                    background = chosen.background
+                },
+            )
+        }
+        item {
+            Text("LIGHT THEMES", modifier = Modifier.padding(horizontal = 19.dp),
+                color = InkShelf2Colors.AccentLight, fontSize = 12.sp,
+                fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+        }
+        items(InkShelf2Themes.presets.filter { it.colors.isLight }, key = { it.id }) { preset ->
+            InkShelfPresetRow(preset, !editingCustom && savedThemeId == preset.id, onClick = {
+                InkShelf2Themes.select(context, preset.id)
+                editingCustom = false
+                primary = preset.colors.accent
+                secondary = preset.colors.highlight
+                background = preset.colors.background
+            })
+        }
+        item {
+            Text("DARK THEMES", modifier = Modifier.padding(horizontal = 19.dp),
+                color = InkShelf2Colors.AccentLight, fontSize = 12.sp,
+                fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+        }
+        items(InkShelf2Themes.presets.filter { !it.colors.isLight && it.id != InkShelf2Themes.DOOM_ID }, key = { it.id }) { preset ->
             val selected = !editingCustom && savedThemeId == preset.id
             InkShelfPresetRow(
                 preset,
@@ -391,7 +425,7 @@ internal fun InkShelf2ThemesScreen(
                 InkShelfColorSlot("Background", background) { editorSlot = "Background" }
                 if (backgroundTooLight) {
                     Text(
-                        "Choose a darker background so comic titles stay readable.",
+                        "Custom themes currently require a dark background. Choose a light preset above for light mode.",
                         color = InkShelf2Colors.AccentLight,
                         fontSize = 12.sp,
                     )
@@ -440,11 +474,11 @@ private fun InkShelfThemePreview(palette: InkShelf2Palette) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Palette, null, tint = palette.highlight, modifier = Modifier.size(23.dp))
             Spacer(Modifier.width(8.dp))
-            Text("InkShelf", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text("InkShelf", color = palette.text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
             Text("LIVE PREVIEW", color = palette.highlight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
-        Text("Discover your next comic", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text("Discover your next comic", color = palette.text, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             repeat(3) { index ->
                 Box(
@@ -470,9 +504,9 @@ private fun InkShelfThemePreview(palette: InkShelf2Palette) {
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text("HOME", color = palette.highlight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Text("DISCOVER", color = Color.White, fontSize = 11.sp)
-            Text("LIBRARY", color = Color.White, fontSize = 11.sp)
-            Text("MENU", color = Color.White, fontSize = 11.sp)
+            Text("DISCOVER", color = palette.text, fontSize = 11.sp)
+            Text("LIBRARY", color = palette.text, fontSize = 11.sp)
+            Text("MENU", color = palette.text, fontSize = 11.sp)
         }
     }
 }

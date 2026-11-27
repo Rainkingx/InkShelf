@@ -249,7 +249,7 @@ private fun MenuEntry(
         )
         Spacer(Modifier.width(13.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(title, color = InkShelf2Colors.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(3.dp))
             Text(subtitle, color = InkShelf2Colors.Muted, fontSize = 11.sp, lineHeight = 15.sp)
         }

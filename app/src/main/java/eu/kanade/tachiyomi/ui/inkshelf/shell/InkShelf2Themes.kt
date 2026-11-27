@@ -1,11 +1,13 @@
 package eu.kanade.tachiyomi.ui.inkshelf.shell
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -24,7 +26,12 @@ internal data class InkShelf2Palette(
     val accent: Color,
     val highlight: Color,
     val border: Color,
-)
+) {
+    val isLight: Boolean get() = background.luminance() > 0.35f
+    val text: Color get() = if (isLight) Color(0xFF24212B) else Color(0xFFFBF8FF)
+    val muted: Color get() = if (isLight) Color(0xFF514B5C) else Color(0xFFBCB1C7)
+    val onAccent: Color get() = if (isLight) Color.White else Color(0xFF08060D)
+}
 
 internal data class InkShelf2Preset(
     val id: String,
@@ -40,6 +47,8 @@ internal data class InkShelf2EventSkin(
 
 internal object InkShelf2Themes {
     const val DOOM_ID = "doom_latveria"
+    const val SYSTEM_ID = "system"
+    const val DEFAULT_LIGHT_ID = "spider_gwen"
     private val doomSkin = InkShelf2EventSkin(
         Color(0xFF20252B), Color(0xFF353C43), Color(0xFFC2A66D),
         Color(0xFFE5E8EB), Color(0xFFB4BDC4), Color(0xFF36E88A), "The Latverian Times",
@@ -64,6 +73,11 @@ internal object InkShelf2Themes {
         limitedThemesVisible = today >= DOOM_START
         val prefs = preferences(context)
         if (today < DOOM_START || today > DOOM_END || prefs.getBoolean(DOOM_ACTIVATED, false)) return
+        // An explicit system choice must not be overridden by the seasonal event.
+        if (prefs.getString(SELECTED, "original") == SYSTEM_ID) {
+            prefs.edit().putBoolean(DOOM_ACTIVATED, true).apply()
+            return
+        }
         val doom = presets.first { it.id == DOOM_ID }
         prefs.edit().putString(SELECTED, DOOM_ID).putBoolean(DOOM_ACTIVATED, true).apply()
         selectedId = DOOM_ID
@@ -124,7 +138,39 @@ internal object InkShelf2Themes {
             "amoled", "AMOLED Black", "Pure black & electric violet",
             0xFF000000, 0xFF0D0A12, 0xFF17101E, 0xFFAE48F4, 0xFFE68AFF, 0xFF513762,
         ),
+        preset(
+            "spider_gwen", "Spider-Gwen", "White, pink & turquoise",
+            0xFFFFFFFF, 0xFFFFF3F8, 0xFFF9E7F0, 0xFFC21869, 0xFF007773, 0xFFE1B7CB,
+        ),
+        preset(
+            "fantastic_four", "Fantastic Four", "Ice white & electric blue",
+            0xFFFFFFFF, 0xFFF0F7FF, 0xFFE3EFFC, 0xFF1763B5, 0xFF2256A3, 0xFFB5CBE5,
+        ),
+        preset(
+            "moon_knight", "Moon Knight", "Ivory, silver & charcoal",
+            0xFFFAFAF5, 0xFFF2F2ED, 0xFFE4E6E8, 0xFF505D6B, 0xFF525C68, 0xFFC4C8CD,
+        ),
+        preset(
+            "captain_america", "Captain America", "White, navy & crimson",
+            0xFFFFFFFF, 0xFFF1F5FC, 0xFFE6ECF6, 0xFF193D80, 0xFFB82038, 0xFFB9C7E2,
+        ),
+        preset(
+            "storm", "Storm", "Pearl white, gold & violet",
+            0xFFFAF9F6, 0xFFF5F1FA, 0xFFECE6F4, 0xFF6841A5, 0xFF806000, 0xFFD1C4DF,
+        ),
+        preset(
+            "she_hulk", "She-Hulk", "White, emerald & purple",
+            0xFFFFFFFF, 0xFFF1F8F1, 0xFFE4F1E6, 0xFF23743D, 0xFF7836A5, 0xFFB8D4BE,
+        ),
     )
+
+    fun systemPalette(uiMode: Int): InkShelf2Palette =
+        if (uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES) original
+        else presets.first { it.id == DEFAULT_LIGHT_ID }.colors
+
+    fun updateSystem(uiMode: Int) {
+        if (selectedId == SYSTEM_ID) current = systemPalette(uiMode)
+    }
 
     val original: InkShelf2Palette get() = presets.first().colors
 
@@ -165,9 +211,12 @@ internal object InkShelf2Themes {
     fun restore(context: Context) {
         refreshScheduledEvent(context)
         val requested = preferences(context).getString(SELECTED, "original").orEmpty()
-        val chosen = if (requested == "custom") savedCustom(context)
-            else presets.firstOrNull { it.id == requested }?.colors ?: original
-        selectedId = if (requested == "custom" || presets.any { it.id == requested }) requested else "original"
+        val chosen = when (requested) {
+            "custom" -> savedCustom(context)
+            SYSTEM_ID -> systemPalette(context.resources.configuration.uiMode)
+            else -> presets.firstOrNull { it.id == requested }?.colors ?: original
+        }
+        selectedId = if (requested == "custom" || requested == SYSTEM_ID || presets.any { it.id == requested }) requested else "original"
         current = chosen
     }
 
@@ -176,6 +225,12 @@ internal object InkShelf2Themes {
 
     fun select(context: Context, id: String) {
         if (id == DOOM_ID && !limitedThemesVisible) return
+        if (id == SYSTEM_ID) {
+            preferences(context).edit().putString(SELECTED, SYSTEM_ID).apply()
+            selectedId = SYSTEM_ID
+            current = systemPalette(context.resources.configuration.uiMode)
+            return
+        }
         if (id == "custom") {
             if (!hasSavedCustom(context)) return
             preferences(context).edit().putString(SELECTED, "custom").apply()

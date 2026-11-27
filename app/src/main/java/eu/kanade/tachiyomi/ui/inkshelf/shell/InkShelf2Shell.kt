@@ -47,8 +47,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowInsetsControllerCompat
+import android.app.Activity
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,8 +101,9 @@ object InkShelf2Colors {
     val SurfaceRaised: Color get() = InkShelf2Themes.current.surfaceRaised
     val Accent: Color get() = InkShelf2Themes.current.accent
     val AccentLight: Color get() = InkShelf2Themes.current.highlight
-    val Text: Color get() = InkShelf2Themes.eventSkin?.text ?: Color(0xFFFBF8FF)
-    val Muted: Color get() = InkShelf2Themes.eventSkin?.muted ?: Color(0xFFBCB1C7)
+    val Text: Color get() = InkShelf2Themes.eventSkin?.text ?: InkShelf2Themes.current.text
+    val Muted: Color get() = InkShelf2Themes.eventSkin?.muted ?: InkShelf2Themes.current.muted
+    val OnAccent: Color get() = InkShelf2Themes.current.onAccent
     val Trim: Color get() = InkShelf2Themes.eventSkin?.gold ?: AccentLight
     val PulseTitle: String get() = InkShelf2Themes.eventSkin?.pulseTitle ?: "The Pulse"
     val Border: Color get() = InkShelf2Themes.current.border
@@ -159,8 +166,29 @@ fun InkShelf2Theme(content: @Composable () -> Unit) {
     // Rebuild Material 3's scheme from the active appearance on every change.
     // Reading InkShelf2Themes.current registers a Compose state dependency.
     val palette = InkShelf2Themes.current
-    MaterialTheme(
-        colorScheme = darkColorScheme(
+    val uiMode = LocalConfiguration.current.uiMode
+    val selected = InkShelf2Themes.selectedId
+    LaunchedEffect(uiMode, selected) { InkShelf2Themes.updateSystem(uiMode) }
+    val view = LocalView.current
+    SideEffect {
+        (view.context as? Activity)?.window?.let { window ->
+            WindowInsetsControllerCompat(window, view).apply {
+                isAppearanceLightStatusBars = palette.isLight
+                isAppearanceLightNavigationBars = palette.isLight
+            }
+        }
+    }
+    val scheme = if (palette.isLight) lightColorScheme(
+            primary = palette.accent, onPrimary = Color.White,
+            primaryContainer = palette.surfaceRaised, onPrimaryContainer = palette.text,
+            secondary = palette.highlight, onSecondary = Color.White,
+            secondaryContainer = palette.surfaceRaised, onSecondaryContainer = palette.text,
+            tertiary = palette.highlight, onTertiary = Color.White,
+            background = palette.background, onBackground = palette.text,
+            surface = palette.surface, onSurface = palette.text,
+            surfaceVariant = palette.surfaceRaised, onSurfaceVariant = palette.muted,
+            outline = palette.border, surfaceTint = palette.accent,
+        ) else darkColorScheme(
             primary = palette.accent,
             onPrimary = InkShelf2Colors.Text,
             secondary = palette.highlight,
@@ -171,7 +199,9 @@ fun InkShelf2Theme(content: @Composable () -> Unit) {
             surfaceVariant = palette.surfaceRaised,
             onSurfaceVariant = InkShelf2Colors.Muted,
             outline = palette.border,
-        ),
+        )
+    MaterialTheme(
+        colorScheme = scheme,
         typography = InkShelf2AppTypography,
         content = content,
     )
@@ -309,7 +339,7 @@ private fun InkShelf2Header(
             modifier = Modifier.size(40.dp)
                 .offset(y = if (skin == null) (-3).dp else 0.dp),
         )
-        if (skin == null) {
+        if (skin == null && !InkShelf2Themes.current.isLight) {
             Box(
                 modifier = Modifier.padding(start = 5.dp, end = 5.dp).weight(1f),
                 contentAlignment = Alignment.CenterStart,

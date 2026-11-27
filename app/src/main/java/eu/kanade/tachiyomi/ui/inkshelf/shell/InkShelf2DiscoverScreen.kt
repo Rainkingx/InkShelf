@@ -821,7 +821,7 @@ internal fun InkShelf2DiscoverScreen(
                                     ),
                                 )
                                 Column(modifier = Modifier.align(Alignment.BottomStart).padding(10.dp)) {
-                                    Text(collection.title, color = Color.White, fontSize = 15.sp,
+                                    Text(collection.title, color = InkShelf2Colors.Text, fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold, maxLines = 2)
                                     Text("${collection.comics.size} comics", color = InkShelf2Colors.AccentLight,
                                         fontSize = 10.sp)

@@ -99,6 +99,13 @@ internal fun Modifier.inkShelf2Atmosphere(): Modifier = this
             }
             return@drawBehind
         }
+        if (InkShelf2Themes.current.isLight) {
+            drawCircle(
+                brush = Brush.radialGradient(listOf(InkShelf2Colors.Accent.copy(alpha = 0.045f), Color.Transparent)),
+                center = Offset(size.width * 0.85f, size.height * 0.17f), radius = size.width * 1.2f,
+            )
+            return@drawBehind
+        }
         drawCircle(
             brush = Brush.radialGradient(
                 0f to InkShelf2Colors.Accent.copy(alpha = 0.22f),
@@ -170,7 +177,7 @@ internal fun InkShelf2ActionButton(
             val fg = when {
                 !enabled -> InkShelf2Colors.Muted
                 outlined -> InkShelf2Colors.Text
-                else -> Color(0xFF08060D)
+                else -> InkShelf2Colors.OnAccent
             }
             if (leadingIcon != null) {
                 Icon(
@@ -379,7 +386,7 @@ internal fun InkShelf2StatusPill(label: String, modifier: Modifier = Modifier) {
     ) {
         Text(
             label,
-            color = Color.White,
+            color = if (InkShelf2Themes.current.isLight) InkShelf2Colors.OnAccent else Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,

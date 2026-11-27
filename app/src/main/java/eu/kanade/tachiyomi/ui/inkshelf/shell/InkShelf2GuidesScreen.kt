@@ -714,7 +714,7 @@ private fun InkShelf2GuideDetails(
         onBack = onBack,
         topActions = {
             IconButton(onClick = { optionsOpen = true }) {
-                Icon(Icons.Outlined.MoreVert, "Event options", tint = Color.White)
+                Icon(Icons.Outlined.MoreVert, "Event options", tint = InkShelf2Colors.Text)
             }
             DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }) {
                 if (guide.type == "CUSTOM") {

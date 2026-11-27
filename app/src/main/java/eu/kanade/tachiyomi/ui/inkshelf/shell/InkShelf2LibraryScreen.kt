@@ -432,7 +432,7 @@ private fun ShelfFilterPill(text: String, active: Boolean, modifier: Modifier = 
     ) {
         Text(
             text,
-            color = Color.White,
+            color = if (active) Color.White else InkShelf2Colors.Text,
             fontSize = 10.sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
             textAlign = TextAlign.Center,
@@ -510,7 +510,7 @@ private fun ShelfStatus(item: InkShelf2LibraryItem, modifier: Modifier = Modifie
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Text(
                     "Series ${progress}%",
-                    color = Color.White,
+                    color = InkShelf2Colors.Text,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -530,7 +530,7 @@ private fun ShelfStatus(item: InkShelf2LibraryItem, modifier: Modifier = Modifie
                     InkShelf2ReadingState.ON_HOLD -> Icons.Filled.Pause
                     else -> Icons.Outlined.AutoStories
                 }
-                Icon(glyph, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                Icon(glyph, contentDescription = null, tint = InkShelf2Colors.Text, modifier = Modifier.size(12.dp))
                 Spacer(Modifier.width(3.dp))
                 Text(
                     when (item.state) {
@@ -539,7 +539,7 @@ private fun ShelfStatus(item: InkShelf2LibraryItem, modifier: Modifier = Modifie
                         InkShelf2ReadingState.READING -> "Reading"
                         else -> ""
                     },
-                    color = Color.White,
+                    color = InkShelf2Colors.Text,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,

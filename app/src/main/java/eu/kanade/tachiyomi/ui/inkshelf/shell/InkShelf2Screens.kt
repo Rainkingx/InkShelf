@@ -363,7 +363,7 @@ internal fun InkShelf2HomeScreen(
                             Text(
                                 text = if (day.picks.isEmpty()) "Explore today's selection"
                                 else "${day.picks.size} ${if (day.picks.size == 1) "pick" else "picks"} selected for you",
-                                color = Color.White.copy(alpha = 0.95f),
+                                color = InkShelf2Colors.Text.copy(alpha = 0.95f),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
@@ -516,7 +516,7 @@ internal fun InkShelf2ComicTitle(title: String) {
     val second = words.lastOrNull().orEmpty()
     val size = if (first.length > 14 || second.length > 11) 28.sp else 34.sp
     Column(verticalArrangement = Arrangement.spacedBy((-6).dp)) {
-        ComicInkLine(first, Color.White, size)
+        ComicInkLine(first, InkShelf2Colors.Text, size)
         ComicInkLine(second, InkShelf2Colors.AccentLight, size)
     }
 }
@@ -693,7 +693,7 @@ internal fun InkShelf2DetailPage(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Outlined.ArrowBack, "Back", tint = Color.White)
+                            Icon(Icons.Outlined.ArrowBack, "Back", tint = InkShelf2Colors.Text)
                         }
                         Box { topActions() }
                     }
@@ -719,7 +719,7 @@ internal fun InkShelf2DetailPage(
                         ) {
                             Text(
                                 title,
-                                color = Color.White,
+                                color = InkShelf2Colors.Text,
                                 fontSize = if (compactComicHero) 22.sp else 25.sp,
                                 lineHeight = if (compactComicHero) 26.sp else 28.sp,
                                 fontWeight = FontWeight.Bold,
@@ -995,7 +995,7 @@ internal fun InkShelf2DetailsScreen(
         onRefresh = { if (!isLoadingIssues) onRefresh() },
         topActions = {
             IconButton(onClick = { comicMenu = true }) {
-                Icon(Icons.Outlined.MoreVert, "Comic options", tint = Color.White)
+                Icon(Icons.Outlined.MoreVert, "Comic options", tint = InkShelf2Colors.Text)
             }
             DropdownMenu(expanded = comicMenu, onDismissRequest = { comicMenu = false }) {
                 DropdownMenuItem(
@@ -1396,7 +1396,7 @@ internal fun InkShelf2CoverCard(
                         .clip(RoundedCornerShape(50))
                         .background(InkShelf2Colors.Background.copy(alpha = 0.90f))
                         .padding(horizontal = 7.dp, vertical = 4.dp),
-                    color = Color.White,
+                    color = InkShelf2Colors.Text,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                 )

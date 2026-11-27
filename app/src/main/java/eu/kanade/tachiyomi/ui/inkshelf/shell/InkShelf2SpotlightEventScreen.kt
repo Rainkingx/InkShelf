@@ -225,7 +225,7 @@ internal fun InkShelf2SpotlightEventScreen(
                         Text(event.label, color = InkShelf2Colors.AccentLight,
                             fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         Spacer(Modifier.height(8.dp))
-                        Text(event.title, color = Color.White,
+                        Text(event.title, color = InkShelf2Colors.Text,
                             fontWeight = FontWeight.Black, fontSize = 27.sp,
                             lineHeight = 29.sp, maxLines = 3)
                         Spacer(Modifier.height(8.dp))
@@ -233,7 +233,7 @@ internal fun InkShelf2SpotlightEventScreen(
                             event.series.size.toString() + " ESSENTIAL READS · IN ORDER"
                             else if (event.id == "comic-christmas") event.series.size.toString() + " FESTIVE READS"
                             else event.series.size.toString() + " CONNECTED SERIES",
-                            color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp)
+                            color = InkShelf2Colors.Text.copy(alpha = 0.9f), fontSize = 11.sp)
                     }
                 }
                 Spacer(Modifier.height(14.dp))
