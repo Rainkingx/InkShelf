@@ -97,14 +97,14 @@ internal fun InkShelf2LocalImportScreen(
         item {
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Text(
-                    "Bring your own digital comics into InkShelf without creating an online account.",
+                    "Bring your own digital comics into ARC without creating an online account.",
                     color = InkShelf2Colors.Text,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Choose one or several CBZ, CBR, ZIP, RAR or EPUB files. InkShelf reads ComicInfo.xml where available, groups issues into series and checks for duplicate files.",
+                    "Choose one or several CBZ, CBR, ZIP, RAR or EPUB files. ARC reads ComicInfo.xml where available, groups issues into series and checks for duplicate files.",
                     color = InkShelf2Colors.Muted,
                     fontSize = 13.sp,
                     lineHeight = 19.sp,
@@ -119,7 +119,7 @@ internal fun InkShelf2LocalImportScreen(
                 )
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Local files are copied into InkShelf's existing Local Source and registered in your Library.",
+                    "Local files are copied into ARC's existing Local Source and registered in your Library.",
                     color = InkShelf2Colors.Muted,
                     fontSize = 12.sp,
                 )

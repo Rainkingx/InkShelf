@@ -1315,8 +1315,7 @@ internal fun InkShelf2AccountScreen(padding: PaddingValues) {
         InkShelf2MetronSettings()
         Spacer(Modifier.height(22.dp))
         Text(
-            "Other settings, backups and downloads remain available in the original InkShelf launcher " +
-                "while the 2.0 Account screen is being rebuilt.",
+            "Other settings, backups and downloads are available from the ARC menu.",
             color = InkShelf2Colors.Muted,
             fontSize = 12.sp,
             lineHeight = 18.sp,

@@ -153,7 +153,7 @@ internal fun InkShelf2MetronSettings() {
         }
         Text(
             "Your token is encrypted by Android Keystore and sent only to metron.cloud over HTTPS. " +
-                "It is not included in InkShelf builds, GitHub, or shared settings.",
+                "It is not included in ARC builds, GitHub, or shared settings.",
             color = InkShelf2Colors.Muted,
             fontSize = 11.sp,
             lineHeight = 16.sp,

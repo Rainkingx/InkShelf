@@ -97,7 +97,7 @@ class LocalSource(
             return if ((dir.exists() || dir.mkdirs()) && dir.isDirectory) dir else null
         }
         private fun getBaseDirectories(context: Context): List<File> {
-            val c = context.getString(R.string.app_name) + File.separator + "local"
+            val c = context.getString(R.string.arc_legacy_storage_root) + File.separator + "local"
             val oldLibrary = "Tachiyomi" + File.separator + "local"
             return DiskUtil
                 .getExternalStorages(context)

@@ -172,7 +172,7 @@ internal fun InkShelf2RecommendedSourcesSetup(
                             ),
                         )
                     } catch (_: Exception) {
-                        status = "Enable Install unknown apps for InkShelf in Android Settings, then retry."
+                        status = "Enable Install unknown apps for ARC in Android Settings, then retry."
                     }
                 } else {
                     scope.launch {
@@ -253,7 +253,7 @@ internal fun InkShelf2RecommendedSourcesSetup(
         )
         Text(
             "Extensions are third-party code. Android may ask you to approve each installation " +
-                "and InkShelf may ask you to trust its signature. No extensions are installed silently.",
+                "and ARC may ask you to trust its signature. No extensions are installed silently.",
             color = InkShelf2Colors.Muted,
             fontSize = 11.sp,
             lineHeight = 16.sp,

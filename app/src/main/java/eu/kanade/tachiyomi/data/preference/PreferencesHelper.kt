@@ -86,7 +86,7 @@ class PreferencesHelper(
         Uri.fromFile(
             File(
                 Environment.getExternalStorageDirectory().absolutePath + File.separator +
-                    context.getString(R.string.app_name),
+                    context.getString(R.string.arc_legacy_storage_root),
                 "downloads",
             ),
         )
@@ -95,7 +95,7 @@ class PreferencesHelper(
         Uri.fromFile(
             File(
                 Environment.getExternalStorageDirectory().absolutePath + File.separator +
-                    context.getString(R.string.app_name),
+                    context.getString(R.string.arc_legacy_storage_root),
                 "backup",
             ),
         )

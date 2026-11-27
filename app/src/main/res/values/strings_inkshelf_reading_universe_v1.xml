@@ -5,5 +5,5 @@
     <string name="inkshelf_ru_connections">Your collection</string>
     <string name="inkshelf_ru_status">Library status</string>
     <string name="inkshelf_ru_scores">Your scores</string>
-    <string name="inkshelf_ru_real_data_note">Built from your InkShelf library and reading history</string>
+    <string name="inkshelf_ru_real_data_note">Built from your ARC library and reading history</string>
 </resources>

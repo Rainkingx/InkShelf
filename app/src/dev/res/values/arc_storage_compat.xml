@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep the development installation's original storage location. -->
+    <string name="arc_legacy_storage_root" translatable="false">InkShelf Dev</string>
+</resources>

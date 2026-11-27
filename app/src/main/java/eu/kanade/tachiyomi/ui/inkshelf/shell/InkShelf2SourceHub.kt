@@ -300,7 +300,7 @@ internal fun InkShelf2SourceHub(
             title = { Text("Uninstall ${extension?.name ?: "extension"}?") },
             text = {
                 Text(
-                    "Only the extension app is uninstalled. Your InkShelf library, downloaded issues and reading progress remain. Reinstall it from the Available extensions list to restore this source."
+                    "Only the extension app is uninstalled. Your ARC library, downloaded issues and reading progress remain. Reinstall it from the Available extensions list to restore this source."
                 )
             },
             confirmButton = {
@@ -331,7 +331,7 @@ internal fun InkShelf2SourceHub(
                 Text(
                     "${ext.name}\n\nPackage: ${ext.pkgName}\n\n" +
                         "Only trust extensions from a developer you recognise. " +
-                        "Trusted extensions can execute code in InkShelf.",
+                        "Trusted extensions can execute code in ARC.",
                 )
             },
             confirmButton = {
@@ -605,7 +605,7 @@ internal fun InkShelf2SourceHub(
             else -> {
                 item {
                     InkShelf2SectionHeading("Extension Repositories", null)
-                    Text("Only add repositories you trust. Extensions run code inside InkShelf.",
+                    Text("Only add repositories you trust. Extensions run code inside ARC.",
                         color = InkShelf2Colors.Muted, fontSize = 12.sp,
                         modifier = Modifier.padding(horizontal = 16.dp))
                     OutlinedTextField(

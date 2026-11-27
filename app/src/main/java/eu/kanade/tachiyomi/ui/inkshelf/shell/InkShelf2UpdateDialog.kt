@@ -99,10 +99,10 @@ internal fun InkShelf2UpdateDialog(
                 Box(Modifier.fillMaxWidth().height(4.dp).background(InkShelf2Colors.AccentGradient))
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Image(painterResource(R.drawable.inkshelf_brand_emblem), "InkShelf",
+                        Image(painterResource(R.drawable.arc_emblem), "ARC",
                             modifier = Modifier.size(48.dp))
                         Column {
-                            Text("INKSHELF UPDATE", color = InkShelf2Colors.AccentLight,
+                            Text("ARC UPDATE", color = InkShelf2Colors.AccentLight,
                                 fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                             Text(if (downloading) "Downloading update" else "New version available",
                                 color = InkShelf2Colors.Text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
@@ -121,7 +121,7 @@ internal fun InkShelf2UpdateDialog(
                                 modifier = Modifier.fillMaxWidth(), color = InkShelf2Colors.Accent,
                                 trackColor = InkShelf2Colors.SurfaceRaised)
                         }
-                        Text("Keep InkShelf open. Android will ask you to install when the download is ready.",
+                        Text("Keep ARC open. Android will ask you to install when the download is ready.",
                             color = InkShelf2Colors.Muted, fontSize = 13.sp)
                     } else {
                         Text("INSTALLED · ${BuildConfig.VERSION_NAME}", color = InkShelf2Colors.Muted,
@@ -129,7 +129,7 @@ internal fun InkShelf2UpdateDialog(
                         Column(Modifier.fillMaxWidth().heightIn(max = 220.dp)
                             .clip(RoundedCornerShape(12.dp)).background(InkShelf2Colors.SurfaceRaised)
                             .verticalScroll(rememberScrollState()).padding(12.dp)) {
-                            Text(notes.ifBlank { "A new version of InkShelf is available." }.take(2500),
+                            Text(notes.ifBlank { "A new version of ARC is available." }.take(2500),
                                 color = InkShelf2Colors.Text, fontSize = 13.sp, lineHeight = 19.sp)
                         }
                         Button(onClick = onInstall, enabled = canInstall,
