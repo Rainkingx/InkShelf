@@ -210,6 +210,7 @@ internal fun InkShelf2SpotlightCard(
     val eventSkin = InkShelf2Themes.eventSkin
     val shape = RoundedCornerShape(if (eventSkin != null) 10.dp else 20.dp)
     val backdrop = InkShelf2Colors.Background
+    val light = InkShelf2Themes.current.isLight
     val trim = eventSkin?.gold ?: InkShelf2Colors.AccentLight
     Box(
         modifier = Modifier
@@ -257,7 +258,13 @@ internal fun InkShelf2SpotlightCard(
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.horizontalGradient(
-                    colorStops = arrayOf(
+                    colorStops = if (light) arrayOf(
+                        0f to backdrop,
+                        0.40f to backdrop,
+                        0.59f to backdrop.copy(alpha = 0.94f),
+                        0.76f to Color.Transparent,
+                        1f to Color.Transparent,
+                    ) else arrayOf(
                         0f to backdrop,
                         0.36f to backdrop,
                         0.47f to backdrop.copy(alpha = 0.60f),
@@ -267,7 +274,7 @@ internal fun InkShelf2SpotlightCard(
                 ),
             ),
         )
-        // The button sits entirely on the dark left side. Leave the right
+        // The button sits on the theme-aware left side. Leave the right
         // image clear all the way to the bottom rather than dimming the art.
         Column(
             modifier = Modifier.fillMaxSize().padding(17.dp),
@@ -286,7 +293,7 @@ internal fun InkShelf2SpotlightCard(
                 )
                 Text(
                     title,
-                    color = Color.White,
+                    color = if (light) InkShelf2Colors.Text else Color.White,
                     fontSize = 27.sp,
                     lineHeight = 30.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -296,7 +303,7 @@ internal fun InkShelf2SpotlightCard(
                 )
                 Text(
                     subtitle,
-                    color = Color.White.copy(alpha = 0.84f),
+                    color = if (light) InkShelf2Colors.Muted else Color.White.copy(alpha = 0.84f),
                     fontSize = 12.sp,
                     lineHeight = 15.sp,
                     maxLines = 2,
