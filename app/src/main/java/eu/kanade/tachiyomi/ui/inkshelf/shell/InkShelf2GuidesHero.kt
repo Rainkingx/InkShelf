@@ -260,9 +260,10 @@ internal fun InkShelf2SpotlightCard(
                 Brush.horizontalGradient(
                     colorStops = if (light) arrayOf(
                         0f to backdrop,
-                        0.40f to backdrop,
-                        0.59f to backdrop.copy(alpha = 0.94f),
-                        0.76f to Color.Transparent,
+                        0.36f to backdrop,
+                        0.45f to backdrop.copy(alpha = 0.82f),
+                        0.54f to backdrop.copy(alpha = 0.45f),
+                        0.65f to backdrop.copy(alpha = 0f),
                         1f to Color.Transparent,
                     ) else arrayOf(
                         0f to backdrop,
