@@ -46,6 +46,7 @@ internal class InkShelf2Engine(private val context: Context) {
         val newest: List<Manga>,
         val recommended: List<Manga>,
         val recommendationDetails: List<PersonalPick>,
+        val curatedGems: List<Manga> = emptyList(),
     )
 
     private val weekdays = listOf(
@@ -85,7 +86,8 @@ internal class InkShelf2Engine(private val context: Context) {
                 newest = discover.newest,
                 trending = discover.trending,
                 personal = discover.recommended,
-                library = if (day == Calendar.THURSDAY) saved + classics else saved,
+                library = saved + InkShelf2CuratedCatalogue.load(context, day, enabledSourceIds) +
+                    (if (day == Calendar.THURSDAY) classics else emptyList()),
                 enabledSourceIds = enabledSourceIds,
                 usedAcrossDays = usedAcrossDays,
             )
@@ -108,8 +110,8 @@ internal class InkShelf2Engine(private val context: Context) {
         Home(history, days, trendingNow)
     }
 
-    suspend fun refreshClassicPicks(enabledSourceIds: Set<Long>): Boolean =
-        InkShelf2ClassicPicks.refresh(context, sourceManager.getCatalogueSources()
+    suspend fun refreshCuratedPicks(enabledSourceIds: Set<Long>): Boolean =
+        InkShelf2CuratedCatalogue.refresh(context, sourceManager.getCatalogueSources()
             .filter { it.id in enabledSourceIds && it.id !in InkShelf2ExtensionPause.pausedSourceIds() })
 
     suspend fun loadLibrary(): List<InkShelf2LibraryItem> =
@@ -164,6 +166,7 @@ internal class InkShelf2Engine(private val context: Context) {
             newest = cached(Section.NEW_THIS_WEEK),
             recommended = personalPicks.map { it.manga },
             recommendationDetails = personalPicks,
+            curatedGems = InkShelf2CuratedCatalogue.load(context, InkShelf2CuratedCatalogue.GEMS, availableIds ?: sourceManager.getCatalogueSources().map { it.id }.toSet().minus(pausedIds)),
         )
         val sourceNames = sourceManager.getCatalogueSources().associate { it.id to it.name }
         val active = raw.copy(

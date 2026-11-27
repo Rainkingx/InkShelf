@@ -20,7 +20,7 @@ internal object InkShelf2DailyRotation {
     private fun normalize(value: String): String =
         value.lowercase(Locale.ROOT).replace(nonWord, " ").trim()
 
-    fun seriesKey(manga: Manga): String = normalize(manga.title.replace(yearTag, " "))
+    fun seriesKey(manga: Manga): String = InkShelf2ComicIdentity.normalizedTitle(manga.title).ifBlank { normalize(manga.title.replace(yearTag, " ")) }
 
     internal fun isInvincible(manga: Manga): Boolean {
         val key = seriesKey(manga)
@@ -32,6 +32,8 @@ internal object InkShelf2DailyRotation {
         val normalized = " ${normalize(value)} "
         return terms.any { " ${normalize(it)} " in normalized }
     }
+
+    internal fun matchesTheme(day: Int, manga: Manga): Boolean = relevance(day, manga, false) != null
 
     private fun relevance(day: Int, manga: Manga, fromLatest: Boolean): Pair<Int, String>? {
         val title = manga.title
@@ -47,26 +49,26 @@ internal object InkShelf2DailyRotation {
         val terms = when (day) {
             Calendar.MONDAY ->
                 listOf("x-men", "x men", "wolverine", "x-force", "x force",
-                    "mutant", "magneto", "new mutants", "weapon x", "deadpool")
+                    "mutant", "magneto", "new mutants", "weapon x", "deadpool", "x factor", "excalibur", "generation x", "cable", "marauders", "x 23", "gambit", "storm")
             Calendar.TUESDAY ->
                 listOf("image comics", "dark horse", "boom studios", "idw",
                     "indie", "independent", "saga", "spawn", "invincible",
                     "radiant black", "monstress", "hellboy", "walking dead",
                     "paper girls", "black science", "east of west",
-                    "something is killing the children", "once & future")
+                    "something is killing the children", "once & future", "once and future", "descender", "gideon falls", "lazarus", "the department of truth", "the sixth gun")
             Calendar.FRIDAY ->
                 listOf("fantastic four", "fantastic", "magic", "fantasy",
                     "cosmic", "silver surfer", "doctor strange", "scarlet witch",
-                    "galactus", "sorcerer", "mythology", "supernatural")
+                    "galactus", "sorcerer", "mythology", "supernatural", "thor", "doctor doom", "the sandman", "eternals", "guardians of the galaxy", "nova", "inhumans", "monstress", "once and future", "once future", "black science")
             Calendar.SATURDAY ->
                 listOf("spider-man", "spiderman", "spider verse", "spider-verse",
                     "miles morales", "venom", "carnage", "silk", "spider gwen",
-                    "spider-woman", "symbiote")
+                    "spider-woman", "symbiote", "spider punk", "spider noir")
             else ->
                 listOf("superman", "batman", "wonder woman", "justice league",
                     "supergirl", "nightwing", "aquaman", "green lantern",
                     "flash", "shazam", "avengers", "captain america",
-                    "iron man", "superhero", "superheroes", "heroic")
+                    "iron man", "superhero", "superheroes", "heroic", "daredevil", "teen titans", "hulk")
         }
         val titleMatch = matches(title, terms)
         val tagMatch = matches(tags, terms)

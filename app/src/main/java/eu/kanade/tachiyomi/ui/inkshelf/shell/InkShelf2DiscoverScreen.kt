@@ -281,7 +281,9 @@ internal fun InkShelf2DiscoverScreen(
     val newestPreview = previews.select(newest, 20, { it }, preserveOrder = true)
     val personalPreview = previews.select(personalPicks, 9, { it.manga })
     val acclaimedPreview = previews.select(acclaimed?.comics.orEmpty(), 12, { it })
-    val hiddenPreview = previews.select(hiddenGems?.comics.orEmpty(), 12, { it })
+    // Hidden Gems has its own daily rotation and should not shrink to three
+    // merely because titles also appear in other Discover shelves.
+    val hiddenPreview = hiddenGems?.comics.orEmpty().take(12)
     val trendingPreview = previews.select(trending, 20, { it })
     val collectionArt = curated.associate { collection ->
         collection.title to previews.select(collection.comics, 1, { it }).firstOrNull()

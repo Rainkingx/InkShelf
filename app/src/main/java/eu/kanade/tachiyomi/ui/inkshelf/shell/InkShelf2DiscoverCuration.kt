@@ -138,7 +138,7 @@ internal object InkShelf2DiscoverCuration {
         val personal = discover?.recommendationDetails.orEmpty().map { it.manga }
         val saved = library.map { it.manga }
         // Existing cache and library only. Dedupe same edition across sources.
-        val pool = (personal + trending + newest + saved).asSequence()
+        val pool = (personal + trending + newest + saved + discover?.curatedGems.orEmpty()).asSequence()
             .filter { it.source in enabledSourceIds && it.url.isNotBlank() }
             .filter { !it.thumbnail_url.isNullOrBlank() && it.title.isNotBlank() }
             // Different publication years are distinct editions and must
@@ -152,19 +152,20 @@ internal object InkShelf2DiscoverCuration {
         }.distinctBy(::titleKey)
         val acclaimedKeys = acclaimed.map(::titleKey).toSet()
         val trendingKeys = trending.map(::titleKey).toSet()
-        val editorialGems = gemTitles.mapNotNull { title ->
-            pool.filter { titleKey(it) == normalized(title) }.minByOrNull(::seriesYear)
-        }.filterNot { titleKey(it) in acclaimedKeys }
         val indie = categories.first { it.title == "Indie Spotlight" }
-        val deeperPicks = personal.asSequence()
-            .filter { it.source in enabledSourceIds && it.url.isNotBlank() }
-            .filter { !it.thumbnail_url.isNullOrBlank() }
-            .filterNot { titleKey(it) in trendingKeys || titleKey(it) in acclaimedKeys }
-            .filter { matchCategory(it, indie) }
-            .distinctBy(::titleKey)
-            .take(18)
-            .toList()
-        val gems = (editorialGems + deeperPicks).distinctBy(::titleKey).take(24)
+        val savedKeys = saved.map(::titleKey).toSet()
+        val gemPool = pool.filter {
+            titleKey(it) !in acclaimedKeys && titleKey(it) !in savedKeys &&
+                (InkShelf2CuratedCatalogue.gemTitle(it.title) ||
+                    gemTitles.any { title -> titleKey(it) == normalized(title) } ||
+                    matchCategory(it, indie))
+        }.distinctBy(::titleKey)
+        // Do not discard all the titles already present in the other shelves.
+        // Prefer lesser-seen titles, but keep a useful shelf on small catalogues.
+        val fresh = gemPool.filterNot { titleKey(it) in trendingKeys }
+        val eligible = (if (fresh.size >= 12) fresh else gemPool).sortedBy(::titleKey)
+        val offset = if (eligible.isEmpty()) 0 else Math.floorMod(InkShelf2DailyRotation.localDayStamp(), eligible.size)
+        val gems = (eligible.drop(offset) + eligible.take(offset)).take(48)
         val featured = listOf(
             Shelf(
                 "Critically Acclaimed",
@@ -174,7 +175,7 @@ internal object InkShelf2DiscoverCuration {
             ),
             Shelf(
                 "Hidden Gems",
-                "Explore beyond the usual trending titles",
+                "Independent and overlooked comics · Rotates daily",
                 gems,
                 gems.associate { identity(it) to "Picked for deeper discovery" },
             ),

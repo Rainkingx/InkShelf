@@ -824,19 +824,19 @@ class InkShelf2Activity : AppCompatActivity() {
                     }
                 }
             }
-            // Populate Thursday from a wider source-backed catalogue after
-            // the first Home snapshot. The splash and reader never wait.
-            LaunchedEffect(home != null, enabledSourceIds, refreshEpoch) {
-                if (home == null || enabledSourceIds.isEmpty() ||
+            // Replenish all themed shelves after Home is ready, never block startup.
+            LaunchedEffect(home != null, enabledSourceIds, refreshEpoch, shellForeground) {
+                if (!shellForeground || home == null || enabledSourceIds.isEmpty() ||
                     !InkShelfDataSaver.allowsAutomaticNetwork(applicationContext)) return@LaunchedEffect
                 try {
-                    if (engine.refreshClassicPicks(enabledSourceIds)) {
+                    if (engine.refreshCuratedPicks(enabledSourceIds)) {
                         home = engine.loadHome(enabledSourceIds)
+                        discover = engine.loadDiscover(enabledSourceIds)
                     }
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (error: Exception) {
-                    android.util.Log.w("InkShelf2", "Classic daily picks refresh failed", error)
+                    android.util.Log.w("InkShelf2", "Curated daily picks refresh failed", error)
                 }
             }
             // InkShelf 1's flow: show Comic Details immediately, then fetch
@@ -1515,7 +1515,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     }
                     selectedDay != null -> pageState.SaveableStateProvider("daily-picks") {
                         InkShelf2DailyPicksScreen(
-                        day = selectedDay!!,
+                        day = home?.days?.firstOrNull { it.calendarDay == selectedDay?.calendarDay } ?: selectedDay!!,
                         padding = padding,
                         onBack = { selectedDay = null },
                         onOpen = openComicDetails,
