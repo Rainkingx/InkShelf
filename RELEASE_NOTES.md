@@ -1,20 +1,16 @@
-# InkShelf v2.0.1
+# InkShelf v2.0.2
 
-## Daily Heroes
+## Light themes
 
-- Rebuilt theme matching for all seven days, with dedicated comic catalogues for mutants, independent comics, recent source updates, pre-2000 comics, Fantastic Four, Spider-Man and Superman.
-- Filters incorrect older cached recommendations and avoids unrelated genre-based filler.
-- Expanded the available search catalogues and added automated theme regression tests.
-- Up to three genuinely matching comics per day, depending on source availability.
-
-## Hidden Gems
-
-- Expanded the curated catalogue and introduced daily rotation.
-- Up to twelve comics shown in the Discover preview, with a larger cached catalogue.
-- Prioritises independent and overlooked titles.
+- Six new comic-inspired light themes: Spider-Gwen, Fantastic Four, Moon Knight, Captain America, Storm and She-Hulk.
+- Follow system switches between Spider-Gwen in light mode and InkShelf Original in dark mode.
+- Separate light and dark theme categories with live previews in Appearance.
+- Adaptive text, buttons, navigation and system bar icons for light mode.
+- Improved Spotlight and Main Event banner contrast with a softer artwork fade.
+- Existing dark presets and reading engine retained. Custom themes still require a dark background.
 
 ## Updating
 
-This stable update retains the existing app identity and signing key. Back up your library before updating. Daily recommendations depend on your enabled sources and may take time to populate. Data Saver remains supported. InkShelf Dev remains a separate installation.
+This stable update retains the existing app identity and signing key. Back up your library before updating. InkShelf Dev remains a separate installation.
 
 InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders.
