@@ -20,10 +20,10 @@ import com.mikepenz.fastadapter.adapters.ItemAdapter
 import com.mikepenz.fastadapter.listeners.ClickEventHook
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.databinding.ReaderChaptersSheetBinding
+import eu.kanade.tachiyomi.ui.reader.InkShelfReaderChrome
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.ReaderViewModel
 import eu.kanade.tachiyomi.util.system.dpToPx
-import eu.kanade.tachiyomi.util.system.getResourceColor
 import eu.kanade.tachiyomi.util.system.launchUI
 import eu.kanade.tachiyomi.util.view.backgroundColor
 import eu.kanade.tachiyomi.util.view.collapse
@@ -59,12 +59,14 @@ class ReaderChapterSheet
 
         fun setup(activity: ReaderActivity) {
             viewModel = activity.viewModel
-            val fullPrimary = activity.getResourceColor(R.attr.colorSurface)
-            val primary = ColorUtils.setAlphaComponent(fullPrimary, 200)
+            // The sheet animates its own tint after Activity setup; use the same
+            // palette as the buttons and chapter text, not the legacy J2K surface.
+            val fullPrimary = InkShelfReaderChrome.surfaceColor
+            val primary = ColorUtils.setAlphaComponent(fullPrimary, if (InkShelfReaderChrome.isLight) 255 else 200)
             val navPrimary =
                 ColorUtils.setAlphaComponent(
                     fullPrimary,
-                    200,
+                    if (InkShelfReaderChrome.isLight) 255 else 200,
                 )
             sheetBehavior = BottomSheetBehavior.from(this)
             binding.chaptersButton.setOnClickListener {

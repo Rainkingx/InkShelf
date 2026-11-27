@@ -43,7 +43,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
-import androidx.core.content.withStyledAttributes
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
@@ -322,9 +321,7 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
         InkShelf2Themes.restore(this)
         binding = ReaderActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        withStyledAttributes(null, intArrayOf(android.R.attr.windowLightStatusBar)) {
-            themeLightStatusBars = getBoolean(0, false)
-        }
+        themeLightStatusBars = InkShelfReaderChrome.isLight
         setCutoutMode()
 
         wic.isAppearanceLightStatusBars = themeLightStatusBars
@@ -333,7 +330,7 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
         InkShelfReaderChrome.surface(binding.readerNav.root, translucent = true)
         InkShelfReaderChrome.surface(binding.chaptersSheet.root)
         InkShelfReaderChrome.navigation(binding.readerNav.root)
-        InkShelfReaderChrome.navigation(binding.chaptersSheet.buttonGroup)
+        InkShelfReaderChrome.navigation(binding.chaptersSheet.topbarLayout)
         InkShelfReaderChrome.typography(binding.toolbar)
 
         backPressedCallback =
@@ -598,7 +595,7 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
             binding.chaptersSheet.shiftPageButton.icon = icon
         }
         setBottomNavButtons(preferences.pageLayout().get())
-        InkShelfReaderChrome.navigation(binding.chaptersSheet.buttonGroup)
+        InkShelfReaderChrome.navigation(binding.chaptersSheet.topbarLayout)
         InkShelfReaderChrome.typography(binding.toolbar)
         (binding.toolbar.background as? LayerDrawable)?.let { layerDrawable ->
             val isDoublePage = splitItem?.isVisible ?: false
@@ -1347,8 +1344,10 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
             firstPass = false
             lastVis = vis
             wic.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-            if (!(fullscreen && !isInMultiWindowMode) && sheetManageNavColor) {
-                binding.navBar.backgroundColor = if (!fullscreen) Color.TRANSPARENT else getResourceColor(R.attr.colorSurface)
+            if (menuVisible && InkShelfReaderChrome.isLight) {
+                binding.navBar.backgroundColor = InkShelfReaderChrome.surfaceColor
+            } else if (!(fullscreen && !isInMultiWindowMode) && sheetManageNavColor) {
+                binding.navBar.backgroundColor = if (!fullscreen) Color.TRANSPARENT else InkShelfReaderChrome.surfaceColor
             }
             binding.navBar.isVisible = insets.isVisible(navigationBars())
             if (insets.hasSideNavBar()) {
@@ -1495,7 +1494,7 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
         sheetManageNavColor =
             when {
                 isInMultiWindowMode -> {
-                    binding.navBar.backgroundColor = getResourceColor(R.attr.colorSurfaceContainer)
+                    binding.navBar.backgroundColor = InkShelfReaderChrome.surfaceColor
                     false
                 }
                 insets.isBottomTappable() -> {
@@ -1505,8 +1504,8 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
                 insets.hasSideNavBar() -> {
                     binding.navBar.backgroundColor =
                         ColorUtils.setAlphaComponent(
-                            getResourceColor(R.attr.colorSurface),
-                            200,
+                            InkShelfReaderChrome.surfaceColor,
+                            if (InkShelfReaderChrome.isLight) 255 else 200,
                         )
                     false
                 }
@@ -1589,8 +1588,9 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
                     .isExpanded() &&
                 sheetManageNavColor
             ) {
-                binding.navBar.backgroundColor = Color.TRANSPARENT
+                binding.navBar.backgroundColor = if (InkShelfReaderChrome.isLight) InkShelfReaderChrome.surfaceColor else Color.TRANSPARENT
             }
+            if (InkShelfReaderChrome.isLight) binding.navBar.backgroundColor = InkShelfReaderChrome.surfaceColor
             if (animate && oldVisibility != menuVisible) {
                 if (!menuTemporarilyVisible) {
                     val toolbarAnimation = AnimationUtils.loadAnimation(this, R.anim.enter_from_top)
@@ -1606,6 +1606,7 @@ class ReaderActivity : BaseActivity<ReaderActivityBinding>() {
                     ?.collapse()
             }
         } else {
+            if (InkShelfReaderChrome.isLight) binding.navBar.backgroundColor = Color.TRANSPARENT
             if (preferences.fullscreen().get() && !isInMultiWindowMode) {
                 wic.hide(systemBars())
                 wic.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT

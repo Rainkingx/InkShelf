@@ -17,12 +17,15 @@ import com.google.android.material.slider.Slider
 import com.google.android.material.tabs.TabLayout
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2Colors
+import eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2Themes
 
 /**
  * A visual bridge for the established Android reader widgets. No changes to
  * layout IDs, listeners, page rendering, brightness or color-filter values.
  */
 internal object InkShelfReaderChrome {
+    val isLight: Boolean get() = InkShelf2Themes.current.isLight
+    val surfaceColor: Int get() = InkShelf2Colors.Surface.toArgb()
     val textColor: Int get() = InkShelf2Colors.Text.toArgb()
     val accentColor: Int get() = InkShelf2Colors.AccentLight.toArgb()
     val mutedColor: Int get() = InkShelf2Colors.Muted.toArgb()

@@ -10,6 +10,7 @@ import eu.kanade.tachiyomi.data.database.models.Chapter
 import eu.kanade.tachiyomi.data.database.models.Manga
 import eu.kanade.tachiyomi.data.preference.PreferencesHelper
 import eu.kanade.tachiyomi.databinding.ReaderChapterItemBinding
+import eu.kanade.tachiyomi.ui.reader.InkShelfReaderChrome
 import eu.kanade.tachiyomi.util.chapter.ChapterUtil
 import eu.kanade.tachiyomi.util.chapter.ChapterUtil.Companion.preferredChapterName
 import uy.kohesive.injekt.injectLazy
@@ -43,7 +44,8 @@ class ReaderChapterItem(
         ) {
             val manga = item.manga
 
-            val chapterColor = ChapterUtil.chapterColor(itemView.context, item.chapter)
+            val chapterColor = if (item.chapter.read && !item.isCurrent) InkShelfReaderChrome.mutedColor
+                else InkShelfReaderChrome.textColor
 
             binding.chapterTitle.text =
                 item.preferredChapterName(itemView.context, manga, item.preferences)
@@ -72,7 +74,7 @@ class ReaderChapterItem(
                 },
             )
 
-            val drawableColor = ChapterUtil.bookmarkColor(itemView.context, item)
+            val drawableColor = if (item.bookmark) InkShelfReaderChrome.accentColor else chapterColor
 
             DrawableCompat.setTint(binding.bookmarkImage.drawable, drawableColor)
 
