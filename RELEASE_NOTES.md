@@ -1,22 +1,20 @@
-# InkShelf — Stable release
+# InkShelf v2.0.1
 
-InkShelf's rebuilt interface is now ready for its first stable release.
+## Daily Heroes
 
-## What's new since Public Beta 20
+- Rebuilt theme matching for all seven days, with dedicated comic catalogues for mutants, independent comics, recent source updates, pre-2000 comics, Fantastic Four, Spider-Man and Superman.
+- Filters incorrect older cached recommendations and avoids unrelated genre-based filler.
+- Expanded the available search catalogues and added automated theme regression tests.
+- Up to three genuinely matching comics per day, depending on source availability.
 
-- Release Radar: upcoming store dates from Metron, library filtering, artwork where available, and tap-to-open series discovery with a search fallback for uncertain editions.
-- Optional phone alerts for release days, plus app, extension and library-update notification channels.
-- Panel Flow improvements: experimental panel-aware dialogue navigation, reduced unnecessary zoom changes, and a fallback to the previous detection mode.
-- Optional Data Saver: Wi-Fi-only automatic refreshes and downloads, with reduced background artwork fetching; manual browsing and normal reading quality remain available.
-- Reduced idle polling and download-cache scans, and paused artwork prefetching when the app is not in the foreground.
-- Simplified InkShelf branding.
+## Hidden Gems
+
+- Expanded the curated catalogue and introduced daily rotation.
+- Up to twelve comics shown in the Discover preview, with a larger cached catalogue.
+- Prioritises independent and overlooked titles.
 
 ## Updating
 
-Public Beta 20 users can update in place using the same Android package and signing identity, subject to the release build's signature and version checks. Back up your library first. InkShelf Dev remains a separate installation. Normal backups do not contain downloaded comic files.
-
-## Notes
-
-Release Radar requires a configured Metron account. Store dates are not a guarantee of source availability. Android background notification delivery depends on permissions and system scheduling. Panel Flow remains experimental. Data and battery savings vary with usage; no measured savings are claimed.
+This stable update retains the existing app identity and signing key. Back up your library before updating. Daily recommendations depend on your enabled sources and may take time to populate. Data Saver remains supported. InkShelf Dev remains a separate installation.
 
 InkShelf is an independent reader based on TachiyomiJ2K. Third-party sources and services remain separate. Use lawful sources and respect rights holders.
