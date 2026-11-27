@@ -70,7 +70,7 @@ jobs:
           done
 
       - name: Test InkShelf 2.0 news and BatCave reading guides
-        run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.reader.viewer.pager.PanelBoundaryDetectorTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' -x :app:formatKotlinMain
+        run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2DailyThemesTest' --tests 'eu.kanade.tachiyomi.ui.reader.viewer.pager.PanelBoundaryDetectorTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' -x :app:formatKotlinMain
 
       - name: Prepare InkShelf Dev APK
         run: |

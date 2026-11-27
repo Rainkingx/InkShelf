@@ -79,11 +79,15 @@ internal class InkShelf2Engine(private val context: Context) {
         val classics = InkShelf2ClassicPicks.load(context, enabledSourceIds)
         val dayStamp = InkShelf2DailyRotation.localDayStamp()
         val usedAcrossDays = mutableSetOf<String>()
-        val days = weekdays.map { day ->
+        // Allocate narrow franchise themes before broad recent/classic shelves.
+        val selectionOrder = listOf(Calendar.MONDAY, Calendar.FRIDAY, Calendar.SATURDAY, Calendar.SUNDAY,
+            Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY)
+        val days = selectionOrder.map { day ->
             val picks = InkShelf2DailyRotation.select(
                 day = day,
                 dayStamp = dayStamp,
-                newest = discover.newest,
+                newest = if (day == Calendar.WEDNESDAY) discover.newest +
+                    InkShelf2CuratedCatalogue.load(context, day, enabledSourceIds) else discover.newest,
                 trending = discover.trending,
                 personal = discover.recommended,
                 library = saved + InkShelf2CuratedCatalogue.load(context, day, enabledSourceIds) +
@@ -107,7 +111,7 @@ internal class InkShelf2Engine(private val context: Context) {
         val trendingNow = discover.trending
             .filter { it.source in enabledSourceIds && !it.thumbnail_url.isNullOrBlank() }
             .distinctBy { "${it.source}:${it.url}" }
-        Home(history, days, trendingNow)
+        Home(history, days.sortedBy { weekdays.indexOf(it.calendarDay) }, trendingNow)
     }
 
     suspend fun refreshCuratedPicks(enabledSourceIds: Set<Long>): Boolean =

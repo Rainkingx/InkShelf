@@ -80,7 +80,7 @@ jobs:
           done
 
       - name: Run existing regression tests
-        run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.reader.viewer.pager.PanelBoundaryDetectorTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideChapterFinderTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2EventTimelineTest' -x :app:formatKotlinMain
+        run: ./gradlew :app:testDevDebugUnitTest --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2DailyThemesTest' --tests 'eu.kanade.tachiyomi.ui.reader.viewer.pager.PanelBoundaryDetectorTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2PulseMatcherTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BatCaveGuidesTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideReadingSelectionTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2BundledEventOrdersTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideAutoMatchTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2GuideChapterFinderTest' --tests 'eu.kanade.tachiyomi.ui.inkshelf.shell.InkShelf2EventTimelineTest' -x :app:formatKotlinMain
 
       - name: Prepare universal APK
         run: |

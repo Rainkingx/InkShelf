@@ -33,62 +33,78 @@ internal object InkShelf2DailyRotation {
         return terms.any { " ${normalize(it)} " in normalized }
     }
 
-    internal fun isSupermanFamily(title: String): Boolean = matches(title, listOf(
-        "superman", "supergirl", "superboy", "super sons", "supersons", "action comics",
-        "superwoman", "power girl", "man of steel", "man of tomorrow", "krypto", "lois lane", "jimmy olsen",
-    ))
+    private val mutantNames = listOf("x men", "xmen", "wolverine", "x force", "x factor", "new mutants",
+        "magneto", "weapon x", "deadpool", "generation x", "x 23", "uncanny avengers", "astonishing x men",
+        "legion of x", "knights of x", "way of x", "house of x", "powers of x", "fall of x",
+        "rise of the powers of x", "new x men", "x terminators", "x statix", "x corp",
+        "phoenix", "rogue and gambit", "rogue gambit", "cable and deadpool")
+    private val mutantExact = setOf("excalibur", "cable", "marauders", "gambit", "storm", "rogue", "psylocke",
+        "bishop", "nightcrawler", "cyclops", "iceman", "dazzler", "x man", "emma frost", "mystique",
+        "hellions", "fallen angels", "exiles", "x of swords", "sabretooth", "magik")
+    private val indieNames = listOf("saga", "monstress", "hellboy", "radiant black", "black science",
+        "the walking dead", "invincible", "spawn", "descender", "ascender", "east of west", "paper girls",
+        "the department of truth", "gideon falls", "lazarus", "the sixth gun", "something is killing the children",
+        "eight billion genies", "once and future", "once future", "black hammer", "bone", "chew",
+        "fear agent", "seven to eternity", "the wicked and the divine", "ultramega", "little bird",
+        "the many deaths of laila starr", "harrow county", "the weatherman", "the manhattan projects",
+        "the autumnal", "the good asian", "the new world", "the spire", "kaya", "the sacrificers",
+        "do a powerbomb", "the magic order", "the hunger and the dusk", "geiger", "junkyard joe",
+        "rogue sun", "local man", "wytches", "kill or be killed", "fatale", "the fade out", "reckless")
+    private val indiePublishers = setOf("image comics", "image", "dark horse comics", "dark horse",
+        "boom studios", "boom", "idw publishing", "idw", "dynamite entertainment", "dynamite",
+        "vault comics", "aftershock comics", "oni press", "scout comics", "awa studios",
+        "abstract studio", "self published", "creator owned", "independent comics")
+    private val fantasticNames = listOf("fantastic four", "fantastic 4", "silver surfer", "doctor doom",
+        "dr doom", "future foundation", "fantastic force", "human torch", "invisible woman",
+        "mister fantastic", "mr fantastic", "galactus", "ben grimm", "reed richards",
+        "sue storm", "johnny storm", "franklin richards", "valeria richards", "marvel two in one")
+    private val spiderNames = listOf("spider man", "spiderman", "spider verse", "miles morales",
+        "venom", "carnage", "spider gwen", "spider woman", "spider punk", "spider noir",
+        "spider girl", "spider boy", "spider ham", "scarlet spider", "ghost spider",
+        "spider uk", "spider gwen ghost spider", "agent venom", "anti venom", "black cat")
+    private val superNames = listOf("superman", "supergirl", "superboy", "super sons", "supersons",
+        "action comics", "superwoman", "power girl", "man of steel", "man of tomorrow",
+        "krypto", "lois lane", "jimmy olsen", "steel")
 
-    internal fun matchesTheme(day: Int, manga: Manga): Boolean = relevance(day, manga, false) != null
-
-    private fun relevance(day: Int, manga: Manga, fromLatest: Boolean): Pair<Int, String>? {
-        val title = manga.title
-        if (day == Calendar.THURSDAY) {
-            val year = InkShelf2ComicIdentity.year(title) ?: return null
-            return if (year in 1900..1999) 110 to "Originally published in $year" else null
-        }
-        // Super Sunday is a Superman-family feature, not a generic superhero shelf.
-        // Source genre tags alone cannot identify a Superman comic.
-        if (day == Calendar.SUNDAY) {
-            return if (isSupermanFamily(title)) 110 to "From the Superman universe" else null
-        }
-        val tags = listOfNotNull(manga.genre, manga.originalGenre).joinToString(" ")
-        if (day == Calendar.WEDNESDAY) {
-            // The Latest source feed does not guarantee actual release dates.
-            return if (fromLatest) 110 to "Recently surfaced from your sources" else null
-        }
-        val terms = when (day) {
-            Calendar.MONDAY ->
-                listOf("x-men", "x men", "wolverine", "x-force", "x force",
-                    "mutant", "magneto", "new mutants", "weapon x", "deadpool", "x factor", "excalibur", "generation x", "cable", "marauders", "x 23", "gambit", "storm")
-            Calendar.TUESDAY ->
-                listOf("image comics", "dark horse", "boom studios", "idw",
-                    "indie", "independent", "saga", "spawn", "invincible",
-                    "radiant black", "monstress", "hellboy", "walking dead",
-                    "paper girls", "black science", "east of west",
-                    "something is killing the children", "once & future", "once and future", "descender", "gideon falls", "lazarus", "the department of truth", "the sixth gun")
-            Calendar.FRIDAY ->
-                listOf("fantastic four", "fantastic", "magic", "fantasy",
-                    "cosmic", "silver surfer", "doctor strange", "scarlet witch",
-                    "galactus", "sorcerer", "mythology", "supernatural", "thor", "doctor doom", "the sandman", "eternals", "guardians of the galaxy", "nova", "inhumans", "monstress", "once and future", "once future", "black science")
-            Calendar.SATURDAY ->
-                listOf("spider-man", "spiderman", "spider verse", "spider-verse",
-                    "miles morales", "venom", "carnage", "silk", "spider gwen",
-                    "spider-woman", "symbiote", "spider punk", "spider noir")
-            else -> return null
-        }
-        val titleMatch = matches(title, terms)
-        val tagMatch = matches(tags, terms)
-        if (!titleMatch && !tagMatch) return null
-
-        val reason = when (day) {
-            Calendar.MONDAY -> "A match for Mutant Monday"
-            Calendar.TUESDAY -> "An independent comics pick"
-            Calendar.FRIDAY -> "Fantasy, magic or cosmic adventures"
-            Calendar.SATURDAY -> "From the Spider-Man universe"
-            else -> return null
-        }
-        return (if (titleMatch) 95 else 65) to reason
+    private fun key(title: String): String = InkShelf2ComicIdentity.normalizedTitle(title.replace("&", " and "))
+    internal fun isSupermanFamily(title: String): Boolean {
+        val name = key(title)
+        return name == "steel" || matches(name, superNames.filterNot { it == "steel" })
     }
+
+    /** Shared rule for both catalogue ingestion and daily selection. Genre labels
+     * never establish a character/franchise. Wednesday requires actual Latest provenance. */
+    internal fun themeReason(day: Int, title: String, tags: String = "", fromLatest: Boolean = false): String? {
+        val name = key(title)
+        if (name.isBlank()) return null
+        return when (day) {
+            Calendar.MONDAY -> if (matches(name, mutantNames) || name in mutantExact)
+                "From the X-Men and mutant universe" else null
+            Calendar.TUESDAY -> {
+                val publisherTags = tags.split(',', ';', '|').map(::normalize).toSet()
+                val known = indieNames.any { name == normalize(it) || name.startsWith(normalize(it) + " ") } ||
+                    name in setOf("die", "coda", "criminal", "the deviant")
+                if (known || publisherTags.any { it in indiePublishers })
+                    "Independent and creator-owned comics" else null
+            }
+            Calendar.WEDNESDAY -> if (fromLatest) "Recently surfaced from your sources" else null
+            Calendar.THURSDAY -> InkShelf2ComicIdentity.year(title)?.takeIf { it in 1900..1999 }
+                ?.let { "Originally published in $it" }
+            Calendar.FRIDAY -> if (matches(name, fantasticNames) || name in setOf("ff", "the thing", "thing", "doom", "the inhumans", "inhumans", "the heralds of galactus"))
+                "From the Fantastic Four universe" else null
+            Calendar.SATURDAY -> if (matches(name, spiderNames) || name in setOf("silk", "symbiote spider man", "toxin", "scream curse of carnage"))
+                "From the Spider-Man universe" else null
+            Calendar.SUNDAY -> if (isSupermanFamily(title)) "From the Superman universe" else null
+            else -> null
+        }
+    }
+
+    internal fun matchesTheme(day: Int, manga: Manga, fromLatest: Boolean = false): Boolean =
+        themeReason(day, manga.title, listOfNotNull(manga.genre, manga.originalGenre).joinToString(", "), fromLatest) != null
+
+    private fun relevance(day: Int, manga: Manga, fromLatest: Boolean): Pair<Int, String>? =
+        themeReason(day, manga.title, listOfNotNull(manga.genre, manga.originalGenre).joinToString(", "), fromLatest)
+            ?.let { 110 to it }
 
     fun localDayStamp(calendar: Calendar = Calendar.getInstance()): Int =
         calendar.get(Calendar.YEAR) * 400 + calendar.get(Calendar.DAY_OF_YEAR)
@@ -152,6 +168,6 @@ internal object InkShelf2DailyRotation {
         val other = diverse.filter { isInvincible(it.manga) }
         val fallback = repeats.filterNot { isInvincible(it.manga) }
         val last = repeats.filter { isInvincible(it.manga) }
-        return (preferred + fallback + other + last).take(limit).map { Pick(it.manga, it.reason) }
+        return (preferred + other + fallback + last).take(limit).map { Pick(it.manga, it.reason) }
     }
 }
