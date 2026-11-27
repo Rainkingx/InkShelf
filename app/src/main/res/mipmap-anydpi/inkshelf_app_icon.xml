@@ -1,4 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@drawable/inkshelf_brand_emblem"
-    android:gravity="fill" android:filter="true" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#0C0615" android:pathData="M0,0 H108 V108 H0 Z" />
+    <path android:strokeColor="#A34DFA" android:strokeWidth="5" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M26,61 A31,31 0,0 1,37 29 M43,25 A31,31 0,0 1,65 25 M71,29 A31,31 0,0 1,82 61" />
+    <path android:fillColor="#E9CCFF" android:pathData="M54,29 L84,76 L54,45 L24,76 Z" />
+    <path android:fillColor="#A34DFA" android:pathData="M54,72 Q42,60 33,64 Q46,64 54,80 Q62,64 75,64 Q66,60 54,72 Z" />
+</vector>

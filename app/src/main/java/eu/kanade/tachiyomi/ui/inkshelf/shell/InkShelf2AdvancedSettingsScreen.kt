@@ -367,7 +367,7 @@ internal fun InkShelf2AdvancedSettingsScreen(
         item(key = "other-heading") { SettingsHeading("APPEARANCE & PRIVACY") }
         item(key = "other-panel") {
             SettingsPanel {
-                SettingsLink("Themes & appearance", "Choose your InkShelf colours", onThemes)
+                SettingsLink("Themes & appearance", "Choose your ARC colours", onThemes)
                 SettingsDivider()
                 ToggleSetting("Hide notification content", "Keep comic names out of notification previews", prefs.hideNotificationContentSetting())
                 SettingsDivider()

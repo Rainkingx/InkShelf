@@ -92,7 +92,7 @@ internal fun InkShelf2WelcomeScreen(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "WELCOME TO INKSHELF",
+                        "WELCOME TO ARC",
                         color = InkShelf2Colors.AccentLight,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -117,7 +117,7 @@ internal fun InkShelf2WelcomeScreen(
                     0 -> {
                         GuideText(
                             "Make it yours",
-                            "Choose what InkShelf calls you. Your display name is saved in InkShelf's local settings — no email, password or online account needed.",
+                            "Choose what ARC calls you. Your display name is saved in ARC's local settings — no email, password or online account needed.",
                         )
                         OutlinedTextField(
                             value = name,
@@ -156,7 +156,7 @@ internal fun InkShelf2WelcomeScreen(
                     3 -> {
                         GuideText(
                             "Keep your reading history safe",
-                            "Are you moving from an existing InkShelf or J2K installation, or starting a fresh library?",
+                            "Are you moving from a previous InkShelf, ARC or J2K installation, or starting a fresh library?",
                         )
                         ChoiceRow(
                             label = "Start fresh — keep my current library",
@@ -171,7 +171,7 @@ internal fun InkShelf2WelcomeScreen(
                         GuidePanel {
                             Text(
                                 if (backupChoice == "Restore a backup")
-                                    "Restore files using InkShelf's established backup validator. Review its warnings and confirm before restoring."
+                                    "Restore files using ARC's established backup validator. Review its warnings and confirm before restoring."
                                 else
                                     "You can create a backup now or choose automatic backup frequency and location.",
                                 color = InkShelf2Colors.Text,
@@ -195,7 +195,7 @@ internal fun InkShelf2WelcomeScreen(
                     else -> {
                         GuideText(
                             "Bring your own comics",
-                            "Have CBZ, CBR, ZIP, RAR or EPUB comics? InkShelf can import them into its existing Local Source library.",
+                            "Have CBZ, CBR, ZIP, RAR or EPUB comics? ARC can import them into its existing Local Source library.",
                         )
                         ChoiceRow(
                             label = "Yes — I want to import my comics",

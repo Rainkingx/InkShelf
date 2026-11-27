@@ -71,7 +71,6 @@ internal fun InkShelf2ThemesScreen(
 ) {
     val context = LocalContext.current
     var cinematicEnabled by remember(context) { mutableStateOf(InkShelf2CinematicSplash.enabled(context)) }
-    var splashSeconds by remember(context) { mutableStateOf(InkShelf2CinematicSplash.durationSeconds(context)) }
     var artworkOpen by rememberSaveable { mutableStateOf(false) }
     var pendingArtwork by rememberSaveable { mutableStateOf(-1) }
     var artworkEpoch by remember { mutableStateOf(0) }
@@ -170,7 +169,7 @@ internal fun InkShelf2ThemesScreen(
                 InkShelf2PageHeading("Appearance & Themes", Modifier.weight(1f))
             }
             Text(
-                "Comic-inspired colours for InkShelf 2.0. Your library, source extensions and reader are unchanged.",
+                "Comic-inspired colours for ARC. Your library, source extensions and reader are unchanged.",
                 modifier = Modifier.padding(horizontal = 18.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 12.sp,
@@ -187,7 +186,7 @@ internal fun InkShelf2ThemesScreen(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("Cinematic opening", color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
-                    Text("Play your image sequence on cold startup", color = InkShelf2Colors.Muted, fontSize = 12.sp)
+                    Text("Animate the ARC logo on cold startup · tap to skip", color = InkShelf2Colors.Muted, fontSize = 12.sp)
                 }
                 androidx.compose.material3.Switch(checked = cinematicEnabled, onCheckedChange = {
                     cinematicEnabled = it
@@ -197,100 +196,33 @@ internal fun InkShelf2ThemesScreen(
         }
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Splash speed", modifier = Modifier.weight(1f),
-                        color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
-                    Text("$splashSeconds seconds", color = InkShelf2Colors.AccentLight, fontSize = 13.sp)
-                }
-                Slider(
-                    value = splashSeconds.toFloat(),
-                    onValueChange = { splashSeconds = it.roundToInt() },
-                    onValueChangeFinished = {
-                        InkShelf2CinematicSplash.setDurationSeconds(context, splashSeconds)
-                    },
-                    valueRange = InkShelf2CinematicSplash.MIN_DURATION_SECONDS.toFloat()..
-                        InkShelf2CinematicSplash.MAX_DURATION_SECONDS.toFloat(),
-                    steps = InkShelf2CinematicSplash.MAX_DURATION_SECONDS -
-                        InkShelf2CinematicSplash.MIN_DURATION_SECONDS - 1,
-                    enabled = cinematicEnabled,
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Fast · 3s", color = InkShelf2Colors.Muted, fontSize = 11.sp)
-                    Text("Slow · 7s", color = InkShelf2Colors.Muted, fontSize = 11.sp)
-                }
-                Text("Changes apply on the next cold launch. Tap the splash to skip.",
-                    color = InkShelf2Colors.Muted, fontSize = 12.sp)
-            }
-        }
-        item {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
                 TextButton(onClick = { artworkOpen = !artworkOpen }) {
-                    Text(if (artworkOpen) "Hide custom images" else "Add your own splash",
+                    Text(if (artworkOpen) "Hide splash artwork" else "ARC splash artwork",
                         color = InkShelf2Colors.AccentLight)
                 }
                 if (artworkOpen) {
-                    Text("Use PNG, JPEG or WebP artwork. The final logo retains up to 3072px; other artwork up to 1600px. Files stay on this device.",
+                    val index = InkShelf2SplashArtwork.ARC_INDEX
+                    val imported = remember(artworkEpoch) { InkShelf2SplashArtwork.has(context, index) }
+                    val preview = remember(artworkEpoch) {
+                        InkShelf2SplashArtwork.previewFile(context, index)
+                            ?: InkShelf2SplashArtwork.bundledPreview(context, index)
+                    }
+                    if (preview != null) {
+                        AsyncImage(model = preview, contentDescription = "ARC splash artwork",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxWidth().height(160.dp))
+                    }
+                    Text("One opening animation, about three seconds. Import a PNG, JPEG or WebP to replace the built-in ARC artwork. Previous custom artwork remains saved.",
                         color = InkShelf2Colors.Muted, fontSize = 12.sp)
-                    InkShelf2SplashArtwork.allSlots.forEachIndexed { index, slot ->
-                        if (index == InkShelf2SplashArtwork.DOOM_RUNE_INDEX && !InkShelf2Themes.limitedThemesVisible) return@forEachIndexed
-                        if (index == InkShelf2SplashArtwork.DOOM_RUNE_INDEX ||
-                            (index == InkShelf2SplashArtwork.LOGO_INDEX && !InkShelf2Themes.limitedThemesVisible)) {
-                            Spacer(Modifier.height(16.dp))
-                            Text("OPTIONAL HD SPLASH UPGRADES", color = InkShelf2Colors.Trim, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        val imported = remember(artworkEpoch, index) { InkShelf2SplashArtwork.has(context, index) }
-                        val bundled = remember(artworkEpoch, index) { InkShelf2SplashArtwork.hasBundled(context, index) }
-                        val customActive = remember(artworkEpoch, index) { InkShelf2SplashArtwork.usesCustom(context, index) }
-                        Spacer(Modifier.height(12.dp))
-                        Text(slot, color = InkShelf2Colors.Text, fontWeight = FontWeight.Bold)
-                        val dimensions = remember(artworkEpoch, index) { InkShelf2SplashArtwork.dimensions(context, index) }
-                        val artworkLabel = when {
-                            customActive -> "Custom image active"
-                            bundled -> "Built-in HD artwork"
-                            else -> "Default image"
-                        }
-                        Text(artworkLabel + (dimensions?.let { " · $it" } ?: ""),
-                            color = InkShelf2Colors.Muted, fontSize = 12.sp)
-                        if (index == InkShelf2SplashArtwork.LOGO_INDEX) {
-                            val preview = remember(artworkEpoch) {
-                                val model = InkShelf2SplashArtwork.previewFile(context, index)
-                                    ?: InkShelf2SplashArtwork.bundledPreview(context, index)
-                                    ?: R.drawable.inkshelf_cinematic_logo
-                                ImageRequest.Builder(context).data(model)
-                                    .memoryCacheKey("splash-logo-preview-$artworkEpoch-${(model as? java.io.File)?.lastModified() ?: 0}")
-                                    .diskCachePolicy(coil.request.CachePolicy.DISABLED)
-                                    .build()
-                            }
-                            AsyncImage(
-                                model = preview,
-                                contentDescription = "Active final splash logo",
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxWidth().height(132.dp)
-                                    .clip(RoundedCornerShape(12.dp)).background(InkShelf2Colors.Background),
-                            )
-                            Text("Preview of the final cinematic logo. Reopen InkShelf from a cold start to see it in the animation. The header wordmark is separate.",
-                                color = InkShelf2Colors.Muted, fontSize = 12.sp)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(enabled = !importingArtwork, onClick = {
-                                pendingArtwork = index
-                                picker.launch("image/*")
-                            }) { Text(if (imported) "Replace" else "Choose image") }
-                            if (imported && bundled) {
-                                TextButton(enabled = !importingArtwork, onClick = {
-                                    InkShelf2SplashArtwork.selectCustom(context, index, !customActive)
-                                    artworkEpoch += 1
-                                }) { Text(if (customActive) "Use built-in HD" else "Use saved custom") }
-                            } else if (imported) {
-                                TextButton(enabled = !importingArtwork, onClick = {
-                                    InkShelf2SplashArtwork.reset(context, index)
-                                    artworkEpoch += 1
-                                }) { Text("Reset") }
-                            }
-                        }
+                    Row {
+                        TextButton(enabled = !importingArtwork, onClick = {
+                            pendingArtwork = index
+                            picker.launch("image/*")
+                        }) { Text(if (imported) "Replace artwork" else "Choose artwork") }
+                        if (imported) TextButton(onClick = {
+                            InkShelf2SplashArtwork.reset(context, index)
+                            artworkEpoch += 1
+                        }) { Text("Reset") }
                     }
                 }
             }
@@ -370,7 +302,7 @@ internal fun InkShelf2ThemesScreen(
                     background = doom.colors.background
                 },
             )
-            Text("The special rune opening plays on the next cold launch when cinematic opening is enabled. Your four custom images stay saved.",
+            Text("The limited edition colours remain available. ARC now uses one universal opening animation.",
                 modifier = Modifier.padding(horizontal = 19.dp, vertical = 8.dp),
                 color = InkShelf2Colors.Muted, fontSize = 12.sp, lineHeight = 17.sp)
         }
@@ -474,7 +406,7 @@ private fun InkShelfThemePreview(palette: InkShelf2Palette) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.Palette, null, tint = palette.highlight, modifier = Modifier.size(23.dp))
             Spacer(Modifier.width(8.dp))
-            Text("InkShelf", color = palette.text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text("ARC", color = palette.text, fontSize = 19.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
             Text("LIVE PREVIEW", color = palette.highlight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }

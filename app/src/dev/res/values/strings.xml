@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Dev flavor only: launcher label and separate default downloads/backups. -->
-    <string name="app_name" translatable="false">InkShelf Dev</string>
-    <string name="app_short_name" translatable="false">InkShelf Dev</string>
+    <string name="app_name" translatable="false">ARC Dev</string>
+    <string name="app_short_name" translatable="false">ARC Dev</string>
 </resources>

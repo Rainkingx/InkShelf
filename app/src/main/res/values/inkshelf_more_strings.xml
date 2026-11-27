@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="inkshelf_more_title">More</string>
-    <string name="inkshelf_more_group_inkshelf">InkShelf</string>
+    <string name="inkshelf_more_group_inkshelf">ARC</string>
     <string name="inkshelf_more_group_reading">Reading &amp; appearance</string>
     <string name="inkshelf_more_group_content">Content &amp; services</string>
     <string name="inkshelf_more_group_app">App &amp; data</string>
@@ -18,7 +18,7 @@
     <string name="inkshelf_more_comic_vine_connected">Connected • richer comic metadata enabled</string>
     <string name="inkshelf_more_comic_vine_saved">Key saved • tap to test connection</string>
     <string name="inkshelf_more_comic_vine_key_hint">Comic Vine API key</string>
-    <string name="inkshelf_more_comic_vine_dialog_message">Comic Vine enriches Picked for You with publisher, year, issue count, creators and synopsis data. Your key stays in InkShelf’s private app storage.</string>
+    <string name="inkshelf_more_comic_vine_dialog_message">Comic Vine enriches Picked for You with publisher, year, issue count, creators and synopsis data. Your key stays in ARC’s private app storage.</string>
     <string name="inkshelf_more_save_test">Save &amp; test</string>
     <string name="inkshelf_more_remove_key">Remove key</string>
     <string name="inkshelf_more_key_required">Enter a Comic Vine API key first.</string>

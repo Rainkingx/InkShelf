@@ -136,11 +136,11 @@ class InkShelf2Activity : AppCompatActivity() {
             return
         }
         if (!packageManager.canRequestPackageInstalls()) {
-            Toast.makeText(this, "Allow InkShelf to install unknown apps, then return and tap Download & Install again.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Allow ARC to install unknown apps, then return and tap Download & Install again.", Toast.LENGTH_LONG).show()
             try {
                 startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
             } catch (_: Exception) {
-                Toast.makeText(this, "Enable Install unknown apps for InkShelf in Android settings.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Enable Install unknown apps for ARC in Android settings.", Toast.LENGTH_LONG).show()
             }
             return
         }
@@ -185,7 +185,7 @@ class InkShelf2Activity : AppCompatActivity() {
                         ?: error("Downloaded file is not a valid APK")
                     if (archive.packageName != packageName ||
                         PackageInfoCompat.getLongVersionCode(archive) <= BuildConfig.VERSION_CODE.toLong()
-                    ) error("The APK is not a newer InkShelf public release")
+                    ) error("The APK is not a newer ARC public release")
                 }
                 // The Android installer performs the final signature and upgrade checks.
                 startActivity(
@@ -1130,7 +1130,7 @@ class InkShelf2Activity : AppCompatActivity() {
                             lastBackAtMillis = now
                             Toast.makeText(
                                 this@InkShelf2Activity,
-                                "Press Back again to exit InkShelf",
+                                "Press Back again to exit ARC",
                                 Toast.LENGTH_SHORT,
                             ).show()
                         }
@@ -1142,7 +1142,7 @@ class InkShelf2Activity : AppCompatActivity() {
                     onDismissRequest = { downloadStoragePrompt = false },
                     title = { Text("Allow download storage access") },
                     text = {
-                        Text("InkShelf needs storage access to save and read offline comics. " +
+                        Text("ARC needs storage access to save and read offline comics. " +
                             "Allow access in Android settings, then return and tap download again. " +
                             "You can still browse and read online without this permission.")
                     },

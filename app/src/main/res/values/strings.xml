@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">InkShelf</string>
-    <string name="app_short_name" translatable="false">InkShelf</string>
+    <string name="app_name" translatable="false">ARC</string>
+    <string name="app_short_name" translatable="false">ARC</string>
 
     <string name="all_files_permission_required">File permissions required</string>
     <string name="external_storage_permission_notice">TachiyomiJ2K requires access to all files in Android 11 to download chapters, create automatic backups, and read local series. \n\nOn the next screen, enable \"Allow access to manage all files.\"</string>
@@ -140,7 +140,7 @@
 
     <!-- Library -->
     <string name="library">Library</string>
-    <string name="my_library">My InkShelf</string>
+    <string name="my_library">My ARC</string>
     <string name="modern_library_chapters">%1$d chapters</string>
     <string name="modern_library_chapters_unread">%1$d chapters • %2$d unread</string>
     <string name="modern_library_summary">%1$d series • %2$s chapters</string>

@@ -92,7 +92,7 @@ internal fun InkShelf2MenuScreen(
             }
         }
         item {
-            MenuSection("YOUR INKSHELF") {
+            MenuSection("YOUR ARC") {
                 MenuEntry("Notifications", if (extensionUpdateCount > 0) "$extensionUpdateCount extension update(s) available" else "Phone alerts · App and source updates",
                     Icons.Outlined.NotificationsNone, onNotifications)
                 MenuEntry(
@@ -152,7 +152,7 @@ internal fun InkShelf2MenuScreen(
                 if (appUpdateEnabled) {
                     MenuEntry(
                         if (checkingAppUpdate) "Checking for updates…" else "Check for updates",
-                        "InkShelf $appVersion · GitHub releases",
+                        "ARC $appVersion · GitHub releases",
                         Icons.Outlined.Download,
                         { if (!checkingAppUpdate) onCheckAppUpdate() },
                     )
@@ -161,7 +161,7 @@ internal fun InkShelf2MenuScreen(
         }
         item {
             Text(
-                "InkShelf $appVersion · " + if (appUpdateEnabled) "Public update channel" else "Development build",
+                "ARC $appVersion · " + if (appUpdateEnabled) "Public update channel" else "Development build",
                 modifier = Modifier.padding(horizontal = 18.dp),
                 color = InkShelf2Colors.Muted,
                 fontSize = 11.sp,

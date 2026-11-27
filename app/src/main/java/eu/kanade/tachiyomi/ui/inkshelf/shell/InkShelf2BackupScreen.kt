@@ -158,7 +158,7 @@ internal fun InkShelf2BackupScreen(
             title = { Text("Restore this backup?") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("InkShelf will merge this backup into the current library, using the original restore system. Review any missing sources or tracker connections first.")
+                    Text("ARC will merge this backup into the current library, using the original restore system. Review any missing sources or tracker connections first.")
                     if (restoreWarnings.isNotBlank()) {
                         Text(restoreWarnings, color = InkShelf2Colors.AccentLight, fontSize = 12.sp)
                     }
@@ -213,7 +213,7 @@ internal fun InkShelf2BackupScreen(
         item {
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Text(
-                    "Protect your library, reading progress and settings using the established InkShelf backup format.",
+                    "Protect your library, reading progress and settings using the established ARC backup format.",
                     color = InkShelf2Colors.Muted, fontSize = 13.sp,
                 )
                 Spacer(Modifier.height(18.dp))
@@ -250,7 +250,7 @@ internal fun InkShelf2BackupScreen(
                 Text("RESTORE A BACKUP", color = InkShelf2Colors.AccentLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(9.dp))
                 Text(
-                    "Choose a .tachibk or compatible legacy backup. InkShelf checks it before asking you to restore.",
+                    "Choose a .tachibk or compatible legacy backup. ARC checks it before asking you to restore.",
                     color = InkShelf2Colors.Muted, fontSize = 12.sp,
                 )
                 Spacer(Modifier.height(10.dp))

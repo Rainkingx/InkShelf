@@ -331,79 +331,16 @@ private fun InkShelf2Header(
             .padding(start = 16.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Image(
-            // Load the standalone emblem instead of the adaptive-icon XML: painterResource
-            // cannot inflate adaptive icons on Android 26+ (including Android 17).
-            painter = painterResource(id = if (skin != null) R.drawable.inkshelf_doom_rune else R.drawable.inkshelf_brand_emblem),
-            contentDescription = "InkShelf logo",
-            modifier = Modifier.size(40.dp)
-                .offset(y = if (skin == null) (-3).dp else 0.dp),
+        Text(
+            text = "ARC",
+            modifier = Modifier.weight(1f),
+            color = InkShelf2Colors.Trim,
+            fontFamily = InkShelf2FontFamily,
+            fontSize = 31.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.2.sp,
+            maxLines = 1,
         )
-        if (skin == null && !InkShelf2Themes.current.isLight) {
-            Box(
-                modifier = Modifier.padding(start = 5.dp, end = 5.dp).weight(1f),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.inkshelf_header_wordmark),
-                    contentDescription = "InkShelf",
-                    // Optical alignment: the reflection adds height below the lettering.
-                    // Keep the visible wordmark level with the emblem, inside the header.
-                    modifier = Modifier.height(42.dp).aspectRatio(300f / 102f)
-                        .offset(y = 7.dp)
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            drawContent()
-                            // Soften the image's rectangular backdrop while
-                            // keeping the metallic letters and reflection.
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    0f to Color.Transparent,
-                                    0.045f to Color.White,
-                                    0.76f to Color.White,
-                                    1f to Color.Transparent,
-                                ),
-                                blendMode = BlendMode.DstIn,
-                            )
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    0f to Color.Transparent,
-                                    0.018f to Color.White,
-                                    0.982f to Color.White,
-                                    1f to Color.Transparent,
-                                ),
-                                blendMode = BlendMode.DstIn,
-                            )
-                        },
-                    alignment = Alignment.CenterStart,
-                    contentScale = ContentScale.Fit,
-                )
-            }
-        } else {
-            Row(
-                modifier = Modifier.padding(start = 5.dp).weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "INK",
-                    color = InkShelf2Colors.Text,
-                    fontFamily = InkShelf2FontFamily,
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.7).sp,
-                    maxLines = 1,
-                )
-                Text(
-                    text = "SHELF",
-                    color = InkShelf2Colors.Trim,
-                    fontFamily = InkShelf2FontFamily,
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.7).sp,
-                    maxLines = 1,
-                )
-            }
-        }
         IconButton(
             onClick = onPulse,
             modifier = Modifier.size(40.dp).semantics {

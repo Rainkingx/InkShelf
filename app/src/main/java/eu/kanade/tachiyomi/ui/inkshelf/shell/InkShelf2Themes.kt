@@ -107,7 +107,7 @@ internal object InkShelf2Themes {
 
     val presets = listOf(
         preset(
-            "original", "InkShelf Original", "Signature purple & black",
+            "original", "ARC Original", "Signature purple & black",
             0xFF08060D, 0xFF150E21, 0xFF21132D, 0xFFB72AF2, 0xFFE169F7, 0xFF744686,
         ),
         preset(

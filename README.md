@@ -1,15 +1,15 @@
-# InkShelf
+# ARC — Archive. Read. Collect.
 [![Download InkShelf](https://img.shields.io/badge/Download-InkShelf_APK-7C4DFF?style=for-the-badge&logo=android)](https://github.com/Rainkingx/InkShelf/releases)
 
-**InkShelf** is an Android comic and manga reader built as a custom fork of [TachiyomiJ2K](https://github.com/Jays2Kings/tachiyomiJ2K).
+**ARC (formerly InkShelf)** is an Android comic and manga reader built as a custom fork of [TachiyomiJ2K](https://github.com/Jays2Kings/tachiyomiJ2K).
 
 The project keeps the proven J2K reader, library, source/extension, download, backup and tracking foundations while building a more comic-focused InkShelf experience on top.
 
-> InkShelf is under active development. Some features are intentionally marked **BETA**.
+> ARC is under active development. Some features are intentionally marked **BETA**.
 
 ## Features
 
-InkShelf introduces a rebuilt Android interface with a shared header, bottom navigation and a comic-focused visual identity, while retaining the existing reader and library foundations.
+ARC introduces a rebuilt Android interface with a shared header, bottom navigation and a comic-focused visual identity, while retaining the existing reader and library foundations.
 
 - **Home:** daily themed picks, continue reading and personalised discovery.
 - **Discover:** editorial spotlights, curated collections, new releases, recommendations and multi-source search.
@@ -24,7 +24,7 @@ InkShelf introduces a rebuilt Android interface with a shared header, bottom nav
 
 ## Installation and updates
 
-The public APK is available from [GitHub Releases](https://github.com/Rainkingx/InkShelf/releases). Check the release notes for the current stable version and any available prereleases.
+The existing Android application ID, signing identity and update asset name remain unchanged for in-place upgrades. The public APK is available from [GitHub Releases](https://github.com/Rainkingx/InkShelf/releases). Check the release notes for the current stable version and any available prereleases.
 
 Before switching from an existing installation, export a backup. Development builds and public releases use different Android package IDs; a development APK cannot be upgraded in place by the public APK. Restore a backup in the new installation and check your library before removing the old app. Downloaded files and extension settings may need separate migration.
 
@@ -40,13 +40,13 @@ Panel Flow does not require a cloud OCR service.
 
 ## Privacy
 
-InkShelf does not include the upstream TachiyomiJ2K Firebase configuration.
+ARC does not include the upstream TachiyomiJ2K Firebase configuration.
 
 The current project does not include Firebase Analytics or Firebase Crashlytics. Panel Flow text recognition runs on-device.
 
 ## Content and sources
 
-InkShelf does **not** host, provide or distribute copyrighted comic or manga content.
+ARC does **not** host, provide or distribute copyrighted comic or manga content.
 
 Sources/extensions are separate from the app. Requests or problems relating to third-party sources should be handled by the relevant extension/source project rather than this repository.
 
@@ -87,9 +87,9 @@ app/build/outputs/apk/
 
 Bug reports and focused improvements are welcome. Please read [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) before opening an issue.
 
-For InkShelf-specific bugs, include:
+For ARC-specific bugs, include:
 
-- InkShelf version/build
+- ARC version/build
 - Android version
 - device/model
 - clear reproduction steps
@@ -101,7 +101,7 @@ InkShelf is a derivative work based on **TachiyomiJ2K** by Jays2Kings, which its
 
 The wider Tachiyomi ecosystem is now continued by projects including [Mihon](https://github.com/mihonapp/mihon).
 
-InkShelf retains upstream copyright, licence and attribution notices as required.
+ARC retains upstream copyright, licence and attribution notices as required.
 
 ## Licence
 
@@ -109,7 +109,7 @@ Licensed under the **Apache License 2.0**. See [LICENSE](LICENSE).
 
 ## Disclaimer
 
-InkShelf is not affiliated with or endorsed by content providers, publishers, TachiyomiJ2K, Mihon, or third-party extension developers.
+ARC is not affiliated with or endorsed by content providers, publishers, TachiyomiJ2K, Mihon, or third-party extension developers.
 
 Users are responsible for complying with the laws and terms applicable to the content and sources they choose to access.
 

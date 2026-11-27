@@ -119,7 +119,7 @@ internal fun InkShelf2NotificationsScreen(
                             modifier = Modifier.size(26.dp), tint = InkShelf2Colors.AccentLight)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(if (availableAppUpdate != null) "InkShelf update available" else "InkShelf updates",
+                            Text(if (availableAppUpdate != null) "ARC update available" else "ARC updates",
                                 color = InkShelf2Colors.Text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             Text(availableAppUpdate?.let { "New version: $it" }
                                 ?: "Installed: " + eu.kanade.tachiyomi.BuildConfig.VERSION_NAME,

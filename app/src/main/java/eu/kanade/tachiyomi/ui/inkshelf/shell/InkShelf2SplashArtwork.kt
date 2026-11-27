@@ -16,13 +16,15 @@ internal object InkShelf2SplashArtwork {
     val slots = List(4) { index -> "Image ${index + 1}" }
     const val DOOM_RUNE_INDEX = 4
     const val LOGO_INDEX = 5
-    val allSlots = slots + listOf("Doom rune (HD)", "Final InkShelf logo (HD)")
+    const val ARC_INDEX = 6
+    val allSlots = slots + listOf("Doom rune (HD)", "Final InkShelf logo (HD)", "ARC splash artwork")
 
     private fun file(context: Context, index: Int): File {
         require(index in allSlots.indices)
         val name = when (index) {
             DOOM_RUNE_INDEX -> "doom_rune.png"
             LOGO_INDEX -> "final_logo.png"
+            ARC_INDEX -> "arc_splash.png"
             else -> "hero_${index}.png"
         }
         return File(context.filesDir, "splash_artwork/$name")
@@ -34,6 +36,7 @@ internal object InkShelf2SplashArtwork {
         2 to "03_spider_man.webp",
         3 to "04_flash.webp",
         LOGO_INDEX to "05_inkshelf_logo.webp",
+        ARC_INDEX to "arc_splash.png",
     )
 
     private fun assetPath(index: Int): String? =
@@ -101,7 +104,7 @@ internal object InkShelf2SplashArtwork {
         require(bounds.outWidth > 0 && bounds.outHeight > 0)
         // Keep full-resolution logo artwork for modern high-density displays.
         // Sample only while the next step still retains the target resolution.
-        val limit = if (index == LOGO_INDEX) 3072 else 1600
+        val limit = if (index == LOGO_INDEX || index == ARC_INDEX) 3072 else 1600
         var sample = 1
         while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= limit) sample *= 2
         val decoded = resolver.openInputStream(uri)?.use {
