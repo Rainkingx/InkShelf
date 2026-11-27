@@ -116,24 +116,21 @@ Users are responsible for complying with the laws and terms applicable to the co
 <!-- INKSHELF_SCREENSHOTS_START -->
 ## Screenshots
 
+Latest screenshots from ARC.
+
 <table>
   <tr>
-    <td align="center"><img src="screenshots/2.0/home.webp" width="300" alt="ARC Home"><br><b>Home</b></td>
-    <td align="center"><img src="screenshots/2.0/discover.webp" width="300" alt="ARC Discover"><br><b>Discover</b></td>
+    <td align="center"><img src="screenshots/2.0/Screenshot_20261127_104210_ARC%20Dev.jpg" width="300" alt="ARC app screenshot 1"></td>
+    <td align="center"><img src="screenshots/2.0/Screenshot_20261127_104226_ARC%20Dev.jpg" width="300" alt="ARC app screenshot 2"></td>
   </tr>
   <tr>
-    <td align="center"><img src="screenshots/2.0/library.webp" width="300" alt="ARC Library"><br><b>Library</b></td>
-    <td align="center"><img src="screenshots/2.0/events.webp" width="300" alt="ARC Events"><br><b>Events</b></td>
+    <td align="center"><img src="screenshots/2.0/Screenshot_20261127_104256_ARC%20Dev.jpg" width="300" alt="ARC app screenshot 3"></td>
+    <td align="center"><img src="screenshots/2.0/Screenshot_20261127_104307_ARC%20Dev.jpg" width="300" alt="ARC app screenshot 4"></td>
   </tr>
   <tr>
-    <td align="center"><img src="screenshots/2.0/comic-details.webp" width="300" alt="ARC Comic details"><br><b>Comic details</b></td>
-    <td align="center"><img src="screenshots/2.0/event-details.webp" width="300" alt="ARC Event details"><br><b>Event details</b></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="screenshots/2.0/pulse.webp" width="300" alt="ARC The Pulse"><br><b>The Pulse</b></td>
-    <td align="center"><img src="screenshots/2.0/issues.webp" width="300" alt="ARC Issues and recommendations"><br><b>Issues and recommendations</b></td>
+    <td align="center"><img src="screenshots/2.0/Screenshot_20261127_104331_ARC%20Dev.jpg" width="300" alt="ARC app screenshot 5"></td>
   </tr>
 </table>
 
-Screenshots show the earlier interface and may still display the previous InkShelf branding. Comic artwork and publisher branding belong to their respective rights holders.
+Comic artwork and publisher branding belong to their respective rights holders.
 <!-- INKSHELF_SCREENSHOTS_END -->
