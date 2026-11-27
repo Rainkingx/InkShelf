@@ -357,6 +357,9 @@ internal fun InkShelf2DiscoverScreen(
                     // Continue with personal picks; keep the previous saved feed.
                 }
                 loadPersonalPicks(force = true, reload = false)
+                // A user-requested refresh may replenish the curated catalogue,
+                // but still observes the same shared cooldown and request cap.
+                InkShelf2CuratedCatalogue.refresh(context.applicationContext, sources)
                 onRecommendationsUpdated()
             }
             Toast.makeText(context, "Discover refresh finished. Saved content kept where needed.",

@@ -164,7 +164,12 @@ internal object InkShelf2DiscoverCuration {
         // Prefer lesser-seen titles, but keep a useful shelf on small catalogues.
         val fresh = gemPool.filterNot { titleKey(it) in trendingKeys }
         val eligible = (if (fresh.size >= 12) fresh else gemPool).sortedBy(::titleKey)
-        val offset = if (eligible.isEmpty()) 0 else Math.floorMod(InkShelf2DailyRotation.localDayStamp(), eligible.size)
+        val stride = when {
+            eligible.size % 7 != 0 -> 7
+            eligible.size % 5 != 0 -> 5
+            else -> 1
+        }
+        val offset = if (eligible.isEmpty()) 0 else Math.floorMod(InkShelf2DailyRotation.localDayStamp() * stride, eligible.size)
         val gems = (eligible.drop(offset) + eligible.take(offset)).take(48)
         val featured = listOf(
             Shelf(

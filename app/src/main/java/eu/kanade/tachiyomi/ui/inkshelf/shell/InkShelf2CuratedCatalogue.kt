@@ -88,13 +88,16 @@ internal object InkShelf2CuratedCatalogue {
                 .sortedBy { load(context, it, enabled).distinctBy(InkShelf2DailyRotation::seriesKey).size }
             val plan = buildList {
                 if (today in seeds && today != GEMS) repeat(3) { add(today) }
-                repeat(3) { add(GEMS) }
+                val gemCount = load(context, GEMS, enabled).size
+                repeat(if (gemCount < 12) 5 else 3) { add(GEMS) }
                 addAll(buckets.take(10 - size))
             }
             var changed = false
             for (theme in plan) {
                 val terms = seeds.getValue(theme)
-                val cursor = prefs.getInt("cursor_$theme", 0).coerceAtLeast(0)
+                // Start with less familiar indie picks, not the old fixed top three.
+                val initialCursor = if (theme == GEMS) 20 else 0
+                val cursor = prefs.getInt("cursor_$theme", initialCursor).coerceAtLeast(0)
                 val query = terms[cursor % terms.size]
                 val source = ordered[cursor % ordered.size]
                 val old = load(context, theme, enabled)
