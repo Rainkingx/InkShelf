@@ -3,8 +3,8 @@ public final class AndroidVersions {
     public static final int compileSdk = 37;
     public static final int minSdk = 26;
     public static final int targetSdk = 37;
-    public static final int versionCode = 223;
-    public static final String versionName = "2.0.3";
+    public static final int versionCode = 224;
+    public static final String versionName = "2.1.0";
     public static final String ndk = "23.1.7779620";
     public static final String kotlin = "2.3.10";
 }

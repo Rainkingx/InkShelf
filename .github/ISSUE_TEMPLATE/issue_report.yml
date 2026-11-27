@@ -1,5 +1,5 @@
 name: Bug report
-description: Report an InkShelf bug
+description: Report an ARC bug
 labels: [bug]
 body:
   - type: textarea
@@ -30,7 +30,7 @@ body:
   - type: input
     id: inkshelf-version
     attributes:
-      label: InkShelf version/build
+      label: ARC version/build
       description: Find this under More → About.
       placeholder: Example: dev build / release version
     validations:
@@ -70,9 +70,9 @@ body:
       options:
         - label: I searched existing issues and could not find the same bug.
           required: true
-        - label: I tested this on the current InkShelf build available to me.
+        - label: I tested this on the current ARC build available to me.
           required: true
-        - label: This is an InkShelf/app issue rather than only a third-party source/extension problem.
+        - label: This is an ARC/app issue rather than only a third-party source/extension problem.
           required: true
         - label: I removed private information and credentials from anything I attached.
           required: true

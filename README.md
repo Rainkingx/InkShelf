@@ -1,9 +1,9 @@
 # ARC — Archive. Read. Collect.
-[![Download InkShelf](https://img.shields.io/badge/Download-InkShelf_APK-7C4DFF?style=for-the-badge&logo=android)](https://github.com/Rainkingx/InkShelf/releases)
+[![Download ARC](https://img.shields.io/badge/Download-ARC_APK-7C4DFF?style=for-the-badge&logo=android)](https://github.com/Rainkingx/InkShelf/releases)
 
 **ARC (formerly InkShelf)** is an Android comic and manga reader built as a custom fork of [TachiyomiJ2K](https://github.com/Jays2Kings/tachiyomiJ2K).
 
-The project keeps the proven J2K reader, library, source/extension, download, backup and tracking foundations while building a more comic-focused InkShelf experience on top.
+The project keeps the proven J2K reader, library, source/extension, download, backup and tracking foundations while building a more comic-focused ARC experience on top.
 
 > ARC is under active development. Some features are intentionally marked **BETA**.
 
@@ -97,7 +97,7 @@ For ARC-specific bugs, include:
 
 ## Upstream and attribution
 
-InkShelf is a derivative work based on **TachiyomiJ2K** by Jays2Kings, which itself descends from the original **Tachiyomi** project by Javier Tomás and contributors.
+ARC is a derivative work based on **TachiyomiJ2K** by Jays2Kings, which itself descends from the original **Tachiyomi** project by Javier Tomás and contributors.
 
 The wider Tachiyomi ecosystem is now continued by projects including [Mihon](https://github.com/mihonapp/mihon).
 
@@ -118,22 +118,22 @@ Users are responsible for complying with the laws and terms applicable to the co
 
 <table>
   <tr>
-    <td align="center"><img src="screenshots/2.0/home.webp" width="300" alt="InkShelf Home"><br><b>Home</b></td>
-    <td align="center"><img src="screenshots/2.0/discover.webp" width="300" alt="InkShelf Discover"><br><b>Discover</b></td>
+    <td align="center"><img src="screenshots/2.0/home.webp" width="300" alt="ARC Home"><br><b>Home</b></td>
+    <td align="center"><img src="screenshots/2.0/discover.webp" width="300" alt="ARC Discover"><br><b>Discover</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="screenshots/2.0/library.webp" width="300" alt="InkShelf Library"><br><b>Library</b></td>
-    <td align="center"><img src="screenshots/2.0/events.webp" width="300" alt="InkShelf Events"><br><b>Events</b></td>
+    <td align="center"><img src="screenshots/2.0/library.webp" width="300" alt="ARC Library"><br><b>Library</b></td>
+    <td align="center"><img src="screenshots/2.0/events.webp" width="300" alt="ARC Events"><br><b>Events</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="screenshots/2.0/comic-details.webp" width="300" alt="InkShelf Comic details"><br><b>Comic details</b></td>
-    <td align="center"><img src="screenshots/2.0/event-details.webp" width="300" alt="InkShelf Event details"><br><b>Event details</b></td>
+    <td align="center"><img src="screenshots/2.0/comic-details.webp" width="300" alt="ARC Comic details"><br><b>Comic details</b></td>
+    <td align="center"><img src="screenshots/2.0/event-details.webp" width="300" alt="ARC Event details"><br><b>Event details</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="screenshots/2.0/pulse.webp" width="300" alt="InkShelf The Pulse"><br><b>The Pulse</b></td>
-    <td align="center"><img src="screenshots/2.0/issues.webp" width="300" alt="InkShelf Issues and recommendations"><br><b>Issues and recommendations</b></td>
+    <td align="center"><img src="screenshots/2.0/pulse.webp" width="300" alt="ARC The Pulse"><br><b>The Pulse</b></td>
+    <td align="center"><img src="screenshots/2.0/issues.webp" width="300" alt="ARC Issues and recommendations"><br><b>Issues and recommendations</b></td>
   </tr>
 </table>
 
-Screenshots demonstrate the app interface. Comic artwork and publisher branding belong to their respective rights holders.
+Screenshots show the earlier interface and may still display the previous InkShelf branding. Comic artwork and publisher branding belong to their respective rights holders.
 <!-- INKSHELF_SCREENSHOTS_END -->

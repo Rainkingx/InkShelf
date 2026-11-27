@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an improvement to InkShelf
+description: Suggest an improvement to ARC
 labels: [feature]
 body:
   - type: textarea
@@ -14,10 +14,10 @@ body:
     id: solution
     attributes:
       label: Suggested behaviour
-      description: Explain how you would like InkShelf to behave.
+      description: Explain how you would like ARC to behave.
       placeholder: |
         Example:
-        "When I ..., InkShelf should ..."
+        "When I ..., ARC should ..."
     validations:
       required: true
 
@@ -34,7 +34,7 @@ body:
       options:
         - label: I searched existing issues and could not find the same request.
           required: true
-        - label: This request is about InkShelf rather than a third-party source/extension.
+        - label: This request is about ARC rather than a third-party source/extension.
           required: true
-        - label: I checked the existing InkShelf settings before requesting a new option.
+        - label: I checked the existing ARC settings before requesting a new option.
           required: true

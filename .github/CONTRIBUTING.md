@@ -1,20 +1,20 @@
-# Contributing to InkShelf
+# Contributing to ARC
 
-Thanks for helping improve InkShelf.
+Thanks for helping improve ARC.
 
 ## Before opening an issue
 
 Please search existing issues first.
 
-InkShelf is a fork of TachiyomiJ2K. If a problem also occurs in the upstream reader or the wider Mihon ecosystem, mention that in the report.
+ARC is a fork of TachiyomiJ2K. If a problem also occurs in the upstream reader or the wider Mihon ecosystem, mention that in the report.
 
-Issues relating only to third-party extensions or sources do not belong in the InkShelf repository.
+Issues relating only to third-party extensions or sources do not belong in the ARC repository.
 
 ## Bug reports
 
 Please include:
 
-- InkShelf version/build
+- ARC version/build
 - Android version
 - device/model
 - steps to reproduce
