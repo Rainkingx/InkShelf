@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -304,6 +305,61 @@ private fun InkShelf2PageMotion(route: String, content: @Composable () -> Unit) 
     }
 }
 
+/** Splash-inspired ARC lettering, drawn as vectors for sharpness at every density. */
+@Composable
+private fun ArcHeaderWordmark() {
+    val light = InkShelf2Themes.current.isLight
+    val trim = InkShelf2Colors.Trim
+    val text = InkShelf2Colors.Text
+    val letters = remember {
+        Path().apply {
+            // Open triangular A.
+            moveTo(0f, 150f); lineTo(121f, 0f); lineTo(239f, 150f)
+            lineTo(182f, 150f); lineTo(121f, 64f); lineTo(53f, 150f); close()
+            // Angular R with its diagonal leg and open counter.
+            moveTo(249f, 13f); lineTo(386f, 13f)
+            cubicTo(417f, 13f, 433f, 30f, 433f, 58f)
+            cubicTo(433f, 86f, 414f, 103f, 387f, 106f)
+            lineTo(444f, 150f); lineTo(387f, 150f); lineTo(299f, 78f)
+            lineTo(369f, 78f); cubicTo(383f, 78f, 390f, 72f, 390f, 62f)
+            cubicTo(390f, 51f, 383f, 46f, 369f, 46f)
+            lineTo(288f, 46f); lineTo(288f, 150f); lineTo(249f, 150f); close()
+            // Wide C with angled terminals.
+            moveTo(653f, 13f); lineTo(524f, 13f)
+            cubicTo(483f, 13f, 462f, 40f, 462f, 81f)
+            cubicTo(462f, 123f, 487f, 150f, 524f, 150f)
+            lineTo(663f, 150f); lineTo(624f, 117f); lineTo(532f, 117f)
+            cubicTo(511f, 117f, 504f, 103f, 504f, 81f)
+            cubicTo(504f, 60f, 513f, 46f, 532f, 46f)
+            lineTo(624f, 46f); close()
+        }
+    }
+    val flare = remember {
+        Path().apply {
+            moveTo(94f, 185f); lineTo(331.5f, 180f); lineTo(569f, 185f)
+            lineTo(331.5f, 190f); close()
+        }
+    }
+    Canvas(
+        modifier = Modifier.size(width = 117.dp, height = 35.dp)
+            .semantics { contentDescription = "ARC" },
+    ) {
+        val factor = minOf(size.width / 663f, size.height / 198f)
+        scale(factor, factor, pivot = Offset.Zero) {
+            drawPath(letters, brush = Brush.verticalGradient(
+                colors = if (light) listOf(text, trim) else listOf(Color.White, text, trim),
+                startY = 0f, endY = 150f,
+            ))
+            // A fine luminous line, with a brighter central point; no tagline.
+            drawPath(flare, brush = Brush.horizontalGradient(
+                colors = listOf(Color.Transparent, trim.copy(alpha = 0.80f),
+                    if (light) trim else Color.White, trim.copy(alpha = 0.80f), Color.Transparent),
+                startX = 94f, endX = 569f,
+            ))
+        }
+    }
+}
+
 @Composable
 private fun InkShelf2Header(
     onSearch: () -> Unit,
@@ -331,16 +387,9 @@ private fun InkShelf2Header(
             .padding(start = 16.dp, end = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "ARC",
-            modifier = Modifier.weight(1f),
-            color = InkShelf2Colors.Trim,
-            fontFamily = InkShelf2FontFamily,
-            fontSize = 31.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.2.sp,
-            maxLines = 1,
-        )
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            ArcHeaderWordmark()
+        }
         IconButton(
             onClick = onPulse,
             modifier = Modifier.size(40.dp).semantics {
