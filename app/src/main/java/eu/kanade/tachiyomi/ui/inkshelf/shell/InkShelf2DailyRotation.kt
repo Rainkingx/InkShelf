@@ -33,6 +33,11 @@ internal object InkShelf2DailyRotation {
         return terms.any { " ${normalize(it)} " in normalized }
     }
 
+    internal fun isSupermanFamily(title: String): Boolean = matches(title, listOf(
+        "superman", "supergirl", "superboy", "super sons", "supersons", "action comics",
+        "superwoman", "power girl", "man of steel", "man of tomorrow", "krypto", "lois lane", "jimmy olsen",
+    ))
+
     internal fun matchesTheme(day: Int, manga: Manga): Boolean = relevance(day, manga, false) != null
 
     private fun relevance(day: Int, manga: Manga, fromLatest: Boolean): Pair<Int, String>? {
@@ -40,6 +45,11 @@ internal object InkShelf2DailyRotation {
         if (day == Calendar.THURSDAY) {
             val year = InkShelf2ComicIdentity.year(title) ?: return null
             return if (year in 1900..1999) 110 to "Originally published in $year" else null
+        }
+        // Super Sunday is a Superman-family feature, not a generic superhero shelf.
+        // Source genre tags alone cannot identify a Superman comic.
+        if (day == Calendar.SUNDAY) {
+            return if (isSupermanFamily(title)) 110 to "From the Superman universe" else null
         }
         val tags = listOfNotNull(manga.genre, manga.originalGenre).joinToString(" ")
         if (day == Calendar.WEDNESDAY) {
@@ -64,11 +74,7 @@ internal object InkShelf2DailyRotation {
                 listOf("spider-man", "spiderman", "spider verse", "spider-verse",
                     "miles morales", "venom", "carnage", "silk", "spider gwen",
                     "spider-woman", "symbiote", "spider punk", "spider noir")
-            else ->
-                listOf("superman", "batman", "wonder woman", "justice league",
-                    "supergirl", "nightwing", "aquaman", "green lantern",
-                    "flash", "shazam", "avengers", "captain america",
-                    "iron man", "superhero", "superheroes", "heroic", "daredevil", "teen titans", "hulk")
+            else -> return null
         }
         val titleMatch = matches(title, terms)
         val tagMatch = matches(tags, terms)
@@ -79,7 +85,7 @@ internal object InkShelf2DailyRotation {
             Calendar.TUESDAY -> "An independent comics pick"
             Calendar.FRIDAY -> "Fantasy, magic or cosmic adventures"
             Calendar.SATURDAY -> "From the Spider-Man universe"
-            else -> "Superheroes for Sunday"
+            else -> return null
         }
         return (if (titleMatch) 95 else 65) to reason
     }

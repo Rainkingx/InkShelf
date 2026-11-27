@@ -27,7 +27,7 @@ internal object InkShelf2CuratedCatalogue {
         Calendar.THURSDAY to listOf("Fantastic Four", "Detective Comics", "Uncanny X-Men", "The Sandman", "Daredevil", "Superman", "Wonder Woman", "Hellboy", "The Amazing Spider-Man", "Action Comics", "The Incredible Hulk", "Spawn", "Green Lantern", "Thor", "Captain America", "Swamp Thing"),
         Calendar.FRIDAY to listOf("Fantastic Four", "Silver Surfer", "Doctor Strange", "Scarlet Witch", "Thor", "Doctor Doom", "Galactus", "The Sandman", "Eternals", "Guardians of the Galaxy", "Nova", "The Inhumans", "Black Science", "Monstress", "Once and Future", "The Mighty Thor"),
         Calendar.SATURDAY to listOf("The Amazing Spider-Man", "Venom", "Miles Morales", "Spider-Gwen", "Carnage", "Silk", "Spider-Woman", "Spider-Man 2099", "Spider-Man Noir", "Ultimate Spider-Man", "The Spectacular Spider-Man", "Spider-Punk", "Spider-Verse"),
-        Calendar.SUNDAY to listOf("Batman", "Superman", "Wonder Woman", "Justice League", "Avengers", "Green Lantern", "The Flash", "Captain America", "Iron Man", "Nightwing", "Aquaman", "Daredevil", "Teen Titans", "The Incredible Hulk", "Supergirl"),
+        Calendar.SUNDAY to listOf("Superman", "Action Comics", "Supergirl", "Superboy", "Super Sons", "Superman Man of Steel", "Superman Birthright", "Superman Red Son", "All Star Superman", "Superman Secret Origin", "Superman For All Seasons", "Superman Up in the Sky", "Superwoman", "Power Girl", "Krypto", "Lois Lane", "Jimmy Olsen"),
         GEMS to listOf("East of West", "Black Science", "Descender", "Ascender", "Gideon Falls", "Seven to Eternity", "Lazarus", "Chew", "The Sixth Gun", "Fear Agent", "Once and Future", "Paper Girls", "The Department of Truth", "Die", "Radiant Black", "Eight Billion Genies", "Something is Killing the Children", "The Wicked and the Divine", "Little Bird", "Ultramega", "The Weatherman", "The Manhattan Projects", "Black Hammer", "The Autumnal", "Harrow County", "The Nice House on the Lake", "The Many Deaths of Laila Starr", "The Good Asian", "The New World", "The Spire", "Coda", "Kaya", "The Sacrificers", "Do a Powerbomb", "The Magic Order", "The Hunger and the Dusk", "The Last Ronin", "Geiger", "Junkyard Joe", "Rogue Sun", "Local Man", "The Deviant", "Wytches", "Kill or Be Killed", "Fatale", "The Fade Out", "Reckless", "Criminal"),
     )
 
@@ -74,9 +74,9 @@ internal object InkShelf2CuratedCatalogue {
             val prefs = store(context)
             val today = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
             val dayStamp = InkShelf2DailyRotation.localDayStamp()
-            val signature = enabled.sorted().joinToString(",")
+            val signature = "super-sunday-v2:" + enabled.sorted().joinToString(",")
             val now = System.currentTimeMillis()
-            val todayCount = load(context, today, enabled).distinctBy(InkShelf2DailyRotation::seriesKey).size
+            val todayCount = load(context, today, enabled).filter { eligible(today, it, enabled) }.distinctBy(InkShelf2DailyRotation::seriesKey).size
             val cooldown = if (today != Calendar.WEDNESDAY && todayCount < 3) 12 * HOUR else 24 * HOUR
             if (prefs.getString("sources", "") == signature &&
                 prefs.getInt("day", -1) == dayStamp &&
@@ -88,19 +88,23 @@ internal object InkShelf2CuratedCatalogue {
                 .sortedBy { load(context, it, enabled).distinctBy(InkShelf2DailyRotation::seriesKey).size }
             val plan = buildList {
                 if (today in seeds && today != GEMS) repeat(3) { add(today) }
+                // Rebuild Sunday immediately when an older cache contains generic heroes.
+                val sundayCount = load(context, Calendar.SUNDAY, enabled).count { eligible(Calendar.SUNDAY, it, enabled) }
+                if (today != Calendar.SUNDAY && sundayCount < 3) repeat(3) { add(Calendar.SUNDAY) }
                 val gemCount = load(context, GEMS, enabled).size
-                repeat(if (gemCount < 12) 5 else 3) { add(GEMS) }
-                addAll(buckets.take(10 - size))
+                repeat(minOf(if (gemCount < 12) 5 else 3, 10 - size)) { add(GEMS) }
+                addAll(buckets.filterNot { it in this }.take(10 - size))
             }
             var changed = false
             for (theme in plan) {
                 val terms = seeds.getValue(theme)
                 // Start with less familiar indie picks, not the old fixed top three.
                 val initialCursor = if (theme == GEMS) 20 else 0
-                val cursor = prefs.getInt("cursor_$theme", initialCursor).coerceAtLeast(0)
+                val cursorKey = if (theme == Calendar.SUNDAY) "cursor_sunday_v2" else "cursor_$theme"
+                val cursor = prefs.getInt(cursorKey, initialCursor).coerceAtLeast(0)
                 val query = terms[cursor % terms.size]
                 val source = ordered[cursor % ordered.size]
-                val old = load(context, theme, enabled)
+                val old = load(context, theme, enabled).filter { eligible(theme, it, enabled) }
                 val found = try {
                     withTimeoutOrNull(5_000L) { engine.page(source, 1, query).comics }.orEmpty()
                 } catch (cancel: CancellationException) { throw cancel }
@@ -115,7 +119,7 @@ internal object InkShelf2CuratedCatalogue {
                         .put("title", manga.title).put("cover", manga.thumbnail_url.orEmpty())
                         .put("genre", listOfNotNull(manga.genre, manga.originalGenre).joinToString(", ")))
                 }
-                prefs.edit().putInt("cursor_$theme", cursor + 1).putString("items_$theme", array.toString()).apply()
+                prefs.edit().putInt(cursorKey, cursor + 1).putString("items_$theme", array.toString()).apply()
                 if (merged.map { it.source to it.url } != old.map { it.source to it.url }) changed = true
             }
             changed
